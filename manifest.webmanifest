@@ -1,7 +1,7 @@
 {
   "name": "零售商品效期管理",
   "short_name": "效期管理",
-  "description": "零售商品效期管理 PWA，支援離線使用與 IndexedDB 本機資料儲存。",
+  "description": "零售商品效期管理，支援離線使用與 IndexedDB 本機資料儲存。",
   "lang": "zh-Hant",
   "start_url": "./inventory-management-app.html",
   "scope": "./",
