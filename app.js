@@ -8,7 +8,7 @@
   const MODE_SETTING_KEY = "storageMode";
   const DEFAULT_MODE = "indexeddb";
   const EXPIRING_SOON_DAYS = 60;
-  const SCANNER_CENTER_HINT = "請把條碼對準鏡頭中央。";
+  const SCANNER_CENTER_HINT = "請將辨識內容對準鏡頭中央";
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
   const UNCATEGORIZED_LABEL = "未分類";
@@ -330,13 +330,10 @@
       tessedit_char_blacklist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()-_=+[]{}\\|;:'\",.<>/?，。！？；：、（）《》【】「」『』．",
       preserve_interword_spaces: "1"
     });
-    const text = String((result && result.data && result.data.text) || "")
-      .replace(/[^\u4e00-\u9fff\s]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    const candidates = extractOcrCandidates(result).map((item) =>
-      String(item || "").replace(/[^\u4e00-\u9fff\s]/g, "").replace(/\s+/g, " ").trim()
-    ).filter(Boolean);
+    const text = normalizeOcrChineseText((result && result.data && result.data.text) || "");
+    const candidates = extractOcrCandidates(result)
+      .map((item) => normalizeOcrChineseText(item))
+      .filter(Boolean);
     const normalizedText = text || candidates[0] || "";
     if (!normalizedText && candidates.length === 0) {
       return { text: "", candidates: [] };
@@ -386,6 +383,13 @@
         .map((s) => s.trim())
         .filter(Boolean)
     ));
+  }
+
+  function normalizeOcrChineseText(value) {
+    return String(value || "")
+      .replace(/[^\u4e00-\u9fff\s]/g, "")
+      .replace(/\s+/g, "")
+      .trim();
   }
 
   function closeOcrResultModal() {
