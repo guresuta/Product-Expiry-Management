@@ -1489,9 +1489,9 @@ function applyFormCollapsed() {
 
     const displayW = video.clientWidth || width;
     const displayH = video.clientHeight || height;
-    const scale = Math.max(displayW / sourceWidth, displayH / sourceHeight);
-    const drawW = sourceWidth * scale;
-    const drawH = sourceHeight * scale;
+    const videoScale = Math.max(displayW / sourceWidth, displayH / sourceHeight);
+    const drawW = sourceWidth * videoScale;
+    const drawH = sourceHeight * videoScale;
     const offsetX = (displayW - drawW) / 2;
     const offsetY = (displayH - drawH) / 2;
 
@@ -1500,10 +1500,10 @@ function applyFormCollapsed() {
     const roiRight = roiLeft + roi.w * displayW;
     const roiBottom = roiTop + roi.h * displayH;
 
-    const srcX1 = Math.max(0, Math.min(sourceWidth, (roiLeft - offsetX) / scale));
-    const srcY1 = Math.max(0, Math.min(sourceHeight, (roiTop - offsetY) / scale));
-    const srcX2 = Math.max(0, Math.min(sourceWidth, (roiRight - offsetX) / scale));
-    const srcY2 = Math.max(0, Math.min(sourceHeight, (roiBottom - offsetY) / scale));
+    const srcX1 = Math.max(0, Math.min(sourceWidth, (roiLeft - offsetX) / videoScale));
+    const srcY1 = Math.max(0, Math.min(sourceHeight, (roiTop - offsetY) / videoScale));
+    const srcX2 = Math.max(0, Math.min(sourceWidth, (roiRight - offsetX) / videoScale));
+    const srcY2 = Math.max(0, Math.min(sourceHeight, (roiBottom - offsetY) / videoScale));
     const srcW = Math.max(1, Math.round(srcX2 - srcX1));
     const srcH = Math.max(1, Math.round(srcY2 - srcY1));
 
