@@ -1320,6 +1320,9 @@ function applyFormCollapsed() {
   }
 
   function showFocusRing(clientX, clientY) {
+    if (state.scanner.mode === "ocr") {
+      return;
+    }
     if (!ui.focusRing || !ui.scannerVideo) {
       return;
     }
@@ -1547,6 +1550,7 @@ function applyFormCollapsed() {
       openOcrResultModal((ocrResult.candidates && ocrResult.candidates.length > 0) ? ocrResult.candidates : [text]);
       showToast("OCR 完成，請選取需要文字");
     } finally {
+      state.scanner.lastSnapshotDataUrl = "";
       if (ui.captureOcrBtn) {
         ui.captureOcrBtn.disabled = false;
       }
@@ -1650,6 +1654,7 @@ function applyFormCollapsed() {
     state.scanner.track = null;
     state.scanner.capabilities = null;
     state.scanner.torchOn = false;
+    state.scanner.lastSnapshotDataUrl = "";
 
     ui.scannerVideo.pause();
     ui.scannerVideo.srcObject = null;
