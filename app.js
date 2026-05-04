@@ -281,13 +281,35 @@
           data[i + 1] = v;
           data[i + 2] = v;
         }
+        // 近似自適應二值化：以區塊平均亮度作為局部門檻
         mean /= (data.length / 4);
-        const threshold = Math.max(95, Math.min(185, mean * 0.95));
-        for (let i = 0; i < data.length; i += 4) {
-          const v = data[i] > threshold ? 255 : 0; // 自適應近似二值化
-          data[i] = v;
-          data[i + 1] = v;
-          data[i + 2] = v;
+        const globalBase = Math.max(95, Math.min(185, mean * 0.95));
+        const block = 24;
+        for (let by = 0; by < height; by += block) {
+          for (let bx = 0; bx < width; bx += block) {
+            const yEnd = Math.min(height, by + block);
+            const xEnd = Math.min(width, bx + block);
+            let sum = 0;
+            let count = 0;
+            for (let y = by; y < yEnd; y += 1) {
+              for (let x = bx; x < xEnd; x += 1) {
+                const idx = (y * width + x) * 4;
+                sum += data[idx];
+                count += 1;
+              }
+            }
+            const localMean = count > 0 ? (sum / count) : globalBase;
+            const threshold = Math.max(70, Math.min(210, localMean * 0.92));
+            for (let y = by; y < yEnd; y += 1) {
+              for (let x = bx; x < xEnd; x += 1) {
+                const idx = (y * width + x) * 4;
+                const v = data[idx] > threshold ? 255 : 0;
+                data[idx] = v;
+                data[idx + 1] = v;
+                data[idx + 2] = v;
+              }
+            }
+          }
         }
         ctx.putImageData(imageData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
