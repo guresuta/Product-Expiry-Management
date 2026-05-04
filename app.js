@@ -240,7 +240,7 @@
           reject(new Error("無法讀取影像尺寸"));
           return;
         }
-        const scale = Math.min(2, Math.max(1, 2200 / Math.max(srcW, srcH)));
+        const scale = Math.min(1.35, Math.max(1, 1400 / Math.max(srcW, srcH)));
         const width = Math.max(1, Math.round(srcW * scale));
         const height = Math.max(1, Math.round(srcH * scale));
         const canvas = document.createElement("canvas");
@@ -274,7 +274,7 @@
           const g = data[i + 1];
           const b = data[i + 2];
           let y = 0.299 * r + 0.587 * g + 0.114 * b;
-          y = (y - 128) * 1.38 + 128; // 提升對比
+          y = (y - 128) * 1.22 + 128; // 輕量對比增強（偏重速度）
           const v = Math.max(0, Math.min(255, y));
           mean += v;
           data[i] = v;
@@ -297,60 +297,29 @@
     });
   }
 
-  function scoreOcrText(text) {
-    const normalized = String(text || "").trim();
-    if (!normalized) {
-      return 0;
-    }
-    const lenScore = Math.min(60, normalized.length);
-    const usefulChars = (normalized.match(/[A-Za-z0-9\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
-    const usefulRatio = normalized.length > 0 ? usefulChars / normalized.length : 0;
-    return lenScore + usefulRatio * 40;
-  }
-
   async function runTesseractOcr(imageDataUrl) {
     if (!window.Tesseract || typeof window.Tesseract.recognize !== "function") {
       throw new Error("OCR 引擎尚未載入，請檢查網路後重試");
     }
-    const langPlans = [
-      "chi_tra+eng",
-      "jpn+eng",
-      "chi_tra+jpn+eng"
-    ];
-    const configs = [
-      { tessedit_pageseg_mode: "6" },
-      { tessedit_pageseg_mode: "7" },
-      { tessedit_pageseg_mode: "11" },
-      { tessedit_pageseg_mode: "12" }
-    ];
-    const rotations = [0, 90, 270];
-
-    let bestResult = null;
-    let bestScore = -1;
-    for (const lang of langPlans) {
-      for (const rotateDeg of rotations) {
-        const processedImage = await preprocessImageForOcr(imageDataUrl, rotateDeg);
-        for (const config of configs) {
-          const result = await window.Tesseract.recognize(processedImage, lang, config);
-          const text = String((result && result.data && result.data.text) || "").replace(/\s+/g, " ").trim();
-          const confidence = Number(result && result.data && result.data.confidence) || 0;
-          const score = scoreOcrText(text) + confidence * 0.4;
-          if (text && score > bestScore) {
-            bestScore = score;
-            bestResult = result;
-          }
-        }
-      }
-      if (bestResult && scoreOcrText(String(bestResult.data?.text || "")) >= 35) {
-        break; // 語言分階段：前一階段已夠好就不再往下跑
-      }
-    }
-    if (!bestResult) {
+    const processedImage = await preprocessImageForOcr(imageDataUrl, 0);
+    const result = await window.Tesseract.recognize(processedImage, "chi_tra", {
+      tessedit_pageseg_mode: "6",
+      tessedit_char_whitelist: " 一-龥",
+      tessedit_char_blacklist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()-_=+[]{}\\|;:'\",.<>/?，。！？；：、（）《》【】「」『』．",
+      preserve_interword_spaces: "1"
+    });
+    const text = String((result && result.data && result.data.text) || "")
+      .replace(/[^\u4e00-\u9fff\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    const candidates = extractOcrCandidates(result).map((item) =>
+      String(item || "").replace(/[^\u4e00-\u9fff\s]/g, "").replace(/\s+/g, " ").trim()
+    ).filter(Boolean);
+    const normalizedText = text || candidates[0] || "";
+    if (!normalizedText && candidates.length === 0) {
       return { text: "", candidates: [] };
     }
-    const text = String((bestResult.data && bestResult.data.text) || "").replace(/\s+/g, " ").trim();
-    const candidates = extractOcrCandidates(bestResult);
-    return { text, candidates };
+    return { text: normalizedText, candidates };
   }
 
   function showToast(message, isError = false) {
