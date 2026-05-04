@@ -224,12 +224,13 @@
     return /iPhone|iPad|iPod/i.test(ua) || isTouchMac;
   }
 
-  function openGoogleLensWeb() {
-    const lensUrl = "https://lens.google.com/";
-    const opened = window.open(lensUrl, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      throw new Error("無法開啟 Google Lens，請確認瀏覽器允許彈出視窗");
+  async function runTesseractOcr(imageDataUrl) {
+    if (!window.Tesseract || typeof window.Tesseract.recognize !== "function") {
+      throw new Error("OCR 引擎尚未載入，請檢查網路後重試");
     }
+    const result = await window.Tesseract.recognize(imageDataUrl, "chi_tra+eng");
+    const text = String((result && result.data && result.data.text) || "").replace(/\s+/g, " ").trim();
+    return text;
   }
 
   function showToast(message, isError = false) {
@@ -1176,10 +1177,7 @@ function applyFormCollapsed() {
     return canvas.toDataURL("image/jpeg", 0.72);
   }
 
-  async function runNativeMlKitOcrFromVideo() {
-    if (!(isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function")) {
-      throw new Error("目前環境不支援 Google Lens 掃描");
-    }
+  async function runOcrFromVideo() {
     ui.captureOcrBtn.disabled = true;
     ui.scannerHint.textContent = SCANNER_CENTER_HINT;
     try {
@@ -1192,9 +1190,14 @@ function applyFormCollapsed() {
       const dataUrl = captureVideoFrameDataUrl();
       playTone("shutter");
       state.scanner.lastSnapshotDataUrl = dataUrl;
+      ui.scannerHint.textContent = "辨識中，請稍候...";
+      const text = await runTesseractOcr(dataUrl);
+      if (!text) {
+        throw new Error("未辨識到文字，請調整光線或重新拍攝");
+      }
+      ui.nameInput.value = text;
       stopScanner();
-      await nativeBridge.openGoogleLensWithImageDataUrl(dataUrl);
-      showToast("已開啟 Google Lens，請在 Lens 內選字複製");
+      showToast(`OCR 完成：${text}`);
     } finally {
       if (ui.captureOcrBtn) {
         ui.captureOcrBtn.disabled = false;
@@ -1210,12 +1213,8 @@ function applyFormCollapsed() {
     state.scanner.mode = mode;
     state.scanner.barcodeTarget = barcodeTarget;
     if (mode === "ocr") {
-      if (isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function") {
-        state.scanner.mode = "ocr_lens";
-        state.scanner.detector = null;
-      } else {
-        throw new Error("目前環境不支援鏡頭擷取到 Lens，已改用開啟 Google Lens 網頁");
-      }
+      state.scanner.mode = "ocr";
+      state.scanner.detector = null;
     } else {
       state.scanner.detector = await createBarcodeDetector();
     }
@@ -1230,13 +1229,13 @@ function applyFormCollapsed() {
     ui.scannerModal.classList.remove("hidden");
     await setupCameraControls();
     ui.scannerHint.textContent = SCANNER_CENTER_HINT;
-    setOcrCaptureButtonVisible(state.scanner.mode === "ocr_lens");
+    setOcrCaptureButtonVisible(state.scanner.mode === "ocr");
     if (ui.captureOcrBtn) {
-      ui.captureOcrBtn.textContent = "Google Lens掃描";
+      ui.captureOcrBtn.textContent = "拍照辨識";
     }
     clearOcrBoxes();
     state.scanner.running = true;
-    if (state.scanner.mode !== "ocr_lens") {
+    if (state.scanner.mode !== "ocr") {
       scanLoop();
     }
   }
@@ -1406,12 +1405,7 @@ function applyFormCollapsed() {
 
     ui.ocrBtn.addEventListener("click", async () => {
       try {
-        if (isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function") {
-          await startScanner("ocr");
-        } else {
-          openGoogleLensWeb();
-          showToast("已開啟 Google Lens 網頁，請在 Lens 中使用拍照或上傳圖片辨識");
-        }
+        await startScanner("ocr");
       } catch (error) {
         showToast(error.message, true);
       }
@@ -1421,7 +1415,7 @@ function applyFormCollapsed() {
     if (ui.captureOcrBtn) {
       ui.captureOcrBtn.addEventListener("click", async () => {
         try {
-          await runNativeMlKitOcrFromVideo();
+          await runOcrFromVideo();
         } catch (error) {
           ui.scannerHint.textContent = SCANNER_CENTER_HINT;
           showToast(error.message, true);
@@ -1610,7 +1604,7 @@ function applyFormCollapsed() {
     applyFormCollapsed();
     await loadInitialState();
     if (isIosDevice() && !isNativeFileMode()) {
-      showToast("iOS 提示：OCR 會以 Google Lens 網頁開啟");
+      showToast("iOS 提示：OCR 使用內建辨識，建議在充足光線下拍攝");
     }
     await registerServiceWorker();
   }
