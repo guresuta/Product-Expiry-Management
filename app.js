@@ -230,7 +230,7 @@
     return /iPhone|iPad|iPod/i.test(ua) || isTouchMac;
   }
 
-  function preprocessImageForOcr(imageDataUrl) {
+  function preprocessImageForOcr(imageDataUrl, rotateDeg = 0) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
@@ -244,23 +244,47 @@
         const width = Math.max(1, Math.round(srcW * scale));
         const height = Math.max(1, Math.round(srcH * scale));
         const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
+        const quarterTurns = ((((Math.round(rotateDeg / 90) % 4) + 4) % 4));
+        const swapWH = quarterTurns % 2 === 1;
+        canvas.width = swapWH ? height : width;
+        canvas.height = swapWH ? width : height;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
           reject(new Error("無法建立 OCR 前處理畫布"));
           return;
         }
+        ctx.save();
+        if (quarterTurns === 1) {
+          ctx.translate(canvas.width, 0);
+          ctx.rotate(Math.PI / 2);
+        } else if (quarterTurns === 2) {
+          ctx.translate(canvas.width, canvas.height);
+          ctx.rotate(Math.PI);
+        } else if (quarterTurns === 3) {
+          ctx.translate(0, canvas.height);
+          ctx.rotate(-Math.PI / 2);
+        }
         ctx.drawImage(img, 0, 0, width, height);
+        ctx.restore();
         const imageData = ctx.getImageData(0, 0, width, height);
         const data = imageData.data;
+        let mean = 0;
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
           const b = data[i + 2];
           let y = 0.299 * r + 0.587 * g + 0.114 * b;
-          y = (y - 128) * 1.25 + 128; // 簡單提升對比
+          y = (y - 128) * 1.38 + 128; // 提升對比
           const v = Math.max(0, Math.min(255, y));
+          mean += v;
+          data[i] = v;
+          data[i + 1] = v;
+          data[i + 2] = v;
+        }
+        mean /= (data.length / 4);
+        const threshold = Math.max(95, Math.min(185, mean * 0.95));
+        for (let i = 0; i < data.length; i += 4) {
+          const v = data[i] > threshold ? 255 : 0; // 自適應近似二值化
           data[i] = v;
           data[i + 1] = v;
           data[i + 2] = v;
@@ -273,25 +297,52 @@
     });
   }
 
+  function scoreOcrText(text) {
+    const normalized = String(text || "").trim();
+    if (!normalized) {
+      return 0;
+    }
+    const lenScore = Math.min(60, normalized.length);
+    const usefulChars = (normalized.match(/[A-Za-z0-9\u3040-\u30ff\u3400-\u9fff]/g) || []).length;
+    const usefulRatio = normalized.length > 0 ? usefulChars / normalized.length : 0;
+    return lenScore + usefulRatio * 40;
+  }
+
   async function runTesseractOcr(imageDataUrl) {
     if (!window.Tesseract || typeof window.Tesseract.recognize !== "function") {
       throw new Error("OCR 引擎尚未載入，請檢查網路後重試");
     }
-    const processedImage = await preprocessImageForOcr(imageDataUrl);
-    const lang = "chi_tra+jpn+eng";
+    const langPlans = [
+      "chi_tra+eng",
+      "jpn+eng",
+      "chi_tra+jpn+eng"
+    ];
     const configs = [
       { tessedit_pageseg_mode: "6" },
-      { tessedit_pageseg_mode: "11" }
+      { tessedit_pageseg_mode: "7" },
+      { tessedit_pageseg_mode: "11" },
+      { tessedit_pageseg_mode: "12" }
     ];
+    const rotations = [0, 90, 270];
+
     let bestResult = null;
-    let bestConfidence = -1;
-    for (const config of configs) {
-      const result = await window.Tesseract.recognize(processedImage, lang, config);
-      const text = String((result && result.data && result.data.text) || "").replace(/\s+/g, " ").trim();
-      const confidence = Number(result && result.data && result.data.confidence) || 0;
-      if (text && confidence >= bestConfidence) {
-        bestConfidence = confidence;
-        bestResult = result;
+    let bestScore = -1;
+    for (const lang of langPlans) {
+      for (const rotateDeg of rotations) {
+        const processedImage = await preprocessImageForOcr(imageDataUrl, rotateDeg);
+        for (const config of configs) {
+          const result = await window.Tesseract.recognize(processedImage, lang, config);
+          const text = String((result && result.data && result.data.text) || "").replace(/\s+/g, " ").trim();
+          const confidence = Number(result && result.data && result.data.confidence) || 0;
+          const score = scoreOcrText(text) + confidence * 0.4;
+          if (text && score > bestScore) {
+            bestScore = score;
+            bestResult = result;
+          }
+        }
+      }
+      if (bestResult && scoreOcrText(String(bestResult.data?.text || "")) >= 35) {
+        break; // 語言分階段：前一階段已夠好就不再往下跑
       }
     }
     if (!bestResult) {
