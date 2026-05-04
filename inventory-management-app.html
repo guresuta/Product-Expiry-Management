@@ -189,6 +189,22 @@
       </div>
     </div>
   </div>
+  <div id="ocrResultModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>OCR 辨識結果</h3>
+      <p class="help-text">點選下方文字可加入選取內容，再按「套用」。</p>
+      <div id="ocrCandidateList" class="ocr-candidate-list"></div>
+      <label>
+        已選取文字
+        <textarea id="ocrSelectedText" rows="4" placeholder="可手動編輯選取結果"></textarea>
+      </label>
+      <div class="form-actions">
+        <button id="applyOcrTextBtn" class="btn primary" type="button">套用到商品名稱</button>
+        <button id="clearOcrTextBtn" class="btn ghost" type="button">清空</button>
+        <button id="closeOcrResultModalBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast" class="toast hidden"></div>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>

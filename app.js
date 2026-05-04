@@ -83,6 +83,12 @@
     errorModal: document.getElementById("errorModal"),
     errorModalMessage: document.getElementById("errorModalMessage"),
     closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
+    ocrResultModal: document.getElementById("ocrResultModal"),
+    ocrCandidateList: document.getElementById("ocrCandidateList"),
+    ocrSelectedText: document.getElementById("ocrSelectedText"),
+    applyOcrTextBtn: document.getElementById("applyOcrTextBtn"),
+    clearOcrTextBtn: document.getElementById("clearOcrTextBtn"),
+    closeOcrResultModalBtn: document.getElementById("closeOcrResultModalBtn"),
     productTableBody: document.getElementById("productTableBody"),
     selectAllProducts: document.getElementById("selectAllProducts"),
     selectedCountBadge: document.getElementById("selectedCountBadge"),
@@ -224,13 +230,76 @@
     return /iPhone|iPad|iPod/i.test(ua) || isTouchMac;
   }
 
+  function preprocessImageForOcr(imageDataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const srcW = img.naturalWidth || img.width;
+        const srcH = img.naturalHeight || img.height;
+        if (!srcW || !srcH) {
+          reject(new Error("無法讀取影像尺寸"));
+          return;
+        }
+        const scale = Math.min(2, Math.max(1, 2200 / Math.max(srcW, srcH)));
+        const width = Math.max(1, Math.round(srcW * scale));
+        const height = Math.max(1, Math.round(srcH * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("無法建立 OCR 前處理畫布"));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          let y = 0.299 * r + 0.587 * g + 0.114 * b;
+          y = (y - 128) * 1.25 + 128; // 簡單提升對比
+          const v = Math.max(0, Math.min(255, y));
+          data[i] = v;
+          data[i + 1] = v;
+          data[i + 2] = v;
+        }
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => reject(new Error("OCR 前處理失敗：影像載入錯誤"));
+      img.src = imageDataUrl;
+    });
+  }
+
   async function runTesseractOcr(imageDataUrl) {
     if (!window.Tesseract || typeof window.Tesseract.recognize !== "function") {
       throw new Error("OCR 引擎尚未載入，請檢查網路後重試");
     }
-    const result = await window.Tesseract.recognize(imageDataUrl, "chi_tra+eng");
-    const text = String((result && result.data && result.data.text) || "").replace(/\s+/g, " ").trim();
-    return text;
+    const processedImage = await preprocessImageForOcr(imageDataUrl);
+    const lang = "chi_tra+jpn+eng";
+    const configs = [
+      { tessedit_pageseg_mode: "6" },
+      { tessedit_pageseg_mode: "11" }
+    ];
+    let bestResult = null;
+    let bestConfidence = -1;
+    for (const config of configs) {
+      const result = await window.Tesseract.recognize(processedImage, lang, config);
+      const text = String((result && result.data && result.data.text) || "").replace(/\s+/g, " ").trim();
+      const confidence = Number(result && result.data && result.data.confidence) || 0;
+      if (text && confidence >= bestConfidence) {
+        bestConfidence = confidence;
+        bestResult = result;
+      }
+    }
+    if (!bestResult) {
+      return { text: "", candidates: [] };
+    }
+    const text = String((bestResult.data && bestResult.data.text) || "").replace(/\s+/g, " ").trim();
+    const candidates = extractOcrCandidates(bestResult);
+    return { text, candidates };
   }
 
   function showToast(message, isError = false) {
@@ -259,6 +328,63 @@
     if (ui.errorModal) {
       ui.errorModal.classList.add("hidden");
     }
+  }
+
+  function extractOcrCandidates(result) {
+    const lines = ((result && result.data && result.data.lines) || [])
+      .map((line) => String(line.text || "").trim())
+      .filter(Boolean);
+    if (lines.length > 0) {
+      return Array.from(new Set(lines));
+    }
+    const fullText = String((result && result.data && result.data.text) || "");
+    return Array.from(new Set(
+      fullText
+        .split(/\r?\n|[|]/g)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    ));
+  }
+
+  function closeOcrResultModal() {
+    if (ui.ocrResultModal) {
+      ui.ocrResultModal.classList.add("hidden");
+    }
+    if (ui.ocrCandidateList) {
+      ui.ocrCandidateList.innerHTML = "";
+    }
+    if (ui.ocrSelectedText) {
+      ui.ocrSelectedText.value = "";
+    }
+  }
+
+  function appendSelectedOcrText(text) {
+    if (!ui.ocrSelectedText || !text) {
+      return;
+    }
+    const current = String(ui.ocrSelectedText.value || "").trim();
+    ui.ocrSelectedText.value = current ? `${current} ${text}` : text;
+  }
+
+  function openOcrResultModal(candidates) {
+    const safeCandidates = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
+    if (!ui.ocrResultModal || !ui.ocrCandidateList || !ui.ocrSelectedText) {
+      if (safeCandidates[0]) {
+        ui.nameInput.value = safeCandidates[0];
+      }
+      return;
+    }
+    ui.ocrCandidateList.innerHTML = "";
+    safeCandidates.forEach((text) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ocr-candidate-btn";
+      btn.textContent = text;
+      btn.addEventListener("click", () => appendSelectedOcrText(text));
+      ui.ocrCandidateList.appendChild(btn);
+    });
+    ui.ocrSelectedText.value = safeCandidates[0] || "";
+    ui.ocrResultModal.classList.remove("hidden");
   }
 
   function playTone(type) {
@@ -1174,7 +1300,7 @@ function applyFormCollapsed() {
       throw new Error("無法建立影像畫布");
     }
     ctx.drawImage(video, 0, 0, width, height);
-    return canvas.toDataURL("image/jpeg", 0.72);
+    return canvas.toDataURL("image/png");
   }
 
   async function runOcrFromVideo() {
@@ -1191,13 +1317,14 @@ function applyFormCollapsed() {
       playTone("shutter");
       state.scanner.lastSnapshotDataUrl = dataUrl;
       ui.scannerHint.textContent = "辨識中，請稍候...";
-      const text = await runTesseractOcr(dataUrl);
+      const ocrResult = await runTesseractOcr(dataUrl);
+      const text = String(ocrResult.text || "").trim();
       if (!text) {
         throw new Error("未辨識到文字，請調整光線或重新拍攝");
       }
-      ui.nameInput.value = text;
       stopScanner();
-      showToast(`OCR 完成：${text}`);
+      openOcrResultModal((ocrResult.candidates && ocrResult.candidates.length > 0) ? ocrResult.candidates : [text]);
+      showToast("OCR 完成，請選取需要文字");
     } finally {
       if (ui.captureOcrBtn) {
         ui.captureOcrBtn.disabled = false;
@@ -1503,6 +1630,35 @@ function applyFormCollapsed() {
       ui.errorModal.addEventListener("click", (event) => {
         if (event.target === ui.errorModal) {
           closeErrorModal();
+        }
+      });
+    }
+    if (ui.applyOcrTextBtn) {
+      ui.applyOcrTextBtn.addEventListener("click", () => {
+        const selected = String((ui.ocrSelectedText && ui.ocrSelectedText.value) || "").trim();
+        if (!selected) {
+          showToast("請先選取或輸入要套用的文字", true);
+          return;
+        }
+        ui.nameInput.value = selected;
+        closeOcrResultModal();
+        showToast("已套用到商品名稱");
+      });
+    }
+    if (ui.clearOcrTextBtn) {
+      ui.clearOcrTextBtn.addEventListener("click", () => {
+        if (ui.ocrSelectedText) {
+          ui.ocrSelectedText.value = "";
+        }
+      });
+    }
+    if (ui.closeOcrResultModalBtn) {
+      ui.closeOcrResultModalBtn.addEventListener("click", closeOcrResultModal);
+    }
+    if (ui.ocrResultModal) {
+      ui.ocrResultModal.addEventListener("click", (event) => {
+        if (event.target === ui.ocrResultModal) {
+          closeOcrResultModal();
         }
       });
     }

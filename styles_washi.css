@@ -777,6 +777,29 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
   border-radius: 10px;
 }
 
+.ocr-candidate-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.85rem;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.ocr-candidate-btn {
+  border: 1px solid var(--line);
+  background: var(--bg-accent);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 0.35rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.ocr-candidate-btn:hover {
+  background: #fff;
+}
+
 #barcodeSvg {
   width: 92%;
   height: min(29vh, 185px);
