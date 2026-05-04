@@ -103,6 +103,7 @@
     closeOcrResultModalBtn: document.getElementById("closeOcrResultModalBtn"),
     productTableBody: document.getElementById("productTableBody"),
     selectAllProducts: document.getElementById("selectAllProducts"),
+    selectAllProductsMobile: document.getElementById("selectAllProductsMobile"),
     selectedCountBadge: document.getElementById("selectedCountBadge"),
     emptyHint: document.getElementById("emptyHint"),
     categoryFilter: document.getElementById("categoryFilter"),
@@ -855,16 +856,21 @@
       tr.addEventListener("pointerleave", cancelLongPress);
       tr.addEventListener("pointercancel", cancelLongPress);
     });
-    if (ui.selectAllProducts) {
+    const syncSelectAllState = (checkbox) => {
+      if (!checkbox) {
+        return;
+      }
       if (sorted.length === 0) {
-        ui.selectAllProducts.checked = false;
-        ui.selectAllProducts.indeterminate = false;
+        checkbox.checked = false;
+        checkbox.indeterminate = false;
       } else {
         const selectedCount = sorted.filter((item) => state.selectedProductIds.has(item.id)).length;
-        ui.selectAllProducts.checked = selectedCount === sorted.length;
-        ui.selectAllProducts.indeterminate = selectedCount > 0 && selectedCount < sorted.length;
+        checkbox.checked = selectedCount === sorted.length;
+        checkbox.indeterminate = selectedCount > 0 && selectedCount < sorted.length;
       }
-    }
+    };
+    syncSelectAllState(ui.selectAllProducts);
+    syncSelectAllState(ui.selectAllProductsMobile);
     if (ui.selectedCountBadge) {
       const selectedCount = state.selectedProductIds.size;
       ui.selectedCountBadge.textContent = `已勾選 ${selectedCount} 筆`;
@@ -1718,15 +1724,18 @@ function applyFormCollapsed() {
         showToast(`編輯失敗: ${error.message}`, true);
       }
     });
-    if (ui.selectAllProducts) {
-      ui.selectAllProducts.addEventListener("change", () => {
+    const bindSelectAllChange = (checkbox) => {
+      if (!checkbox) {
+        return;
+      }
+      checkbox.addEventListener("change", () => {
         const rows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
         if (rows.length === 0) {
           state.selectedProductIds.clear();
           renderProducts();
           return;
         }
-        if (ui.selectAllProducts.checked) {
+        if (checkbox.checked) {
           rows.forEach((row) => {
             const rowId = row.getAttribute("data-select-id");
             if (rowId) {
@@ -1743,7 +1752,9 @@ function applyFormCollapsed() {
         }
         renderProducts();
       });
-    }
+    };
+    bindSelectAllChange(ui.selectAllProducts);
+    bindSelectAllChange(ui.selectAllProductsMobile);
 
     ui.scanBtn.addEventListener("click", async () => {
       try {

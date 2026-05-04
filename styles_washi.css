@@ -128,18 +128,6 @@ margin: 0 auto;
   gap: 0.6rem;
 }
 
-.storage-mode-badge {
-  display: inline-flex;
-  align-items: center;
-  height: 2.1rem;
-  padding: 0 0.7rem;
-  border: 1px solid var(--line);
-  border-radius: 2px;
-  background: var(--panel);
-  color: var(--muted);
-  font-size: 0.82rem;
-  white-space: nowrap;
-}
 
 .nav-link {
   /* 讓設定按鈕看起來像貼在右上角的標籤 */
@@ -165,11 +153,6 @@ margin: 0 auto;
 @media (max-width: 600px) {
   .actions {
     gap: 0.4rem;
-  }
-  .storage-mode-badge {
-    max-width: 9.6rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .topbar-inner .subtitle {
     display: none; /* 手機版隱藏副標題以節省空間 */
@@ -300,6 +283,36 @@ margin: 0 auto;
   margin: 0 0 1rem;
   padding-left: 0.8rem;
   border-left: 4px solid var(--primary);
+}
+
+.list-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.list-header-top .section-title-bar {
+  margin-bottom: 0.65rem;
+}
+
+.mobile-select-all {
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  user-select: none;
+}
+
+.mobile-select-all .row-select-product {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 /* 收疊關鍵：隱藏元素 */
@@ -530,11 +543,6 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   margin-bottom: 0.85rem;
 }
 
-.io-section .storage-mode-badge {
-  display: inline-flex;
-  margin-top: 0.2rem;
-  margin-bottom: 0.6rem;
-}
 
 .theme-mode-group label {
   display: flex;
@@ -1032,5 +1040,11 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
 
   .table-wrap .danger-btn {
     width: 100%;
+  }
+
+  .mobile-select-all {
+    display: inline-flex;
+    justify-content: flex-end;
+    margin-bottom: 0.35rem;
   }
 }

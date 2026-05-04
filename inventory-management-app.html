@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1f6feb">
-  <title>零售商品效期管理 PWA</title>
+  <title>零售商品效期管理</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
@@ -65,7 +65,13 @@
 
     <section class="panel list-panel">
       <div class="list-header">
-        <h2 class="section-title-bar">商品清單 <span id="selectedCountBadge" class="selected-count-badge">已勾選 0 筆</span></h2>
+        <div class="list-header-top">
+          <h2 class="section-title-bar">商品清單 <span id="selectedCountBadge" class="selected-count-badge">已勾選 0 筆</span></h2>
+          <label class="mobile-select-all" for="selectAllProductsMobile" aria-label="全選商品">
+            全選
+            <input id="selectAllProductsMobile" class="row-select-product" type="checkbox">
+          </label>
+        </div>
         <div class="list-tools">
           <div class="filter-row">
             <select id="categoryFilter" class="search-input"></select>
