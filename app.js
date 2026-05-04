@@ -26,11 +26,14 @@
       running: false,
       rafId: null,
       stream: null,
+      track: null,
+      capabilities: null,
       detector: null,
       mode: "barcode",
       barcodeTarget: "input",
       detecting: false,
-      lastSnapshotDataUrl: ""
+      lastSnapshotDataUrl: "",
+      torchOn: false
     },
     formCollapsed: false
     ,
@@ -58,6 +61,9 @@
     scannerTitle: document.getElementById("scannerTitle"),
     scannerVideo: document.getElementById("scannerVideo"),
     ocrBoxesLayer: document.getElementById("ocrBoxesLayer"),
+    focusRing: document.getElementById("focusRing"),
+    torchWrap: document.getElementById("torchWrap"),
+    toggleTorchBtn: document.getElementById("toggleTorchBtn"),
     exposureWrap: document.getElementById("exposureWrap"),
     exposureSlider: document.getElementById("exposureSlider"),
     exposureValue: document.getElementById("exposureValue"),
@@ -1277,6 +1283,78 @@ function applyFormCollapsed() {
     ui.captureOcrBtn.disabled = false;
   }
 
+  function updateTorchUi() {
+    if (!ui.torchWrap || !ui.toggleTorchBtn) {
+      return;
+    }
+    const caps = state.scanner.capabilities || {};
+    const hasTorch = !!caps.torch;
+    ui.torchWrap.classList.toggle("hidden", !hasTorch);
+    if (!hasTorch) {
+      return;
+    }
+    ui.toggleTorchBtn.textContent = state.scanner.torchOn ? "關閉手電筒" : "開啟手電筒";
+  }
+
+  async function setTorch(on) {
+    const track = state.scanner.track;
+    const caps = state.scanner.capabilities || {};
+    if (!track || !caps.torch || typeof track.applyConstraints !== "function") {
+      throw new Error("此裝置不支援手電筒控制");
+    }
+    await track.applyConstraints({ advanced: [{ torch: !!on }] });
+    state.scanner.torchOn = !!on;
+    updateTorchUi();
+  }
+
+  function showFocusRing(clientX, clientY) {
+    if (!ui.focusRing || !ui.scannerVideo) {
+      return;
+    }
+    const rect = ui.scannerVideo.getBoundingClientRect();
+    const left = Math.max(rect.left, Math.min(rect.right, clientX));
+    const top = Math.max(rect.top, Math.min(rect.bottom, clientY));
+    ui.focusRing.style.left = `${left - rect.left}px`;
+    ui.focusRing.style.top = `${top - rect.top}px`;
+    ui.focusRing.classList.remove("hidden");
+    ui.focusRing.classList.add("show");
+    clearTimeout(showFocusRing.timer);
+    showFocusRing.timer = setTimeout(() => {
+      ui.focusRing.classList.remove("show");
+      ui.focusRing.classList.add("hidden");
+    }, 650);
+  }
+
+  async function focusAtPoint(clientX, clientY) {
+    const track = state.scanner.track;
+    const caps = state.scanner.capabilities || {};
+    if (!track || typeof track.applyConstraints !== "function") {
+      return;
+    }
+    const rect = ui.scannerVideo.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      return;
+    }
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+
+    const advanced = [];
+    if (caps.pointsOfInterest) {
+      advanced.push({ pointsOfInterest: [{ x, y }] });
+    }
+    if (Array.isArray(caps.focusMode)) {
+      if (caps.focusMode.includes("single-shot")) {
+        advanced.push({ focusMode: "single-shot" });
+      } else if (caps.focusMode.includes("continuous")) {
+        advanced.push({ focusMode: "continuous" });
+      }
+    }
+    if (advanced.length === 0) {
+      return;
+    }
+    await track.applyConstraints({ advanced });
+  }
+
   async function setupCameraControls() {
     const stream = state.scanner.stream;
     if (!stream) {
@@ -1286,8 +1364,12 @@ function applyFormCollapsed() {
     if (!track) {
       return;
     }
+    state.scanner.track = track;
     const caps = typeof track.getCapabilities === "function" ? track.getCapabilities() : {};
+    state.scanner.capabilities = caps;
     const settings = typeof track.getSettings === "function" ? track.getSettings() : {};
+    state.scanner.torchOn = !!settings.torch;
+    updateTorchUi();
 
     if (ui.exposureWrap && ui.exposureSlider && ui.exposureValue) {
       const hasExposure = Number.isFinite(caps.exposureCompensation?.min) && Number.isFinite(caps.exposureCompensation?.max);
@@ -1468,11 +1550,21 @@ function applyFormCollapsed() {
       state.scanner.stream.getTracks().forEach((track) => track.stop());
       state.scanner.stream = null;
     }
+    state.scanner.track = null;
+    state.scanner.capabilities = null;
+    state.scanner.torchOn = false;
 
     ui.scannerVideo.pause();
     ui.scannerVideo.srcObject = null;
     ui.scannerModal.classList.add("hidden");
     setOcrCaptureButtonVisible(false);
+    if (ui.torchWrap) {
+      ui.torchWrap.classList.add("hidden");
+    }
+    if (ui.focusRing) {
+      ui.focusRing.classList.remove("show");
+      ui.focusRing.classList.add("hidden");
+    }
     if (ui.exposureWrap) {
       ui.exposureWrap.classList.add("hidden");
     }
@@ -1585,6 +1677,27 @@ function applyFormCollapsed() {
     });
 
     ui.stopScanBtn.addEventListener("click", stopScanner);
+    if (ui.toggleTorchBtn) {
+      ui.toggleTorchBtn.addEventListener("click", async () => {
+        try {
+          await setTorch(!state.scanner.torchOn);
+        } catch (error) {
+          showToast(error.message || "手電筒切換失敗", true);
+        }
+      });
+    }
+    if (ui.scannerVideo) {
+      ui.scannerVideo.addEventListener("pointerdown", async (event) => {
+        if (!state.scanner.running) {
+          return;
+        }
+        showFocusRing(event.clientX, event.clientY);
+        try {
+          await focusAtPoint(event.clientX, event.clientY);
+        } catch (_error) {
+        }
+      });
+    }
     if (ui.captureOcrBtn) {
       ui.captureOcrBtn.addEventListener("click", async () => {
         try {
