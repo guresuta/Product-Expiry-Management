@@ -110,6 +110,9 @@
       <div id="ocrFrameWrap">
         <video id="scannerVideo" playsinline muted></video>
         <div id="ocrBoxesLayer"></div>
+        <div id="ocrRoiLayer" class="ocr-roi-layer hidden">
+          <div id="ocrRoiBox" class="ocr-roi-box hidden"></div>
+        </div>
         <div id="focusRing" class="focus-ring hidden" aria-hidden="true"></div>
       </div>
       <p id="scannerHint" class="help-text">請把條碼對準鏡頭中央。</p>
@@ -124,6 +127,7 @@
         <span id="exposureValue">0</span>
       </div>
       <div class="form-actions">
+        <button id="clearOcrRoiBtn" class="btn ghost hidden" type="button">清除框選</button>
         <button id="captureOcrBtn" class="btn primary hidden" type="button">Google Lens掃描</button>
         <button id="stopScanBtn" class="btn ghost" type="button">關閉掃描</button>
       </div>

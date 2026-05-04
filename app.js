@@ -33,7 +33,10 @@
       barcodeTarget: "input",
       detecting: false,
       lastSnapshotDataUrl: "",
-      torchOn: false
+      torchOn: false,
+      roiNorm: null,
+      roiSelecting: false,
+      roiStart: null
     },
     formCollapsed: false
     ,
@@ -61,6 +64,9 @@
     scannerTitle: document.getElementById("scannerTitle"),
     scannerVideo: document.getElementById("scannerVideo"),
     ocrBoxesLayer: document.getElementById("ocrBoxesLayer"),
+    ocrRoiLayer: document.getElementById("ocrRoiLayer"),
+    ocrRoiBox: document.getElementById("ocrRoiBox"),
+    clearOcrRoiBtn: document.getElementById("clearOcrRoiBtn"),
     focusRing: document.getElementById("focusRing"),
     torchWrap: document.getElementById("torchWrap"),
     toggleTorchBtn: document.getElementById("toggleTorchBtn"),
@@ -1408,6 +1414,53 @@ function applyFormCollapsed() {
     }
   }
 
+  function setOcrRoiVisible(visible) {
+    if (!ui.ocrRoiLayer || !ui.clearOcrRoiBtn) {
+      return;
+    }
+    ui.ocrRoiLayer.classList.toggle("hidden", !visible);
+    ui.clearOcrRoiBtn.classList.toggle("hidden", !visible);
+  }
+
+  function clearOcrRoiSelection() {
+    state.scanner.roiNorm = null;
+    state.scanner.roiStart = null;
+    state.scanner.roiSelecting = false;
+    if (ui.ocrRoiBox) {
+      ui.ocrRoiBox.classList.add("hidden");
+      ui.ocrRoiBox.style.left = "";
+      ui.ocrRoiBox.style.top = "";
+      ui.ocrRoiBox.style.width = "";
+      ui.ocrRoiBox.style.height = "";
+    }
+  }
+
+  function updateRoiBoxByPixels(x1, y1, x2, y2, rect) {
+    if (!ui.ocrRoiBox) {
+      return;
+    }
+    const left = Math.max(0, Math.min(x1, x2));
+    const top = Math.max(0, Math.min(y1, y2));
+    const width = Math.abs(x2 - x1);
+    const height = Math.abs(y2 - y1);
+    if (width < 8 || height < 8) {
+      ui.ocrRoiBox.classList.add("hidden");
+      state.scanner.roiNorm = null;
+      return;
+    }
+    ui.ocrRoiBox.classList.remove("hidden");
+    ui.ocrRoiBox.style.left = `${left}px`;
+    ui.ocrRoiBox.style.top = `${top}px`;
+    ui.ocrRoiBox.style.width = `${width}px`;
+    ui.ocrRoiBox.style.height = `${height}px`;
+    state.scanner.roiNorm = {
+      x: left / rect.width,
+      y: top / rect.height,
+      w: width / rect.width,
+      h: height / rect.height
+    };
+  }
+
   function captureVideoFrameDataUrl() {
     const video = ui.scannerVideo;
     const sourceWidth = video.videoWidth || 0;
@@ -1428,7 +1481,41 @@ function applyFormCollapsed() {
       throw new Error("無法建立影像畫布");
     }
     ctx.drawImage(video, 0, 0, width, height);
-    return canvas.toDataURL("image/png");
+
+    const roi = state.scanner.roiNorm;
+    if (!roi || state.scanner.mode !== "ocr") {
+      return canvas.toDataURL("image/png");
+    }
+
+    const displayW = video.clientWidth || width;
+    const displayH = video.clientHeight || height;
+    const scale = Math.max(displayW / sourceWidth, displayH / sourceHeight);
+    const drawW = sourceWidth * scale;
+    const drawH = sourceHeight * scale;
+    const offsetX = (displayW - drawW) / 2;
+    const offsetY = (displayH - drawH) / 2;
+
+    const roiLeft = roi.x * displayW;
+    const roiTop = roi.y * displayH;
+    const roiRight = roiLeft + roi.w * displayW;
+    const roiBottom = roiTop + roi.h * displayH;
+
+    const srcX1 = Math.max(0, Math.min(sourceWidth, (roiLeft - offsetX) / scale));
+    const srcY1 = Math.max(0, Math.min(sourceHeight, (roiTop - offsetY) / scale));
+    const srcX2 = Math.max(0, Math.min(sourceWidth, (roiRight - offsetX) / scale));
+    const srcY2 = Math.max(0, Math.min(sourceHeight, (roiBottom - offsetY) / scale));
+    const srcW = Math.max(1, Math.round(srcX2 - srcX1));
+    const srcH = Math.max(1, Math.round(srcY2 - srcY1));
+
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = srcW;
+    cropCanvas.height = srcH;
+    const cropCtx = cropCanvas.getContext("2d");
+    if (!cropCtx) {
+      return canvas.toDataURL("image/png");
+    }
+    cropCtx.drawImage(video, srcX1, srcY1, srcW, srcH, 0, 0, srcW, srcH);
+    return cropCanvas.toDataURL("image/png");
   }
 
   async function runOcrFromVideo() {
@@ -1484,6 +1571,10 @@ function applyFormCollapsed() {
     ui.scannerModal.classList.remove("hidden");
     await setupCameraControls();
     ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+    setOcrRoiVisible(state.scanner.mode === "ocr");
+    if (state.scanner.mode !== "ocr") {
+      clearOcrRoiSelection();
+    }
     setOcrCaptureButtonVisible(state.scanner.mode === "ocr");
     if (ui.captureOcrBtn) {
       ui.captureOcrBtn.textContent = "拍照辨識";
@@ -1569,6 +1660,8 @@ function applyFormCollapsed() {
       ui.exposureWrap.classList.add("hidden");
     }
     clearOcrBoxes();
+    clearOcrRoiSelection();
+    setOcrRoiVisible(false);
   }
 
   function wireEvents() {
@@ -1696,6 +1789,50 @@ function applyFormCollapsed() {
           await focusAtPoint(event.clientX, event.clientY);
         } catch (_error) {
         }
+      });
+    }
+    if (ui.ocrRoiLayer) {
+      ui.ocrRoiLayer.addEventListener("pointerdown", (event) => {
+        if (!state.scanner.running || state.scanner.mode !== "ocr") {
+          return;
+        }
+        showFocusRing(event.clientX, event.clientY);
+        focusAtPoint(event.clientX, event.clientY).catch(() => {});
+        const rect = ui.ocrRoiLayer.getBoundingClientRect();
+        state.scanner.roiSelecting = true;
+        state.scanner.roiStart = {
+          x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
+          y: Math.max(0, Math.min(rect.height, event.clientY - rect.top))
+        };
+        updateRoiBoxByPixels(
+          state.scanner.roiStart.x,
+          state.scanner.roiStart.y,
+          state.scanner.roiStart.x,
+          state.scanner.roiStart.y,
+          rect
+        );
+      });
+      ui.ocrRoiLayer.addEventListener("pointermove", (event) => {
+        if (!state.scanner.roiSelecting || !state.scanner.roiStart) {
+          return;
+        }
+        const rect = ui.ocrRoiLayer.getBoundingClientRect();
+        const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
+        const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
+        updateRoiBoxByPixels(state.scanner.roiStart.x, state.scanner.roiStart.y, x, y, rect);
+      });
+      const finishRoiSelection = () => {
+        state.scanner.roiSelecting = false;
+        state.scanner.roiStart = null;
+      };
+      ui.ocrRoiLayer.addEventListener("pointerup", finishRoiSelection);
+      ui.ocrRoiLayer.addEventListener("pointercancel", finishRoiSelection);
+      ui.ocrRoiLayer.addEventListener("pointerleave", finishRoiSelection);
+    }
+    if (ui.clearOcrRoiBtn) {
+      ui.clearOcrRoiBtn.addEventListener("click", () => {
+        clearOcrRoiSelection();
+        showToast("已清除 OCR 框選範圍");
       });
     }
     if (ui.captureOcrBtn) {

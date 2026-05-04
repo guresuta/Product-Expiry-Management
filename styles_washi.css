@@ -717,6 +717,21 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
   pointer-events: none;
 }
 
+.ocr-roi-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  cursor: crosshair;
+}
+
+.ocr-roi-box {
+  position: absolute;
+  border: 2px dashed #f7f1d5;
+  background: rgba(247, 241, 213, 0.12);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
 .focus-ring {
   position: absolute;
   width: 72px;
