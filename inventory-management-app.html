@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f6feb">
+  <title>零售商品效期管理 PWA</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
+  <link rel="stylesheet" href="./styles_washi.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>零售商品效期管理</h1>
+        <p class="subtitle">離線可用，支援手動輸入與鏡頭條碼掃描</p>
+      </div>
+      <nav class="actions">
+        <a class="btn secondary nav-link" href="./settings.html">設定</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container layout split-layout">
+    <section class="panel form-panel">
+      <div class="panel-head">
+        <h2>新增商品</h2>
+        <button id="toggleFormBtn" class="btn ghost" type="button">收疊</button>
+      </div>
+      <form id="productForm" class="form-stack collapsible-content">
+        <label>
+          商品分類
+          <select id="categoryInput" name="category"></select>
+        </label>
+        <label>
+          商品名稱
+          <div class="barcode-input-row">
+            <input id="nameInput" name="name" placeholder="輸入商品名稱">
+            <button id="ocrBtn" class="btn secondary" type="button">鏡頭 OCR</button>
+          </div>
+        </label>
+        <label>
+          商品條碼
+          <div class="barcode-input-row">
+            <input id="barcodeInput" name="barcode" inputmode="numeric" placeholder="手動輸入條碼">
+            <button id="scanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>鏡頭</span><span>掃描</span></span></button>
+          </div>
+        </label>
+        <label>
+          有效日期
+          <div class="barcode-input-row">
+            <input id="expiryInput" name="expiry" inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+            <button id="pickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
+          </div>
+          <input id="hiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
+        </label>
+        <div class="form-actions">
+          <button class="btn primary" type="submit">新增商品</button>
+          <button id="clearFormBtn" class="btn ghost" type="button">清空</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel list-panel">
+      <div class="list-header">
+        <h2 class="section-title-bar">商品清單 <span id="selectedCountBadge" class="selected-count-badge">已勾選 0 筆</span></h2>
+        <div class="list-tools">
+          <div class="filter-row">
+            <select id="categoryFilter" class="search-input"></select>
+            <select id="sortSelect" class="search-input">
+              <option value="default">排序: 預設</option>
+              <option value="category">排序: 分類</option>
+              <option value="expiry">排序: 有效日期</option>
+              <option value="status">排序: 狀態</option>
+            </select>
+          </div>
+          <div class="search-row">
+            <input id="searchInput" class="search-input" placeholder="搜尋分類、商品名稱、條碼">
+            <button id="scanSearchBtn" class="btn secondary" type="button">掃碼搜尋</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>分類</th>
+              <th>商品名稱</th>
+              <th>條碼</th>
+              <th>有效日期</th>
+              <th>狀態</th>
+              <th>操作</th>
+              <th class="select-col">
+                <input id="selectAllProducts" type="checkbox" aria-label="全選商品">
+              </th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyHint" class="empty-hint">尚無資料，請先新增商品。</p>
+    </section>
+  </main>
+
+  <div id="scannerModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="scannerTitle">條碼掃描</h3>
+      <div id="ocrFrameWrap">
+        <video id="scannerVideo" playsinline muted></video>
+        <div id="ocrBoxesLayer"></div>
+      </div>
+      <p id="scannerHint" class="help-text">請把條碼對準鏡頭中央。</p>
+      <div id="exposureWrap" class="camera-control hidden">
+        <label for="exposureSlider">曝光補償</label>
+        <span class="exposure-sign">-</span>
+        <input id="exposureSlider" type="range" min="-2" max="2" step="0.1" value="0">
+        <span class="exposure-sign">+</span>
+        <span id="exposureValue">0</span>
+      </div>
+      <div class="form-actions">
+        <button id="captureOcrBtn" class="btn primary hidden" type="button">Google Lens掃描</button>
+        <button id="stopScanBtn" class="btn ghost" type="button">關閉掃描</button>
+      </div>
+    </div>
+  </div>
+  <div id="barcodeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>商品條碼</h3>
+      <div class="barcode-meta-row">
+        <strong id="barcodeProductName"></strong>
+        <span id="barcodeFormatTag" class="barcode-format-tag"></span>
+      </div>
+      <div class="barcode-modal-wrap">
+        <svg id="barcodeSvg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg>
+      </div>
+      <p id="barcodeModalText" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeBarcodeModalBtn" class="btn ghost" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="editProductModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>編輯商品</h3>
+      <form id="editProductForm" class="form-stack">
+        <label>
+          商品分類
+          <select id="editCategorySelect" required></select>
+        </label>
+        <label>
+          商品名稱
+          <input id="editNameInput" required>
+        </label>
+        <label>
+          商品條碼
+          <div class="barcode-input-row">
+            <input id="editBarcodeInput" required inputmode="numeric">
+            <button id="editScanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>鏡頭</span><span>掃描</span></span></button>
+          </div>
+        </label>
+        <label>
+          有效日期
+          <input id="editExpiryInput" required inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+        </label>
+        <div class="form-actions">
+          <button id="saveEditProductBtn" class="btn primary" type="submit">儲存</button>
+          <button id="cancelEditProductBtn" class="btn ghost" type="button">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="deleteConfirmModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>確定要刪除這些資料嗎?</h3>
+      <div class="form-actions">
+        <button id="confirmDeleteBtn" class="btn danger-btn" type="button">確定</button>
+        <button id="cancelDeleteBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div id="errorModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>發生錯誤</h3>
+      <p id="errorModalMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>

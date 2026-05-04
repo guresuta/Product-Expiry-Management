@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f6feb">
+  <title>設定 | 零售商品效期管理 PWA</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
+  <link rel="stylesheet" href="./styles_washi.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>系統設定</h1>
+        <p class="subtitle">管理分類標籤、匯入匯出與介面主題</p>
+      </div>
+      <nav class="actions">
+        <a class="btn secondary nav-link" href="./inventory-management-app.html">返回</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container layout settings-main">
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">新增分類</h2>
+      <div class="form-actions">
+        <input id="newCategoryInput" class="search-input" placeholder="輸入新分類名稱">
+        <button id="addCategoryBtn" class="btn primary" type="button">新增分類</button>
+      </div>
+      <div id="categoryList" class="category-list"></div>
+    </section>
+
+    <section class="panel settings-section io-section">
+      <h2 class="section-title-bar">檔案功能</h2>
+      <p id="storageModeLabel" class="storage-mode-badge" aria-live="polite">模式：載入中</p>
+      <p class="help-text">此裝置資料為獨立儲存。</p>
+      <div class="form-actions">
+        <button id="exportCsvBtn" class="btn secondary" type="button">匯出 CSV</button>
+        <button id="exportJsonBtn" class="btn secondary" type="button">備份資料 JSON</button>
+      </div>
+      <input id="importCsvFileInput" class="hidden" type="file" accept=".csv,.scv,text/csv">
+      <input id="importJsonFileInput" class="hidden" type="file" accept=".json,application/json">
+      <div class="form-actions">
+        <button id="importCsvFileBtn" class="btn secondary" type="button">匯入試算表資料</button>
+        <button id="importJsonFileBtn" class="btn secondary" type="button">還原資料 JSON</button>
+      </div>
+      <p class="help-text">匯入會保留原有商品，並合併上傳檔案中的資料。</p>
+    </section>
+
+    <section class="panel settings-section theme-section">
+      <h2 class="section-title-bar">介面模式</h2>
+      <div class="storage-mode theme-mode-actions">
+        <button id="chooseLightThemeBtn" class="btn secondary" type="button">明亮模式</button>
+        <button id="chooseDarkThemeBtn" class="btn secondary" type="button">黑暗模式</button>
+      </div>
+      <p id="themeCurrentLabel" class="help-text">目前主題：明亮模式</p>
+      <p class="help-text">切換後會立即套用到商品頁與設定頁。</p>
+    </section>
+  </main>
+
+  <div id="themePickerModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="themePickerTitle">選擇主題</h3>
+      <div id="themeOptions" class="theme-options-grid"></div>
+      <div class="form-actions">
+        <button id="closeThemePickerBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="errorModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>發生錯誤</h3>
+      <p id="errorModalMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="./settings.js" defer></script>
+</body>
+</html>
