@@ -1443,7 +1443,7 @@ function applyFormCollapsed() {
     const top = Math.max(0, Math.min(y1, y2));
     const width = Math.abs(x2 - x1);
     const height = Math.abs(y2 - y1);
-    if (width < 8 || height < 8) {
+    if (width < 4 || height < 4) {
       ui.ocrRoiBox.classList.add("hidden");
       state.scanner.roiNorm = null;
       return;
@@ -1799,6 +1799,12 @@ function applyFormCollapsed() {
         showFocusRing(event.clientX, event.clientY);
         focusAtPoint(event.clientX, event.clientY).catch(() => {});
         const rect = ui.ocrRoiLayer.getBoundingClientRect();
+        if (typeof ui.ocrRoiLayer.setPointerCapture === "function") {
+          try {
+            ui.ocrRoiLayer.setPointerCapture(event.pointerId);
+          } catch (_error) {
+          }
+        }
         state.scanner.roiSelecting = true;
         state.scanner.roiStart = {
           x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
@@ -1821,7 +1827,21 @@ function applyFormCollapsed() {
         const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
         updateRoiBoxByPixels(state.scanner.roiStart.x, state.scanner.roiStart.y, x, y, rect);
       });
-      const finishRoiSelection = () => {
+      const finishRoiSelection = (event) => {
+        if (state.scanner.roiSelecting && state.scanner.roiStart) {
+          const rect = ui.ocrRoiLayer.getBoundingClientRect();
+          const endX = event ? Math.max(0, Math.min(rect.width, event.clientX - rect.left)) : state.scanner.roiStart.x;
+          const endY = event ? Math.max(0, Math.min(rect.height, event.clientY - rect.top)) : state.scanner.roiStart.y;
+          const dx = Math.abs(endX - state.scanner.roiStart.x);
+          const dy = Math.abs(endY - state.scanner.roiStart.y);
+          if (dx < 4 && dy < 4) {
+            const defaultW = rect.width * 0.46;
+            const defaultH = rect.height * 0.30;
+            const left = Math.max(0, Math.min(rect.width - defaultW, state.scanner.roiStart.x - defaultW / 2));
+            const top = Math.max(0, Math.min(rect.height - defaultH, state.scanner.roiStart.y - defaultH / 2));
+            updateRoiBoxByPixels(left, top, left + defaultW, top + defaultH, rect);
+          }
+        }
         state.scanner.roiSelecting = false;
         state.scanner.roiStart = null;
       };

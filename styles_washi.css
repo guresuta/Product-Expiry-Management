@@ -722,6 +722,7 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
   inset: 0;
   z-index: 6;
   cursor: crosshair;
+  touch-action: none;
 }
 
 .ocr-roi-box {
