@@ -1057,12 +1057,13 @@
     if (!target) {
       throw new Error("找不到要編輯的商品");
     }
-    const category = (ui.editCategorySelect.value || "").trim();
+    const category = normalizeCategory(ui.editCategorySelect.value);
     const name = (ui.editNameInput.value || "").trim();
     const barcode = (ui.editBarcodeInput.value || "").trim();
-    const expiryDate = normalizeDateInput(ui.editExpiryInput.value || "");
-    if (!category || !name || !barcode || !expiryDate) {
-      throw new Error("請完整填寫分類、名稱、條碼與有效日期");
+    const rawExpiry = String(ui.editExpiryInput.value || "").trim();
+    const expiryDate = rawExpiry ? normalizeDateInput(rawExpiry) : "";
+    if (rawExpiry && !expiryDate) {
+      throw new Error("日期格式錯誤，請使用 YYYY-MM-DD / YYYY/MM/DD / YYYYMMDD");
     }
     const prevProducts = state.products.map((item) => ({ ...item }));
     try {
