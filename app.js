@@ -60,6 +60,7 @@
     scanBtn: document.getElementById("scanBtn"),
     stopScanBtn: document.getElementById("stopScanBtn"),
     captureOcrBtn: document.getElementById("captureOcrBtn"),
+    googleLensScanBtn: document.getElementById("googleLensScanBtn"),
     scannerModal: document.getElementById("scannerModal"),
     scannerTitle: document.getElementById("scannerTitle"),
     scannerVideo: document.getElementById("scannerVideo"),
@@ -241,6 +242,10 @@
     const platform = String(navigator.platform || "");
     const isTouchMac = platform === "MacIntel" && navigator.maxTouchPoints > 1;
     return /iPhone|iPad|iPod/i.test(ua) || isTouchMac;
+  }
+
+  function isAndroidDevice() {
+    return /Android/i.test(String(navigator.userAgent || ""));
   }
 
   function preprocessImageForOcr(imageDataUrl, rotateDeg = 0) {
@@ -1295,6 +1300,58 @@ function applyFormCollapsed() {
     ui.captureOcrBtn.disabled = false;
   }
 
+  function setGoogleLensButtonVisible(visible) {
+    if (!ui.googleLensScanBtn) {
+      return;
+    }
+    ui.googleLensScanBtn.classList.toggle("hidden", !visible);
+  }
+
+  async function openGoogleLensApp() {
+    if (nativeBridge && typeof nativeBridge.openGoogleLens === "function") {
+      await nativeBridge.openGoogleLens();
+      return;
+    }
+    if (!isAndroidDevice()) {
+      throw new Error("此裝置未安裝 Google Lens App，請先安裝後再使用");
+    }
+    await new Promise((resolve, reject) => {
+      let finished = false;
+      let timeoutId = null;
+      const onVisibilityChange = () => {
+        if (!document.hidden) {
+          return;
+        }
+        if (finished) {
+          return;
+        }
+        finished = true;
+        clearTimeout(timeoutId);
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+        resolve(true);
+      };
+      document.addEventListener("visibilitychange", onVisibilityChange);
+      timeoutId = setTimeout(() => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+        reject(new Error("未偵測到 Google Lens App，請先安裝後再使用"));
+      }, 1300);
+      try {
+        window.location.href = "intent://lens/#Intent;scheme=googleapp;package=com.google.ar.lens;end";
+      } catch (_error) {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeoutId);
+          document.removeEventListener("visibilitychange", onVisibilityChange);
+          reject(new Error("無法啟動 Google Lens App，請先確認已安裝"));
+        }
+      }
+    });
+  }
+
   function updateTorchUi() {
     if (!ui.torchWrap || !ui.toggleTorchBtn) {
       return;
@@ -1586,6 +1643,7 @@ function applyFormCollapsed() {
       clearOcrRoiSelection();
     }
     setOcrCaptureButtonVisible(state.scanner.mode === "ocr");
+    setGoogleLensButtonVisible(state.scanner.mode === "ocr");
     if (ui.captureOcrBtn) {
       ui.captureOcrBtn.textContent = "拍照辨識";
     }
@@ -1660,6 +1718,7 @@ function applyFormCollapsed() {
     ui.scannerVideo.srcObject = null;
     ui.scannerModal.classList.add("hidden");
     setOcrCaptureButtonVisible(false);
+    setGoogleLensButtonVisible(false);
     if (ui.torchWrap) {
       ui.torchWrap.classList.add("hidden");
     }
@@ -1878,6 +1937,17 @@ function applyFormCollapsed() {
         } catch (error) {
           ui.scannerHint.textContent = SCANNER_CENTER_HINT;
           showToast(error.message, true);
+        }
+      });
+    }
+    if (ui.googleLensScanBtn) {
+      ui.googleLensScanBtn.addEventListener("click", async () => {
+        try {
+          await openGoogleLensApp();
+          stopScanner();
+          showToast("已開啟 Google Lens App");
+        } catch (error) {
+          showToast(error.message || "請先安裝 Google Lens App", true);
         }
       });
     }
