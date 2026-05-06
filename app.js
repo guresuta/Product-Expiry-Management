@@ -783,7 +783,7 @@
   }
 
   function sortForView(products) {
-    const by = ui.sortSelect ? ui.sortSelect.value : "default";
+    const by = ui.sortSelect ? ui.sortSelect.value : "expiry";
     const cloned = [...products];
     if (by === "category") {
       return cloned.sort((a, b) => normalizeCategory(a.category).localeCompare(normalizeCategory(b.category), "zh-Hant"));
