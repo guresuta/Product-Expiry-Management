@@ -8,7 +8,8 @@
   const MODE_SETTING_KEY = "storageMode";
   const DEFAULT_MODE = "indexeddb";
   const EXPIRING_SOON_DAYS = 60;
-  const SCANNER_CENTER_HINT = "請將辨識內容對準鏡頭中央";
+  const BARCODE_SCANNER_HINT = "請將條碼對準鏡頭中央";
+  const OCR_SCANNER_HINT = "請框選要辨識的文字";
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
   const UNCATEGORIZED_LABEL = "未分類";
@@ -60,7 +61,6 @@
     scanBtn: document.getElementById("scanBtn"),
     stopScanBtn: document.getElementById("stopScanBtn"),
     captureOcrBtn: document.getElementById("captureOcrBtn"),
-    googleLensScanBtn: document.getElementById("googleLensScanBtn"),
     scannerModal: document.getElementById("scannerModal"),
     scannerTitle: document.getElementById("scannerTitle"),
     scannerVideo: document.getElementById("scannerVideo"),
@@ -244,8 +244,8 @@
     return /iPhone|iPad|iPod/i.test(ua) || isTouchMac;
   }
 
-  function isAndroidDevice() {
-    return /Android/i.test(String(navigator.userAgent || ""));
+  function getScannerHint(mode) {
+    return mode === "ocr" ? OCR_SCANNER_HINT : BARCODE_SCANNER_HINT;
   }
 
   function preprocessImageForOcr(imageDataUrl, rotateDeg = 0) {
@@ -1300,79 +1300,6 @@ function applyFormCollapsed() {
     ui.captureOcrBtn.disabled = false;
   }
 
-  function setGoogleLensButtonVisible(visible) {
-    if (!ui.googleLensScanBtn) {
-      return;
-    }
-    ui.googleLensScanBtn.classList.toggle("hidden", !visible);
-  }
-
-  async function openGoogleLensApp() {
-    if (nativeBridge && typeof nativeBridge.openGoogleLens === "function") {
-      await nativeBridge.openGoogleLens();
-      return;
-    }
-    if (!isAndroidDevice()) {
-      throw new Error("此裝置未安裝 Google Lens App，請先安裝後再使用");
-    }
-    await new Promise((resolve, reject) => {
-      let finished = false;
-      let timeoutId = null;
-      let probeFrame = null;
-      const onVisibilityChange = () => {
-        if (!document.hidden) {
-          return;
-        }
-        if (finished) {
-          return;
-        }
-        finished = true;
-        clearTimeout(timeoutId);
-        document.removeEventListener("visibilitychange", onVisibilityChange);
-        if (probeFrame && probeFrame.parentNode) {
-          probeFrame.parentNode.removeChild(probeFrame);
-        }
-        resolve(true);
-      };
-      document.addEventListener("visibilitychange", onVisibilityChange);
-      timeoutId = setTimeout(() => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        document.removeEventListener("visibilitychange", onVisibilityChange);
-        if (probeFrame && probeFrame.parentNode) {
-          probeFrame.parentNode.removeChild(probeFrame);
-        }
-        reject(new Error("未偵測到 Google 智慧鏡頭 App，請先安裝後再使用"));
-      }, 2400);
-      const launchByIframe = (url) => {
-        if (probeFrame && probeFrame.parentNode) {
-          probeFrame.parentNode.removeChild(probeFrame);
-        }
-        probeFrame = document.createElement("iframe");
-        probeFrame.style.display = "none";
-        probeFrame.setAttribute("aria-hidden", "true");
-        probeFrame.src = url;
-        document.body.appendChild(probeFrame);
-      };
-      try {
-        // Android Chrome: explicit Lens intent with empty fallback to avoid Play Store redirect.
-        launchByIframe("intent://#Intent;scheme=google-lens;package=com.google.android.googlequicksearchbox;S.browser_fallback_url=;end;");
-      } catch (_error) {
-        if (!finished) {
-          finished = true;
-          clearTimeout(timeoutId);
-          document.removeEventListener("visibilitychange", onVisibilityChange);
-          if (probeFrame && probeFrame.parentNode) {
-            probeFrame.parentNode.removeChild(probeFrame);
-          }
-          reject(new Error("無法啟動 Google 智慧鏡頭 App，請先確認已安裝"));
-        }
-      }
-    });
-  }
-
   function updateTorchUi() {
     if (!ui.torchWrap || !ui.toggleTorchBtn) {
       return;
@@ -1607,7 +1534,7 @@ function applyFormCollapsed() {
 
   async function runOcrFromVideo() {
     ui.captureOcrBtn.disabled = true;
-    ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+    ui.scannerHint.textContent = getScannerHint("ocr");
     try {
       if (!ui.scannerVideo || !ui.scannerVideo.srcObject) {
         throw new Error("[OCR_E_VIDEO_NOT_READY] 鏡頭尚未初始化完成");
@@ -1658,13 +1585,12 @@ function applyFormCollapsed() {
     ui.scannerTitle.textContent = mode === "barcode" ? "條碼掃描" : "文字 OCR 掃描";
     ui.scannerModal.classList.remove("hidden");
     await setupCameraControls();
-    ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+    ui.scannerHint.textContent = getScannerHint(mode);
     setOcrRoiVisible(state.scanner.mode === "ocr");
     if (state.scanner.mode !== "ocr") {
       clearOcrRoiSelection();
     }
     setOcrCaptureButtonVisible(state.scanner.mode === "ocr");
-    setGoogleLensButtonVisible(state.scanner.mode === "ocr");
     if (ui.captureOcrBtn) {
       ui.captureOcrBtn.textContent = "拍照辨識";
     }
@@ -1709,7 +1635,7 @@ function applyFormCollapsed() {
         }
       }
     } catch (_error) {
-      ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+      ui.scannerHint.textContent = getScannerHint(state.scanner.mode);
     } finally {
       state.scanner.detecting = false;
     }
@@ -1739,7 +1665,6 @@ function applyFormCollapsed() {
     ui.scannerVideo.srcObject = null;
     ui.scannerModal.classList.add("hidden");
     setOcrCaptureButtonVisible(false);
-    setGoogleLensButtonVisible(false);
     if (ui.torchWrap) {
       ui.torchWrap.classList.add("hidden");
     }
@@ -1956,19 +1881,8 @@ function applyFormCollapsed() {
         try {
           await runOcrFromVideo();
         } catch (error) {
-          ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+          ui.scannerHint.textContent = getScannerHint("ocr");
           showToast(error.message, true);
-        }
-      });
-    }
-    if (ui.googleLensScanBtn) {
-      ui.googleLensScanBtn.addEventListener("click", async () => {
-        try {
-          await openGoogleLensApp();
-          stopScanner();
-          showToast("已開啟 Google Lens App");
-        } catch (error) {
-          showToast(error.message || "請先安裝 Google Lens App", true);
         }
       });
     }
@@ -1981,7 +1895,7 @@ function applyFormCollapsed() {
       ui.exposureSlider.addEventListener("change", async () => {
         try {
           await applyExposureCompensation(ui.exposureSlider.value);
-          ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+          ui.scannerHint.textContent = getScannerHint(state.scanner.mode);
         } catch (_error) {
           showToast("此裝置不支援曝光補償", true);
         }
