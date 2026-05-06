@@ -1358,7 +1358,7 @@ function applyFormCollapsed() {
       };
       try {
         // Android Chrome: explicit Lens intent with empty fallback to avoid Play Store redirect.
-        launchByIframe("intent://#Intent;scheme=google-lens;package=com.google.ar.lens;S.browser_fallback_url=;end;");
+        launchByIframe("intent://#Intent;scheme=google-lens;package=com.google.android.googlequicksearchbox;S.browser_fallback_url=;end;");
       } catch (_error) {
         if (!finished) {
           finished = true;
