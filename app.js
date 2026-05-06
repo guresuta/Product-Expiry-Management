@@ -1320,6 +1320,7 @@ function applyFormCollapsed() {
       let timeoutId = null;
       let probeFrame = null;
       let attemptTimer = null;
+      let attemptTimer2 = null;
       const onVisibilityChange = () => {
         if (!document.hidden) {
           return;
@@ -1330,6 +1331,7 @@ function applyFormCollapsed() {
         finished = true;
         clearTimeout(timeoutId);
         clearTimeout(attemptTimer);
+        clearTimeout(attemptTimer2);
         document.removeEventListener("visibilitychange", onVisibilityChange);
         if (probeFrame && probeFrame.parentNode) {
           probeFrame.parentNode.removeChild(probeFrame);
@@ -1344,6 +1346,7 @@ function applyFormCollapsed() {
         finished = true;
         document.removeEventListener("visibilitychange", onVisibilityChange);
         clearTimeout(attemptTimer);
+        clearTimeout(attemptTimer2);
         if (probeFrame && probeFrame.parentNode) {
           probeFrame.parentNode.removeChild(probeFrame);
         }
@@ -1360,20 +1363,28 @@ function applyFormCollapsed() {
         document.body.appendChild(probeFrame);
       };
       try {
-        // 1) Try standalone Google Lens app package first.
-        launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.ar.lens;action=android.intent.action.VIEW;end");
-        // 2) Fallback to Google app built-in Lens entry (some devices route Lens here).
+        // 1) Try standalone Google Lens package.
+        launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.ar.lens;action=android.intent.action.VIEW;S.browser_fallback_url=about:blank;end");
+        // 2) Try explicit Lens launcher activity requested by user.
         attemptTimer = setTimeout(() => {
           if (finished || document.hidden) {
             return;
           }
-          launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end");
-        }, 380);
+          launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.ar.lens;component=com.google.vr.apps.ornament.app.lens.LensLauncherActivity;action=android.intent.action.VIEW;S.browser_fallback_url=about:blank;end");
+        }, 420);
+        // 3) Final fallback: Google app built-in Lens entry.
+        attemptTimer2 = setTimeout(() => {
+          if (finished || document.hidden) {
+            return;
+          }
+          launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url=about:blank;end");
+        }, 840);
       } catch (_error) {
         if (!finished) {
           finished = true;
           clearTimeout(timeoutId);
           clearTimeout(attemptTimer);
+          clearTimeout(attemptTimer2);
           document.removeEventListener("visibilitychange", onVisibilityChange);
           if (probeFrame && probeFrame.parentNode) {
             probeFrame.parentNode.removeChild(probeFrame);
