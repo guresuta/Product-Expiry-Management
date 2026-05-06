@@ -1319,6 +1319,7 @@ function applyFormCollapsed() {
       let finished = false;
       let timeoutId = null;
       let probeFrame = null;
+      let attemptTimer = null;
       const onVisibilityChange = () => {
         if (!document.hidden) {
           return;
@@ -1328,6 +1329,7 @@ function applyFormCollapsed() {
         }
         finished = true;
         clearTimeout(timeoutId);
+        clearTimeout(attemptTimer);
         document.removeEventListener("visibilitychange", onVisibilityChange);
         if (probeFrame && probeFrame.parentNode) {
           probeFrame.parentNode.removeChild(probeFrame);
@@ -1341,27 +1343,42 @@ function applyFormCollapsed() {
         }
         finished = true;
         document.removeEventListener("visibilitychange", onVisibilityChange);
+        clearTimeout(attemptTimer);
         if (probeFrame && probeFrame.parentNode) {
           probeFrame.parentNode.removeChild(probeFrame);
         }
-        reject(new Error("未偵測到 Google Lens App，請先安裝後再使用"));
-      }, 1300);
-      try {
-        // Try launching app via hidden iframe to avoid browser-level Play redirect.
+        reject(new Error("未偵測到 Google 智慧鏡頭 App，請先安裝後再使用"));
+      }, 2400);
+      const launchByIframe = (url) => {
+        if (probeFrame && probeFrame.parentNode) {
+          probeFrame.parentNode.removeChild(probeFrame);
+        }
         probeFrame = document.createElement("iframe");
         probeFrame.style.display = "none";
         probeFrame.setAttribute("aria-hidden", "true");
-        probeFrame.src = "googleapp://lens";
+        probeFrame.src = url;
         document.body.appendChild(probeFrame);
+      };
+      try {
+        // 1) Try standalone Google Lens app package first.
+        launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.ar.lens;action=android.intent.action.VIEW;end");
+        // 2) Fallback to Google app built-in Lens entry (some devices route Lens here).
+        attemptTimer = setTimeout(() => {
+          if (finished || document.hidden) {
+            return;
+          }
+          launchByIframe("intent://lens/#Intent;scheme=googleapp;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;end");
+        }, 380);
       } catch (_error) {
         if (!finished) {
           finished = true;
           clearTimeout(timeoutId);
+          clearTimeout(attemptTimer);
           document.removeEventListener("visibilitychange", onVisibilityChange);
           if (probeFrame && probeFrame.parentNode) {
             probeFrame.parentNode.removeChild(probeFrame);
           }
-          reject(new Error("無法啟動 Google Lens App，請先確認已安裝"));
+          reject(new Error("無法啟動 Google 智慧鏡頭 App，請先確認已安裝"));
         }
       }
     });
