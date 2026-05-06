@@ -1340,7 +1340,8 @@ function applyFormCollapsed() {
         reject(new Error("未偵測到 Google Lens App，請先安裝後再使用"));
       }, 1300);
       try {
-        window.location.href = "intent://lens/#Intent;scheme=googleapp;package=com.google.ar.lens;end";
+        // Use app scheme directly to avoid Play Store fallback redirection.
+        window.location.href = "googleapp://lens";
       } catch (_error) {
         if (!finished) {
           finished = true;
