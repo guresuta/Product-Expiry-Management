@@ -1318,6 +1318,7 @@ function applyFormCollapsed() {
     await new Promise((resolve, reject) => {
       let finished = false;
       let timeoutId = null;
+      let probeFrame = null;
       const onVisibilityChange = () => {
         if (!document.hidden) {
           return;
@@ -1328,6 +1329,9 @@ function applyFormCollapsed() {
         finished = true;
         clearTimeout(timeoutId);
         document.removeEventListener("visibilitychange", onVisibilityChange);
+        if (probeFrame && probeFrame.parentNode) {
+          probeFrame.parentNode.removeChild(probeFrame);
+        }
         resolve(true);
       };
       document.addEventListener("visibilitychange", onVisibilityChange);
@@ -1337,16 +1341,26 @@ function applyFormCollapsed() {
         }
         finished = true;
         document.removeEventListener("visibilitychange", onVisibilityChange);
+        if (probeFrame && probeFrame.parentNode) {
+          probeFrame.parentNode.removeChild(probeFrame);
+        }
         reject(new Error("未偵測到 Google Lens App，請先安裝後再使用"));
       }, 1300);
       try {
-        // Use app scheme directly to avoid Play Store fallback redirection.
-        window.location.href = "googleapp://lens";
+        // Try launching app via hidden iframe to avoid browser-level Play redirect.
+        probeFrame = document.createElement("iframe");
+        probeFrame.style.display = "none";
+        probeFrame.setAttribute("aria-hidden", "true");
+        probeFrame.src = "googleapp://lens";
+        document.body.appendChild(probeFrame);
       } catch (_error) {
         if (!finished) {
           finished = true;
           clearTimeout(timeoutId);
           document.removeEventListener("visibilitychange", onVisibilityChange);
+          if (probeFrame && probeFrame.parentNode) {
+            probeFrame.parentNode.removeChild(probeFrame);
+          }
           reject(new Error("無法啟動 Google Lens App，請先確認已安裝"));
         }
       }
