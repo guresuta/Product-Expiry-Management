@@ -60,13 +60,17 @@
   let categoryDraggingChip = null;
   let categoryDragActive = false;
   let categoryPointerId = null;
-  let categoryStartX = 0;
-  let categoryStartY = 0;
+  let categoryPressX = 0;
+  let categoryPressY = 0;
+  let categoryAnchorX = 0;
+  let categoryAnchorY = 0;
+  let categoryOriginLeft = 0;
+  let categoryOriginTop = 0;
   let categoryDragOffsetX = 0;
   let categoryDragOffsetY = 0;
 
-  const CATEGORY_LONG_PRESS_MS = 420;
-  const CATEGORY_MOVE_TOLERANCE = 10;
+  const CATEGORY_LONG_PRESS_MS = 650;
+  const CATEGORY_MOVE_TOLERANCE = 18;
 
   function createNativeBridge() {
     if (!window.AndroidBridge) {
@@ -345,6 +349,12 @@
     categoryDraggingChip = null;
     categoryDragActive = false;
     categoryPointerId = null;
+    categoryPressX = 0;
+    categoryPressY = 0;
+    categoryAnchorX = 0;
+    categoryAnchorY = 0;
+    categoryOriginLeft = 0;
+    categoryOriginTop = 0;
     categoryDragOffsetX = 0;
     categoryDragOffsetY = 0;
     cancelCategoryPressTimer();
@@ -947,8 +957,8 @@
       event.preventDefault();
       categoryPressChip = chip;
       categoryPointerId = event.pointerId;
-      categoryStartX = Number(event.clientX) || 0;
-      categoryStartY = Number(event.clientY) || 0;
+      categoryPressX = Number(event.clientX) || 0;
+      categoryPressY = Number(event.clientY) || 0;
       categoryDragOffsetX = 0;
       categoryDragOffsetY = 0;
       cancelCategoryPressTimer();
@@ -966,6 +976,11 @@
           } catch (_error) {
             // ignore capture failures
           }
+          const chipRect = categoryDraggingChip.getBoundingClientRect();
+          categoryAnchorX = (Number(event.clientX) || 0) - chipRect.left;
+          categoryAnchorY = (Number(event.clientY) || 0) - chipRect.top;
+          categoryOriginLeft = chipRect.left;
+          categoryOriginTop = chipRect.top;
         }
         ui.categoryList.classList.add("is-reordering");
       }, CATEGORY_LONG_PRESS_MS);
@@ -978,8 +993,8 @@
       const x = Number(event.clientX) || 0;
       const y = Number(event.clientY) || 0;
       if (!categoryDragActive) {
-        const dx = Math.abs(x - categoryStartX);
-        const dy = Math.abs(y - categoryStartY);
+        const dx = Math.abs(x - categoryPressX);
+        const dy = Math.abs(y - categoryPressY);
         if (dx > CATEGORY_MOVE_TOLERANCE || dy > CATEGORY_MOVE_TOLERANCE) {
           cancelCategoryPressTimer();
           categoryPressChip = null;
@@ -987,8 +1002,10 @@
         return;
       }
       event.preventDefault();
-      categoryDragOffsetX = x - categoryStartX;
-      categoryDragOffsetY = y - categoryStartY;
+      const targetLeft = x - categoryAnchorX;
+      const targetTop = y - categoryAnchorY;
+      categoryDragOffsetX = targetLeft - categoryOriginLeft;
+      categoryDragOffsetY = targetTop - categoryOriginTop;
       if (categoryDraggingChip) {
         categoryDraggingChip.style.setProperty("--drag-x", `${categoryDragOffsetX}px`);
         categoryDraggingChip.style.setProperty("--drag-y", `${categoryDragOffsetY}px`);
