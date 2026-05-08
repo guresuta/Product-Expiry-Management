@@ -546,6 +546,34 @@
     return merged;
   }
 
+  function toLocalNoon(dateLike) {
+    const d = new Date(dateLike);
+    if (Number.isNaN(d.getTime())) {
+      return null;
+    }
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+  }
+
+  function getStatusLabel(expiryDate) {
+    const normalized = normalizeDateInput(expiryDate);
+    if (!normalized) {
+      return "";
+    }
+    const target = toLocalNoon(`${normalized}T00:00:00`);
+    const today = toLocalNoon(new Date());
+    if (!target || !today) {
+      return "";
+    }
+    const diffDays = Math.floor((target.getTime() - today.getTime()) / 86400000);
+    if (diffDays < 0) {
+      return "已過期";
+    }
+    if (diffDays <= 60) {
+      return "即期";
+    }
+    return "正常";
+  }
+
   function toCsv(products) {
     const header = ["分類", "商品名稱", "條碼", "有效日期", "狀態"];
     const lines = [header.join(",")];
@@ -555,7 +583,7 @@
         item.name,
         item.barcode,
         item.expiryDate,
-        ""
+        getStatusLabel(item.expiryDate)
       ].map((v) => `"${String(v || "").replaceAll("\"", "\"\"")}"`);
       lines.push(escaped.join(","));
     });
