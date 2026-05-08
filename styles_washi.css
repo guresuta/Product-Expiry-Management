@@ -378,16 +378,23 @@ margin: 0 auto;
 }
 
 @media (orientation: landscape) and (max-width: 600px) {
+  #scanSearchBtn {
+    min-width: 0 !important;
+    width: auto !important;
+    white-space: nowrap !important;
+  }
   #scanSearchBtn .stacked-btn-text {
-    display: inline-flex;
+    display: inline-flex !important;
     flex-direction: row;
     align-items: center;
     gap: 0.2rem;
     line-height: 1.2;
+    white-space: nowrap !important;
   }
   #scanSearchBtn .stacked-btn-text > span {
-    display: inline;
-    min-width: 0;
+    display: inline !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
   }
 }
 
