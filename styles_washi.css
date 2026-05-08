@@ -229,7 +229,21 @@ margin: 0 auto;
 /* 針對直式手機的微調 */
 @media (max-width: 600px) {
   .topbar-inner h1 { font-size: 1.2rem; }
-  .filter-row, .search-row { flex-direction: column; }
+  .filter-row { flex-direction: column; }
+  .search-row {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .search-row > #searchInput.search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .search-row > #scanSearchBtn {
+    flex: 0 0 auto;
+    margin: 0;
+    align-self: center;
+  }
   
   /* 讓滾動條更明顯一點，提示使用者可以左右滑 */
   .table-wrap {
@@ -403,6 +417,13 @@ label {
 .list-header {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.list-header-top {
+  width: 100%;
+  display: flex;
   align-items: center;
   gap: 0.55rem;
 }
@@ -974,6 +995,8 @@ html[data-theme="dark-6"] .table-wrap tbody td::before {
     display: inline-flex;
     margin: 0 0 0 auto;
     flex-direction: row;
+    justify-content: flex-end;
+    align-self: center;
   }
 
   .table-wrap tbody {
@@ -1034,5 +1057,25 @@ html[data-theme="dark-6"] .table-wrap tbody td::before {
 
   .table-wrap .danger-btn {
     width: 100%;
+  }
+}
+
+@media (max-width: 600px) and (orientation: landscape) {
+  .list-tools .search-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    column-gap: 0.45rem !important;
+    row-gap: 0 !important;
+    align-items: center !important;
+  }
+  .list-tools .search-row > #searchInput.search-input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .list-tools .search-row > #scanSearchBtn {
+    justify-self: end !important;
+    align-self: center !important;
+    margin: 0 !important;
+    width: auto !important;
   }
 }
