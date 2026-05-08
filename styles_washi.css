@@ -731,7 +731,10 @@ html[data-theme="dark-6"] .table-wrap tbody td::before {
 #scannerModal { z-index: 7000; }
 #barcodeModal { z-index: 6500; }
 #editProductModal { z-index: 5000; }
-#errorModal { z-index: 9000; }
+#errorModal,
+.modal.error-modal {
+  z-index: 12000 !important;
+}
 
 .modal-content {
   width: min(560px, 100%);
