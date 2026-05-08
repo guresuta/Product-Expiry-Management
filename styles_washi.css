@@ -689,18 +689,10 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   opacity: 0.92;
   cursor: grabbing;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
-  transform: translateY(-6px) scale(1.04);
-  z-index: 10;
-  animation: chip-float 0.9s ease-in-out infinite alternate;
-}
-
-@keyframes chip-float {
-  from {
-    transform: translateY(-5px) scale(1.035);
-  }
-  to {
-    transform: translateY(-8px) scale(1.045);
-  }
+  transform: translate(var(--drag-x, 0px), calc(var(--drag-y, 0px) - 6px)) scale(1.04);
+  z-index: 20;
+  pointer-events: none;
+  transition: transform 0.05s linear, box-shadow 0.15s ease;
 }
 
 #categoryList.category-list {

@@ -62,6 +62,8 @@
   let categoryPointerId = null;
   let categoryStartX = 0;
   let categoryStartY = 0;
+  let categoryDragOffsetX = 0;
+  let categoryDragOffsetY = 0;
 
   const CATEGORY_LONG_PRESS_MS = 420;
   const CATEGORY_MOVE_TOLERANCE = 10;
@@ -326,6 +328,8 @@
   function resetCategoryDragState() {
     if (categoryDraggingChip) {
       categoryDraggingChip.classList.remove("is-dragging");
+      categoryDraggingChip.style.removeProperty("--drag-x");
+      categoryDraggingChip.style.removeProperty("--drag-y");
       try {
         if (categoryPointerId !== null && categoryDraggingChip.hasPointerCapture && categoryDraggingChip.hasPointerCapture(categoryPointerId)) {
           categoryDraggingChip.releasePointerCapture(categoryPointerId);
@@ -341,6 +345,8 @@
     categoryDraggingChip = null;
     categoryDragActive = false;
     categoryPointerId = null;
+    categoryDragOffsetX = 0;
+    categoryDragOffsetY = 0;
     cancelCategoryPressTimer();
   }
 
@@ -943,12 +949,16 @@
       categoryPointerId = event.pointerId;
       categoryStartX = Number(event.clientX) || 0;
       categoryStartY = Number(event.clientY) || 0;
+      categoryDragOffsetX = 0;
+      categoryDragOffsetY = 0;
       cancelCategoryPressTimer();
       categoryPressTimer = setTimeout(() => {
         categoryDragActive = true;
         categoryDraggingChip = categoryPressChip;
         if (categoryDraggingChip) {
           categoryDraggingChip.classList.add("is-dragging");
+          categoryDraggingChip.style.setProperty("--drag-x", "0px");
+          categoryDraggingChip.style.setProperty("--drag-y", "0px");
           try {
             if (categoryPointerId !== null && categoryDraggingChip.setPointerCapture) {
               categoryDraggingChip.setPointerCapture(categoryPointerId);
@@ -977,6 +987,12 @@
         return;
       }
       event.preventDefault();
+      categoryDragOffsetX = x - categoryStartX;
+      categoryDragOffsetY = y - categoryStartY;
+      if (categoryDraggingChip) {
+        categoryDraggingChip.style.setProperty("--drag-x", `${categoryDragOffsetX}px`);
+        categoryDraggingChip.style.setProperty("--drag-y", `${categoryDragOffsetY}px`);
+      }
       const targetChip = findCategoryChipFromPoint(x, y);
       if (!targetChip || !categoryDraggingChip || targetChip === categoryDraggingChip) {
         return;
