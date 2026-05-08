@@ -377,25 +377,25 @@ margin: 0 auto;
   display: inline;
 }
 
-@media (orientation: landscape) {
-  @media (min-width: 601px) {
-    #scanSearchBtn {
-      min-width: 4.2em;
-    }
-    .scan-search-label {
-      display: inline-grid;
-      grid-template-rows: repeat(2, auto);
-      line-height: 1.05;
-      text-align: center;
-      gap: 0;
-    }
-    .scan-search-label > span {
-      display: block;
-      min-width: 2em;
-      white-space: nowrap;
-    }
+@media (orientation: landscape) and (min-width: 601px) {
+  #scanSearchBtn {
+    min-width: 4.2em;
   }
+  .scan-search-label {
+    display: inline-grid;
+    grid-template-rows: repeat(2, auto);
+    line-height: 1.05;
+    text-align: center;
+    gap: 0;
+  }
+  .scan-search-label > span {
+    display: block;
+    min-width: 2em;
+    white-space: nowrap;
+  }
+}
 
+@media (orientation: landscape) {
   #toggleFormBtn.toggle-expand-hint {
     min-width: 0;
     width: auto;
