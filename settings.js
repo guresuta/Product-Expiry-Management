@@ -749,8 +749,10 @@
       const category = String(item.category || "").trim();
       const name = String(item.name || "").trim();
       const barcode = String(item.barcode || "").trim();
-      const expiryDate = normalizeDateInput(item.expiryDate);
-      if (!category || !name || !barcode || !expiryDate) {
+      const expiryRaw = String(item.expiryDate || "").trim();
+      const expiryDate = normalizeCsvDateInput(expiryRaw);
+      const hasAnyField = !!(category || name || barcode || expiryRaw);
+      if (!hasAnyField) {
         return;
       }
       output.push({
