@@ -98,6 +98,35 @@
     const saved = localStorage.getItem(THEME_SETTING_KEY) || "light";
     const themeKey = THEME_KEYS.has(saved) ? saved : "light";
     document.documentElement.setAttribute("data-theme", themeKey);
+    syncThemeColorMeta();
+  }
+
+  function normalizeThemeColorValue(colorValue) {
+    const value = String(colorValue || "").trim();
+    if (!value) {
+      return "";
+    }
+    const rgba = value.match(/^rgba?\(([^)]+)\)$/i);
+    if (!rgba) {
+      return value;
+    }
+    const parts = rgba[1].split(",").map((p) => p.trim());
+    if (parts.length < 3) {
+      return value;
+    }
+    return `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+  }
+
+  function syncThemeColorMeta() {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      return;
+    }
+    const styles = getComputedStyle(document.documentElement);
+    const topbar = styles.getPropertyValue("--topbar");
+    const bg = styles.getPropertyValue("--bg");
+    const color = normalizeThemeColorValue(topbar) || normalizeThemeColorValue(bg) || "#1f6feb";
+    meta.setAttribute("content", color);
   }
 
   function createNativeBridge() {
