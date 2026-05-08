@@ -885,22 +885,82 @@
       `;
       ui.productTableBody.appendChild(tr);
 
-      tr.addEventListener("pointerdown", (event) => {
-        if (event.target && event.target.closest && event.target.closest("input.row-select-product")) {
-          return;
-        }
+      const LONG_PRESS_MS = 550;
+      const MOVE_TOLERANCE_PX = 12;
+      let pressStartX = 0;
+      let pressStartY = 0;
+      let longPressFired = false;
+
+      const isInteractiveTarget = (target) => {
+        return !!(target && target.closest && target.closest("input, button, select, textarea, a, label"));
+      };
+
+      const scheduleLongPress = (clientX, clientY) => {
         clearTimeout(longPressTimer);
+        longPressFired = false;
+        pressStartX = Number(clientX) || 0;
+        pressStartY = Number(clientY) || 0;
         longPressTimer = setTimeout(() => {
+          longPressFired = true;
           openBarcodeModalForProduct(product);
-        }, 600);
-      });
+        }, LONG_PRESS_MS);
+      };
+
       const cancelLongPress = () => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
       };
+
+      const maybeCancelByMove = (clientX, clientY) => {
+        const dx = Math.abs((Number(clientX) || 0) - pressStartX);
+        const dy = Math.abs((Number(clientY) || 0) - pressStartY);
+        if (dx > MOVE_TOLERANCE_PX || dy > MOVE_TOLERANCE_PX) {
+          cancelLongPress();
+        }
+      };
+
+      tr.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse" && event.button !== 0) {
+          return;
+        }
+        if (isInteractiveTarget(event.target)) {
+          return;
+        }
+        scheduleLongPress(event.clientX, event.clientY);
+      });
+      tr.addEventListener("pointermove", (event) => {
+        maybeCancelByMove(event.clientX, event.clientY);
+      });
       tr.addEventListener("pointerup", cancelLongPress);
       tr.addEventListener("pointerleave", cancelLongPress);
       tr.addEventListener("pointercancel", cancelLongPress);
+
+      // Fallback for devices/browsers where long-press may bypass pointer events.
+      tr.addEventListener("touchstart", (event) => {
+        if (isInteractiveTarget(event.target)) {
+          return;
+        }
+        const touch = event.touches && event.touches[0];
+        if (!touch) {
+          return;
+        }
+        scheduleLongPress(touch.clientX, touch.clientY);
+      }, { passive: true });
+      tr.addEventListener("touchmove", (event) => {
+        const touch = event.touches && event.touches[0];
+        if (!touch) {
+          return;
+        }
+        maybeCancelByMove(touch.clientX, touch.clientY);
+      }, { passive: true });
+      tr.addEventListener("touchend", cancelLongPress, { passive: true });
+      tr.addEventListener("touchcancel", cancelLongPress, { passive: true });
+
+      tr.addEventListener("contextmenu", (event) => {
+        if (longPressFired || longPressTimer) {
+          event.preventDefault();
+        }
+      });
     });
     const syncSelectAllState = (checkbox) => {
       if (!checkbox) {
