@@ -642,6 +642,59 @@
     return merged;
   }
 
+  function mergeProductsForRestore(existingProducts, importedProducts) {
+    const existing = Array.isArray(existingProducts) ? existingProducts : [];
+    const imported = Array.isArray(importedProducts) ? importedProducts : [];
+    const merged = existing.map((item) => ({ ...item }));
+    const idMap = new Map();
+    const identityMap = new Map();
+
+    merged.forEach((item, index) => {
+      if (item && item.id) {
+        idMap.set(String(item.id), index);
+      }
+      identityMap.set(productIdentityKey(item), index);
+    });
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    imported.forEach((item) => {
+      const incoming = { ...item };
+      const incomingId = incoming && incoming.id ? String(incoming.id) : "";
+      let targetIndex = -1;
+
+      if (incomingId && idMap.has(incomingId)) {
+        targetIndex = idMap.get(incomingId);
+      } else {
+        const key = productIdentityKey(incoming);
+        if (identityMap.has(key)) {
+          targetIndex = identityMap.get(key);
+        }
+      }
+
+      if (targetIndex >= 0) {
+        const current = merged[targetIndex] || {};
+        merged[targetIndex] = {
+          ...current,
+          ...incoming,
+          id: current.id || incoming.id
+        };
+        updatedCount += 1;
+      } else {
+        merged.push(incoming);
+        const newIndex = merged.length - 1;
+        const newId = incoming && incoming.id ? String(incoming.id) : "";
+        if (newId) {
+          idMap.set(newId, newIndex);
+        }
+        identityMap.set(productIdentityKey(incoming), newIndex);
+        addedCount += 1;
+      }
+    });
+
+    return { mergedProducts: merged, addedCount, updatedCount };
+  }
+
   function toLocalNoon(dateLike) {
     const d = new Date(dateLike);
     if (Number.isNaN(d.getTime())) {
@@ -782,12 +835,18 @@
       throw new Error("JSON 內容無效");
     }
 
-    const importedProducts = parseBackupProducts(parsed.products);
+    const rawProducts = Array.isArray(parsed.products) ? parsed.products : (Array.isArray(parsed) ? parsed : null);
+    const importedProducts = parseBackupProducts(rawProducts);
+    if (importedProducts.length === 0) {
+      throw new Error("JSON 無有效商品資料");
+    }
     const existingProducts = await getAllProductsFromIndexedDb();
-    const mergedProducts = mergeProductsKeepExisting(existingProducts, importedProducts);
-    const addedCount = Math.max(0, mergedProducts.length - existingProducts.length);
+    const mergedResult = mergeProductsForRestore(existingProducts, importedProducts);
+    const mergedProducts = mergedResult.mergedProducts;
+    const addedCount = mergedResult.addedCount;
+    const updatedCount = mergedResult.updatedCount;
 
-    const ok = window.confirm(`將新增 ${addedCount} 筆商品資料，是否繼續還原？`);
+    const ok = window.confirm(`將新增 ${addedCount} 筆、更新 ${updatedCount} 筆商品資料，是否繼續還原？`);
     if (!ok) {
       return { addedCount: 0, totalCount: existingProducts.length, cancelled: true };
     }
@@ -815,7 +874,7 @@
       await writeProductsToSelectedFile(mergedProducts);
     }
 
-    return { addedCount, totalCount: mergedProducts.length, cancelled: false };
+    return { addedCount, updatedCount, totalCount: mergedProducts.length, cancelled: false };
   }
 
   async function downloadCsv(filename, content) {
@@ -963,7 +1022,7 @@
             ui.importJsonFileInput.value = "";
             return;
           }
-          showToast(`JSON 還原成功，新增 ${result.addedCount} 筆，目前共 ${result.totalCount} 筆商品`);
+          showToast(`JSON 還原成功，新增 ${result.addedCount} 筆、更新 ${result.updatedCount || 0} 筆，目前共 ${result.totalCount} 筆商品`);
           ui.importJsonFileInput.value = "";
         } catch (error) {
           showToast(`JSON 還原失敗: ${error.message}`, true);
