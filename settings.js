@@ -563,8 +563,12 @@
       const name = (row[idx.name] || "").trim();
       const barcode = (row[idx.barcode] || "").trim();
       const expiryRaw = (row[idx.expiryDate] || "").trim();
-      const expiryDate = normalizeDateInput(expiryRaw);
-      if (!category || !name || !barcode || !expiryDate) {
+      const expiryDate = expiryRaw ? normalizeDateInput(expiryRaw) : "";
+      const hasAnyField = !!(category || name || barcode || expiryRaw);
+      if (!hasAnyField) {
+        return;
+      }
+      if (expiryRaw && !expiryDate) {
         return;
       }
       output.push({
