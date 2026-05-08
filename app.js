@@ -134,30 +134,6 @@
           throw new Error("寫入檔案失敗");
         }
       },
-      openGoogleLens() {
-        return new Promise((resolve, reject) => {
-          if (typeof bridge.openGoogleLens !== "function") {
-            reject(new Error("目前環境不支援開啟外部 Google Lens"));
-            return;
-          }
-          const handler = (event) => {
-            window.removeEventListener("android-open-lens-result", handler);
-            const detail = event.detail || {};
-            if (detail.ok) {
-              resolve(true);
-            } else {
-              reject(new Error(detail.error || "無法開啟 Google Lens"));
-            }
-          };
-          window.addEventListener("android-open-lens-result", handler, { once: true });
-          try {
-            bridge.openGoogleLens();
-          } catch (error) {
-            window.removeEventListener("android-open-lens-result", handler);
-            reject(error);
-          }
-        });
-      },
       openGoogleLensWithImageDataUrl(dataUrl) {
         return new Promise((resolve, reject) => {
           if (typeof bridge.openGoogleLensWithImageDataUrl !== "function") {
@@ -713,9 +689,8 @@
 
   async function loadInitialState() {
     const savedMode = (await getSetting(MODE_SETTING_KEY)) || DEFAULT_MODE;
-    const savedFileHandle = null;
     state.storageMode = savedMode;
-    state.fileHandle = savedFileHandle || null;
+    state.fileHandle = null;
     if (state.storageMode === "file" && !(await hasSelectedFile())) {
       state.storageMode = "indexeddb";
       await setSetting(MODE_SETTING_KEY, "indexeddb");
