@@ -44,7 +44,6 @@
     toggleFormBtn: document.getElementById("toggleFormBtn"),
     categoryInput: document.getElementById("categoryInput"),
     nameInput: document.getElementById("nameInput"),
-    ocrBtn: document.getElementById("ocrBtn"),
     barcodeInput: document.getElementById("barcodeInput"),
     expiryInput: document.getElementById("expiryInput"),
     pickDateBtn: document.getElementById("pickDateBtn"),
@@ -52,11 +51,8 @@
     clearFormBtn: document.getElementById("clearFormBtn"),
     scanBtn: document.getElementById("scanBtn"),
     stopScanBtn: document.getElementById("stopScanBtn"),
-    captureOcrBtn: document.getElementById("captureOcrBtn"),
     scannerModal: document.getElementById("scannerModal"),
-    scannerTitle: document.getElementById("scannerTitle"),
     scannerVideo: document.getElementById("scannerVideo"),
-    ocrBoxesLayer: document.getElementById("ocrBoxesLayer"),
     exposureWrap: document.getElementById("exposureWrap"),
     exposureSlider: document.getElementById("exposureSlider"),
     exposureValue: document.getElementById("exposureValue"),
@@ -133,30 +129,6 @@
         if (!ok) {
           throw new Error("寫入檔案失敗");
         }
-      },
-      openGoogleLensWithImageDataUrl(dataUrl) {
-        return new Promise((resolve, reject) => {
-          if (typeof bridge.openGoogleLensWithImageDataUrl !== "function") {
-            reject(new Error("目前環境不支援以圖片啟動 Google Lens"));
-            return;
-          }
-          const handler = (event) => {
-            window.removeEventListener("android-open-lens-result", handler);
-            const detail = event.detail || {};
-            if (detail.ok) {
-              resolve(true);
-            } else {
-              reject(new Error(detail.error || "無法啟動 Google Lens 圖片辨識"));
-            }
-          };
-          window.addEventListener("android-open-lens-result", handler, { once: true });
-          try {
-            bridge.openGoogleLensWithImageDataUrl(String(dataUrl || ""));
-          } catch (error) {
-            window.removeEventListener("android-open-lens-result", handler);
-            reject(error);
-          }
-        });
       },
       setScreenBrightnessMax() {
         return new Promise((resolve, reject) => {
@@ -1111,14 +1083,6 @@ function applyFormCollapsed() {
   }
 }
 
-  function setOcrCaptureButtonVisible(visible) {
-    if (!ui.captureOcrBtn) {
-      return;
-    }
-    ui.captureOcrBtn.classList.toggle("hidden", !visible);
-    ui.captureOcrBtn.disabled = false;
-  }
-
   async function setupCameraControls() {
     const stream = state.scanner.stream;
     if (!stream) {
@@ -1161,62 +1125,6 @@ function applyFormCollapsed() {
     await track.applyConstraints({ advanced: [{ exposureCompensation: Number(value) }] });
   }
 
-
-  function clearOcrBoxes() {
-    if (ui.ocrBoxesLayer) {
-      ui.ocrBoxesLayer.innerHTML = "";
-    }
-  }
-
-  function captureVideoFrameDataUrl() {
-    const video = ui.scannerVideo;
-    const sourceWidth = video.videoWidth || 0;
-    const sourceHeight = video.videoHeight || 0;
-    const maxDim = 1280;
-    const scale = Math.min(1, maxDim / Math.max(sourceWidth, sourceHeight));
-    const width = Math.max(1, Math.round(sourceWidth * scale));
-    const height = Math.max(1, Math.round(sourceHeight * scale));
-    if (width <= 0 || height <= 0) {
-      throw new Error("鏡頭影像尚未準備完成");
-    }
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("無法建立影像畫布");
-    }
-    ctx.drawImage(video, 0, 0, width, height);
-    return canvas.toDataURL("image/jpeg", 0.72);
-  }
-
-  async function runNativeMlKitOcrFromVideo() {
-    if (!(isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function")) {
-      throw new Error("目前環境不支援 Google Lens 掃描");
-    }
-    ui.captureOcrBtn.disabled = true;
-    ui.scannerHint.textContent = SCANNER_CENTER_HINT;
-    try {
-      if (!ui.scannerVideo || !ui.scannerVideo.srcObject) {
-        throw new Error("[OCR_E_VIDEO_NOT_READY] 鏡頭尚未初始化完成");
-      }
-      if ((ui.scannerVideo.videoWidth || 0) <= 0 || (ui.scannerVideo.videoHeight || 0) <= 0) {
-        throw new Error("[OCR_E_VIDEO_NOT_READY] 鏡頭畫面尚未就緒");
-      }
-      const dataUrl = captureVideoFrameDataUrl();
-      playTone("shutter");
-      state.scanner.lastSnapshotDataUrl = dataUrl;
-      stopScanner();
-      await nativeBridge.openGoogleLensWithImageDataUrl(dataUrl);
-      showToast("已開啟 Google Lens，請在 Lens 內選字複製");
-    } finally {
-      if (ui.captureOcrBtn) {
-        ui.captureOcrBtn.disabled = false;
-      }
-    }
-  }
-
   async function startScanner(mode, barcodeTarget = "input") {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("此裝置不支援鏡頭掃描，請改用手動輸入");
@@ -1224,16 +1132,7 @@ function applyFormCollapsed() {
 
     state.scanner.mode = mode;
     state.scanner.barcodeTarget = barcodeTarget;
-    if (mode === "ocr") {
-      if (isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function") {
-        state.scanner.mode = "ocr_lens";
-        state.scanner.detector = null;
-      } else {
-        throw new Error("目前環境不支援 Google Lens 掃描");
-      }
-    } else {
-      state.scanner.detector = await createBarcodeDetector();
-    }
+    state.scanner.detector = await createBarcodeDetector();
     state.scanner.stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" } },
       audio: false
@@ -1241,19 +1140,11 @@ function applyFormCollapsed() {
 
     ui.scannerVideo.srcObject = state.scanner.stream;
     await ui.scannerVideo.play();
-    ui.scannerTitle.textContent = mode === "barcode" ? "條碼掃描" : "文字 OCR 掃描";
     ui.scannerModal.classList.remove("hidden");
     await setupCameraControls();
     ui.scannerHint.textContent = SCANNER_CENTER_HINT;
-    setOcrCaptureButtonVisible(state.scanner.mode === "ocr_lens");
-    if (ui.captureOcrBtn) {
-      ui.captureOcrBtn.textContent = "Google Lens掃描";
-    }
-    clearOcrBoxes();
     state.scanner.running = true;
-    if (state.scanner.mode !== "ocr_lens") {
-      scanLoop();
-    }
+    scanLoop();
   }
 
   async function scanLoop() {
@@ -1315,11 +1206,9 @@ function applyFormCollapsed() {
     ui.scannerVideo.pause();
     ui.scannerVideo.srcObject = null;
     ui.scannerModal.classList.add("hidden");
-    setOcrCaptureButtonVisible(false);
     if (ui.exposureWrap) {
       ui.exposureWrap.classList.add("hidden");
     }
-    clearOcrBoxes();
   }
 
   function wireEvents() {
@@ -1424,25 +1313,7 @@ function applyFormCollapsed() {
       }
     });
 
-    ui.ocrBtn.addEventListener("click", async () => {
-      try {
-        await startScanner("ocr");
-      } catch (error) {
-        showToast(error.message, true);
-      }
-    });
-
     ui.stopScanBtn.addEventListener("click", stopScanner);
-    if (ui.captureOcrBtn) {
-      ui.captureOcrBtn.addEventListener("click", async () => {
-        try {
-          await runNativeMlKitOcrFromVideo();
-        } catch (error) {
-          ui.scannerHint.textContent = SCANNER_CENTER_HINT;
-          showToast(error.message, true);
-        }
-      });
-    }
     if (ui.exposureSlider) {
       ui.exposureSlider.addEventListener("input", () => {
         if (ui.exposureValue) {

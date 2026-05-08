@@ -36,10 +36,7 @@
         </label>
         <label>
           商品名稱
-          <div class="barcode-input-row">
-            <input id="nameInput" name="name" placeholder="輸入商品名稱">
-            <button id="ocrBtn" class="btn secondary" type="button">鏡頭 OCR</button>
-          </div>
+          <input id="nameInput" name="name" placeholder="輸入商品名稱">
         </label>
         <label>
           商品條碼
@@ -112,18 +109,13 @@
   <div id="scannerModal" class="modal hidden">
     <div class="modal-content">
       <h3 id="scannerTitle">條碼掃描</h3>
-      <div id="ocrFrameWrap">
+      <div id="scannerFrameWrap">
         <video id="scannerVideo" playsinline muted></video>
-        <div id="ocrBoxesLayer"></div>
-        <div id="ocrRoiLayer" class="ocr-roi-layer hidden">
-          <div id="ocrRoiBox" class="ocr-roi-box hidden"></div>
-        </div>
         <div id="focusRing" class="focus-ring hidden" aria-hidden="true"></div>
       </div>
       <p id="scannerHint" class="help-text">請把條碼對準鏡頭中央。</p>
       <div id="torchWrap" class="camera-control hidden">
         <button id="toggleTorchBtn" class="btn secondary" type="button">開啟手電筒</button>
-        <button id="clearOcrRoiBtn" class="btn ghost hidden" type="button">清除框選</button>
       </div>
       <div id="exposureWrap" class="camera-control hidden">
         <label for="exposureSlider">曝光補償</label>
@@ -133,7 +125,6 @@
         <span id="exposureValue">0</span>
       </div>
       <div class="form-actions">
-        <button id="captureOcrBtn" class="btn primary hidden" type="button">拍照辨識</button>
         <button id="stopScanBtn" class="btn ghost" type="button">關閉掃描</button>
       </div>
     </div>
@@ -202,25 +193,7 @@
       </div>
     </div>
   </div>
-  <div id="ocrResultModal" class="modal hidden">
-    <div class="modal-content">
-      <h3>OCR 辨識結果</h3>
-      <p class="help-text">點選下方文字可加入選取內容，再按「套用」。</p>
-      <div id="ocrCandidateList" class="ocr-candidate-list"></div>
-      <label>
-        已選取文字
-        <textarea id="ocrSelectedText" rows="4" placeholder="可手動編輯選取結果"></textarea>
-      </label>
-      <div class="form-actions">
-        <button id="applyOcrTextBtn" class="btn primary" type="button">套用到商品名稱</button>
-        <button id="clearOcrTextBtn" class="btn ghost" type="button">清空</button>
-        <button id="closeOcrResultModalBtn" class="btn ghost" type="button">取消</button>
-      </div>
-    </div>
-  </div>
-
   <div id="toast" class="toast hidden"></div>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
   <script src="./app.js" defer></script>
 </body>
 </html>
