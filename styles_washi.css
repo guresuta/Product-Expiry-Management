@@ -1173,11 +1173,4 @@ body.force-search-inline .list-tools .search-row > #scanSearchBtn {
   min-width: 0 !important;
   flex: 0 0 auto !important;
   white-space: nowrap !important;
-  height: 100% !important;
-}
-
-.search-row > #scanSearchBtn,
-.list-tools #scanSearchBtn,
-.list-tools .search-row > #scanSearchBtn {
-  min-height: calc(0.65rem * 2 + 2px);
 }

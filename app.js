@@ -272,6 +272,18 @@
     document.body.classList.toggle("force-search-inline", forceInline);
   }
 
+  function syncScanSearchButtonHeight() {
+    if (!ui.searchInput || !ui.scanSearchBtn) {
+      return;
+    }
+    const inputHeight = Math.ceil(ui.searchInput.getBoundingClientRect().height || 0);
+    if (!inputHeight) {
+      return;
+    }
+    ui.scanSearchBtn.style.height = `${inputHeight}px`;
+    ui.scanSearchBtn.style.minHeight = `${inputHeight}px`;
+  }
+
   function preprocessImageForOcr(imageDataUrl, rotateDeg = 0) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -2121,12 +2133,20 @@ function applyFormCollapsed() {
     window.addEventListener("resize", applyFormCollapsed);
     applyFormCollapsed();
     applySearchRowLayoutByDeviceResolution();
+    syncScanSearchButtonHeight();
     window.addEventListener("resize", applySearchRowLayoutByDeviceResolution);
     window.addEventListener("orientationchange", applySearchRowLayoutByDeviceResolution);
+    window.addEventListener("resize", syncScanSearchButtonHeight);
+    window.addEventListener("orientationchange", syncScanSearchButtonHeight);
     if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
       window.visualViewport.addEventListener("resize", applySearchRowLayoutByDeviceResolution);
+      window.visualViewport.addEventListener("resize", syncScanSearchButtonHeight);
+    }
+    if (document.fonts && typeof document.fonts.ready === "object" && typeof document.fonts.ready.then === "function") {
+      document.fonts.ready.then(syncScanSearchButtonHeight).catch(() => {});
     }
     await loadInitialState();
+    syncScanSearchButtonHeight();
     if (isIosDevice() && !isNativeFileMode()) {
       showToast("iOS 提示：OCR 使用內建辨識，建議在充足光線下拍攝");
     }
