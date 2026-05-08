@@ -367,7 +367,35 @@ margin: 0 auto;
   min-width: 4.2em;
 }
 
+.scan-search-label {
+  display: inline-flex;
+  gap: 0.18rem;
+  align-items: center;
+}
+
+.scan-search-label > span {
+  display: inline;
+}
+
 @media (orientation: landscape) {
+  @media (min-width: 601px) {
+    #scanSearchBtn {
+      min-width: 4.2em;
+    }
+    .scan-search-label {
+      display: inline-grid;
+      grid-template-rows: repeat(2, auto);
+      line-height: 1.05;
+      text-align: center;
+      gap: 0;
+    }
+    .scan-search-label > span {
+      display: block;
+      min-width: 2em;
+      white-space: nowrap;
+    }
+  }
+
   #toggleFormBtn.toggle-expand-hint {
     min-width: 0;
     width: auto;
