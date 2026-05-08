@@ -904,10 +904,7 @@
       renderCategories();
     }
 
-    const backupTheme = parsed.settings && parsed.settings.theme ? String(parsed.settings.theme) : "";
-    if (backupTheme) {
-      applyTheme(backupTheme);
-    }
+    // 還原 JSON 時不變更目前主題，僅還原資料與分類
 
     if (await hasSelectedFile()) {
       await writeProductsToSelectedFile(mergedProducts);
