@@ -483,6 +483,41 @@
     return `${String(y).padStart(4, "0")}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
   }
 
+  function normalizeCsvDateInput(raw) {
+    const value = String(raw || "").trim();
+    if (!value) {
+      return "";
+    }
+    const direct = normalizeDateInput(value);
+    if (direct) {
+      return direct;
+    }
+
+    // Excel serial date (days since 1899-12-30)
+    if (/^\d+(\.\d+)?$/.test(value)) {
+      const serial = Number(value);
+      if (Number.isFinite(serial) && serial > 0) {
+        const base = new Date(Date.UTC(1899, 11, 30));
+        const date = new Date(base.getTime() + Math.floor(serial) * 86400000);
+        const y = date.getUTCFullYear();
+        const m = date.getUTCMonth() + 1;
+        const d = date.getUTCDate();
+        return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      }
+    }
+
+    // Common datetime strings: "YYYY-MM-DD HH:mm:ss", ISO, locale dates, etc.
+    const cleaned = value.replace("T", " ").replace(/\.\d+Z?$/, "");
+    const parsed = new Date(cleaned);
+    if (!Number.isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = parsed.getMonth() + 1;
+      const d = parsed.getDate();
+      return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+    return "";
+  }
+
   function parseCsv(text) {
     const normalizedText = String(text || "").replace(/^\uFEFF/, "");
     const rows = [];
@@ -563,12 +598,9 @@
       const name = (row[idx.name] || "").trim();
       const barcode = (row[idx.barcode] || "").trim();
       const expiryRaw = (row[idx.expiryDate] || "").trim();
-      const expiryDate = expiryRaw ? normalizeDateInput(expiryRaw) : "";
+      const expiryDate = normalizeCsvDateInput(expiryRaw);
       const hasAnyField = !!(category || name || barcode || expiryRaw);
       if (!hasAnyField) {
-        return;
-      }
-      if (expiryRaw && !expiryDate) {
         return;
       }
       output.push({
