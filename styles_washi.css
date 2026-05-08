@@ -829,6 +829,20 @@ html[data-theme="dark-6"] .table-wrap tbody td::before {
   white-space: nowrap;
 }
 
+.about-section .help-text {
+  white-space: normal;
+  line-height: 1.5;
+}
+
+.about-link {
+  color: var(--primary);
+  word-break: break-all;
+}
+
+.disclaimer-text {
+  margin-top: 0.4rem;
+}
+
 .badge {
   font-weight: 700;
 }
