@@ -248,6 +248,30 @@
     return mode === "ocr" ? OCR_SCANNER_HINT : BARCODE_SCANNER_HINT;
   }
 
+  function isLandscapeByViewport() {
+    return (window.innerWidth || 0) > (window.innerHeight || 0);
+  }
+
+  function isSmallLandscapeByDeviceResolution() {
+    const sw = Number(window.screen && window.screen.width) || 0;
+    const sh = Number(window.screen && window.screen.height) || 0;
+    const shortEdge = Math.min(sw, sh);
+    return isLandscapeByViewport() && shortEdge > 0 && shortEdge <= 600;
+  }
+
+  function applySearchRowLayoutByDeviceResolution() {
+    if (!ui.searchInput || !ui.scanSearchBtn) {
+      return;
+    }
+    const row = ui.searchInput.closest(".search-row");
+    if (!row) {
+      return;
+    }
+
+    const forceInline = isSmallLandscapeByDeviceResolution();
+    document.body.classList.toggle("force-search-inline", forceInline);
+  }
+
   function preprocessImageForOcr(imageDataUrl, rotateDeg = 0) {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -2096,6 +2120,12 @@ function applyFormCollapsed() {
     wireEvents();
     window.addEventListener("resize", applyFormCollapsed);
     applyFormCollapsed();
+    applySearchRowLayoutByDeviceResolution();
+    window.addEventListener("resize", applySearchRowLayoutByDeviceResolution);
+    window.addEventListener("orientationchange", applySearchRowLayoutByDeviceResolution);
+    if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
+      window.visualViewport.addEventListener("resize", applySearchRowLayoutByDeviceResolution);
+    }
     await loadInitialState();
     if (isIosDevice() && !isNativeFileMode()) {
       showToast("iOS 提示：OCR 使用內建辨識，建議在充足光線下拍攝");

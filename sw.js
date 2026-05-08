@@ -1,4 +1,4 @@
-const CACHE_NAME = "expiry-manager-cache-v4";
+const CACHE_NAME = "expiry-manager-cache-v5";
 const APP_SHELL_FILES = [
   "./",
   "./inventory-management-app.html",
@@ -37,18 +37,42 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(request)
+  const url = new URL(request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isCoreAsset = isSameOrigin && (
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".webmanifest")
+  );
+
+  if (isCoreAsset) {
+    event.respondWith(
+      fetch(request)
         .then((response) => {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
           return response;
         })
-        .catch(() => caches.match("./inventory-management-app.html"));
-    })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) {
+            return cached;
+          }
+          return caches.match("./inventory-management-app.html");
+        })
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cached) =>
+      cached ||
+      fetch(request).then((response) => {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        return response;
+      })
+    )
   );
 });
