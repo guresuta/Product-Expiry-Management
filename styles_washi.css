@@ -441,11 +441,25 @@ label {
   flex-direction: column;
   gap: 1.2rem; /* 增加過濾、排序、搜尋、按鈕這四列元素間的間隔 */
   margin-bottom: 1.5rem;
+  --search-row-control-height: 2.5rem;
 }
 
 .filter-row, .search-row {
   display: flex;
   gap: 12px; /* 增加下拉選單之間或輸入框與按鈕間的間隔 */
+}
+
+.list-tools .search-row > #searchInput.search-input,
+.list-tools .search-row > #scanSearchBtn {
+  height: var(--search-row-control-height);
+  min-height: var(--search-row-control-height);
+  box-sizing: border-box;
+}
+
+.list-tools .search-row > #scanSearchBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 商品清單表格補強 */

@@ -337,6 +337,12 @@
     });
   }
 
+  async function setSetting(key, value) {
+    await withStore(STORE_SETTINGS, "readwrite", (store) => {
+      store.put({ key, value });
+    });
+  }
+
   async function replaceAllProductsIndexedDb(products) {
     await withStore(STORE_PRODUCTS, "readwrite", (store) => {
       const clearReq = store.clear();
