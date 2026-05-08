@@ -896,9 +896,10 @@
     const category = (ui.editCategorySelect.value || "").trim();
     const name = (ui.editNameInput.value || "").trim();
     const barcode = (ui.editBarcodeInput.value || "").trim();
-    const expiryDate = normalizeDateInput(ui.editExpiryInput.value || "");
-    if (!category || !name || !barcode || !expiryDate) {
-      throw new Error("請完整填寫分類、名稱、條碼與有效日期");
+    const expiryRaw = (ui.editExpiryInput.value || "").trim();
+    const expiryDate = expiryRaw ? normalizeDateInput(expiryRaw) : "";
+    if (expiryRaw && !expiryDate) {
+      throw new Error("有效日期格式錯誤，請使用 YYYY-MM-DD");
     }
     const prevProducts = state.products.map((item) => ({ ...item }));
     try {
