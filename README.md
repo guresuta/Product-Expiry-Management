@@ -36,20 +36,7 @@
 
 不要直接用 `file://` 開啟，請使用 HTTP 伺服器。
 
-### 方法一：Python
-
-```powershell
-cd "D:\AI Code\WebHAN"
-python -m http.server 8080
-```
-
-開啟：
-
-- `http://localhost:8080/inventory-management-app.html`
-
-### 方法二：GitHub Pages
-
-將本專案推送到 GitHub Repo，啟用 Pages 後可直接以 HTTPS 網址使用。
+將本專案推送到 GitHub Repository，啟用 Pages 後可直接以 HTTPS 網址使用。
 
 ## 匯入 / 匯出
 
