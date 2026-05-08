@@ -68,6 +68,7 @@
   let categoryOriginTop = 0;
   let categoryDragOffsetX = 0;
   let categoryDragOffsetY = 0;
+  let categoryDragGhost = null;
 
   const CATEGORY_LONG_PRESS_MS = 650;
   const CATEGORY_MOVE_TOLERANCE = 18;
@@ -332,6 +333,7 @@
   function resetCategoryDragState() {
     if (categoryDraggingChip) {
       categoryDraggingChip.classList.remove("is-dragging");
+      categoryDraggingChip.classList.remove("is-drag-source");
       categoryDraggingChip.style.removeProperty("--drag-x");
       categoryDraggingChip.style.removeProperty("--drag-y");
       try {
@@ -345,6 +347,10 @@
     if (ui.categoryList) {
       ui.categoryList.classList.remove("is-reordering");
     }
+    if (categoryDragGhost && categoryDragGhost.parentElement) {
+      categoryDragGhost.remove();
+    }
+    categoryDragGhost = null;
     categoryPressChip = null;
     categoryDraggingChip = null;
     categoryDragActive = false;
@@ -967,6 +973,7 @@
         categoryDraggingChip = categoryPressChip;
         if (categoryDraggingChip) {
           categoryDraggingChip.classList.add("is-dragging");
+          categoryDraggingChip.classList.add("is-drag-source");
           categoryDraggingChip.style.setProperty("--drag-x", "0px");
           categoryDraggingChip.style.setProperty("--drag-y", "0px");
           try {
@@ -981,6 +988,13 @@
           categoryAnchorY = (Number(event.clientY) || 0) - chipRect.top;
           categoryOriginLeft = chipRect.left;
           categoryOriginTop = chipRect.top;
+          categoryDragGhost = categoryDraggingChip.cloneNode(true);
+          categoryDragGhost.classList.remove("is-dragging", "is-drag-source");
+          categoryDragGhost.classList.add("category-chip-drag-ghost");
+          categoryDragGhost.style.left = `${chipRect.left}px`;
+          categoryDragGhost.style.top = `${chipRect.top}px`;
+          categoryDragGhost.style.width = `${chipRect.width}px`;
+          document.body.appendChild(categoryDragGhost);
         }
         ui.categoryList.classList.add("is-reordering");
       }, CATEGORY_LONG_PRESS_MS);
@@ -1006,9 +1020,9 @@
       const targetTop = y - categoryAnchorY;
       categoryDragOffsetX = targetLeft - categoryOriginLeft;
       categoryDragOffsetY = targetTop - categoryOriginTop;
-      if (categoryDraggingChip) {
-        categoryDraggingChip.style.setProperty("--drag-x", `${categoryDragOffsetX}px`);
-        categoryDraggingChip.style.setProperty("--drag-y", `${categoryDragOffsetY}px`);
+      if (categoryDragGhost) {
+        categoryDragGhost.style.left = `${targetLeft}px`;
+        categoryDragGhost.style.top = `${targetTop}px`;
       }
       const targetChip = findCategoryChipFromPoint(x, y);
       if (!targetChip || !categoryDraggingChip || targetChip === categoryDraggingChip) {
