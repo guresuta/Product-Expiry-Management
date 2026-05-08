@@ -378,23 +378,17 @@ margin: 0 auto;
 }
 
 @media (orientation: landscape) and (max-width: 600px) {
-  #scanSearchBtn {
-    min-width: 0 !important;
-    width: auto !important;
-    white-space: nowrap !important;
-  }
-  #scanSearchBtn .stacked-btn-text {
-    display: inline-flex !important;
-    flex-direction: row;
+  .search-row {
+    flex-direction: row !important;
     align-items: center;
-    gap: 0.2rem;
-    line-height: 1.2;
-    white-space: nowrap !important;
+    gap: 0.45rem;
   }
-  #scanSearchBtn .stacked-btn-text > span {
-    display: inline !important;
-    min-width: 0 !important;
-    white-space: nowrap !important;
+  #searchInput {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  #scanSearchBtn {
+    flex: 0 0 auto;
   }
 }
 
