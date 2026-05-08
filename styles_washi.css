@@ -381,13 +381,24 @@ margin: 0 auto;
 }
 
 @media (orientation: landscape) and (min-width: 601px) {
-  #scanSearchBtn {
-    min-width: 4.2em;
-    letter-spacing: 0;
-  }
-  #scanSearchBtn .stacked-btn-text > span {
-    min-width: 0;
-  }
+#scanSearchBtn {
+  min-width: 4.2em;
+  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+#scanSearchBtn .stacked-btn-text > span {
+  min-width: 0;
+}
+
+#scanSearchBtn .stacked-btn-text {
+  width: 100%;
+  justify-items: center;
+  align-items: center;
+  text-align: center;
+}
 }
 
 @media (orientation: landscape) {
