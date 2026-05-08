@@ -9,20 +9,22 @@
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
   const THEME_PRESETS = [
-    { key: "light", mode: "light", label: "明亮主題一", swatch: "linear-gradient(120deg,#f6f2e8,#e8dfc8)" },
-    { key: "light-2", mode: "light", label: "明亮主題二", swatch: "linear-gradient(120deg,#ffe8f2,#e7f7ff)" },
-    { key: "light-3", mode: "light", label: "明亮主題三", swatch: "linear-gradient(120deg,#e9fff2,#e7f4ff)" },
-    { key: "light-4", mode: "light", label: "明亮主題四", swatch: "linear-gradient(120deg,#ffe5f6,#ffdfe8)" },
-    { key: "light-5", mode: "light", label: "明亮主題五", swatch: "linear-gradient(120deg,#f2fff0,#ffe7df)" },
-    { key: "dark", mode: "dark", label: "黑暗主題一", swatch: "linear-gradient(120deg,#2d2c29,#3a3832)" },
-    { key: "dark-2", mode: "dark", label: "黑暗主題二", swatch: "linear-gradient(120deg,#3f2f47,#223b53)" },
-    { key: "dark-3", mode: "dark", label: "黑暗主題三", swatch: "linear-gradient(120deg,#173e32,#1b3a57)" },
-    { key: "dark-4", mode: "dark", label: "黑暗主題四", swatch: "linear-gradient(120deg,#4a1e46,#5b233a)" },
-    { key: "dark-5", mode: "dark", label: "黑暗主題五", swatch: "linear-gradient(120deg,#1d3a31,#4b2f28)" }
+    { key: "light", mode: "light", label: "香莢蘭白", swatch: "linear-gradient(120deg,#fcfaf2,#f5f1e3)" },
+    { key: "light-2", mode: "light", label: "蝶豆花藍", swatch: "linear-gradient(120deg,#eef2ff,#dfe8ff)" },
+    { key: "light-3", mode: "light", label: "薄荷淺綠", swatch: "linear-gradient(120deg,#ecf9f4,#e9f2ff)" },
+    { key: "light-4", mode: "light", label: "粉紅風鈴", swatch: "linear-gradient(120deg,#ffeef5,#f6e9f1)" },
+    { key: "light-5", mode: "light", label: "綠豆沙褐", swatch: "linear-gradient(120deg,#fff4e9,#f6ecdf)" },
+    { key: "light-6", mode: "light", label: "薰衣草紫", swatch: "linear-gradient(120deg,#f7efff,#efe4fb)" },
+    { key: "dark", mode: "dark", label: "黑巧克力", swatch: "linear-gradient(120deg,#2d2c29,#383632)" },
+    { key: "dark-2", mode: "dark", label: "青木原海", swatch: "linear-gradient(120deg,#1a2b25,#23362e)" },
+    { key: "dark-3", mode: "dark", label: "黑鳶尾花", swatch: "linear-gradient(120deg,#161e2b,#1e2a3d)" },
+    { key: "dark-4", mode: "dark", label: "紅紫蘇葉", swatch: "linear-gradient(120deg,#2b1a1a,#3d2222)" },
+    { key: "dark-5", mode: "dark", label: "義式珈琲", swatch: "linear-gradient(120deg,#2b231a,#3d3122)" },
+    { key: "dark-6", mode: "dark", label: "紫非洲菫", swatch: "linear-gradient(120deg,#241a2f,#352348)" }
   ];
 
   const state = {
-    storageMode: "indexeddb",
+    storageMode: "file",
     fileHandle: null,
     categories: []
   };
@@ -43,7 +45,6 @@
     importCsvFileBtn: document.getElementById("importCsvFileBtn"),
     importJsonFileInput: document.getElementById("importJsonFileInput"),
     importJsonFileBtn: document.getElementById("importJsonFileBtn"),
-    storageModeLabel: document.getElementById("storageModeLabel"),
     newCategoryInput: document.getElementById("newCategoryInput"),
     addCategoryBtn: document.getElementById("addCategoryBtn"),
     categoryList: document.getElementById("categoryList"),
@@ -54,6 +55,15 @@
   };
 
   let themePickerMode = "light";
+  let categoryPressTimer = null;
+  let categoryPressChip = null;
+  let categoryDraggingChip = null;
+  let categoryDragActive = false;
+  let categoryStartX = 0;
+  let categoryStartY = 0;
+
+  const CATEGORY_LONG_PRESS_MS = 420;
+  const CATEGORY_MOVE_TOLERANCE = 10;
 
   function createNativeBridge() {
     if (!window.AndroidBridge) {
@@ -138,15 +148,6 @@
     if (ui.errorModal) {
       ui.errorModal.classList.add("hidden");
     }
-  }
-
-  function updateStorageModeLabel() {
-    if (!ui.storageModeLabel) {
-      return;
-    }
-    const modeText = state.storageMode === "file" ? "檔案資料庫模式" : "內建資料庫模式（IndexedDB）";
-    ui.storageModeLabel.textContent = `模式：${modeText}`;
-    ui.storageModeLabel.title = modeText;
   }
 
   function findThemePreset(themeKey) {
@@ -298,6 +299,7 @@
     state.categories.forEach((category) => {
       const chip = document.createElement("div");
       chip.className = "category-chip";
+      chip.setAttribute("data-category", category);
       chip.innerHTML = `
         <span>${escapeHtml(category)}</span>
         <button class="chip-delete" type="button" data-delete-category="${escapeHtml(category)}" aria-label="刪除分類">×</button>
@@ -313,6 +315,45 @@
       .replaceAll(">", "&gt;")
       .replaceAll("\"", "&quot;")
       .replaceAll("'", "&#39;");
+  }
+
+  function cancelCategoryPressTimer() {
+    clearTimeout(categoryPressTimer);
+    categoryPressTimer = null;
+  }
+
+  function resetCategoryDragState() {
+    if (categoryDraggingChip) {
+      categoryDraggingChip.classList.remove("is-dragging");
+    }
+    if (ui.categoryList) {
+      ui.categoryList.classList.remove("is-reordering");
+    }
+    categoryPressChip = null;
+    categoryDraggingChip = null;
+    categoryDragActive = false;
+    cancelCategoryPressTimer();
+  }
+
+  function findCategoryChipFromPoint(clientX, clientY) {
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el || !el.closest) {
+      return null;
+    }
+    const chip = el.closest(".category-chip");
+    if (!chip || chip.parentElement !== ui.categoryList) {
+      return null;
+    }
+    return chip;
+  }
+
+  function applyCategoryDomOrderToState() {
+    const ordered = Array.from(ui.categoryList.querySelectorAll(".category-chip"))
+      .map((chip) => String(chip.getAttribute("data-category") || "").trim())
+      .filter(Boolean);
+    if (ordered.length === state.categories.length) {
+      state.categories = ordered;
+    }
   }
 
   async function getAllProductsFromIndexedDb() {
@@ -521,17 +562,35 @@
     return lines.join("\r\n");
   }
 
-  function toJsonBackup(products, categories) {
-    return JSON.stringify(
-      {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        products: Array.isArray(products) ? products : [],
-        categories: Array.isArray(categories) ? categories : []
+  function buildBackupJsonPayload(products) {
+    const now = new Date().toISOString();
+    return {
+      schema: "expiry-manager-backup",
+      version: 1,
+      exportedAt: now,
+      app: {
+        db: APP_DB,
+        mode: state.storageMode || "file"
       },
-      null,
-      2
-    );
+      settings: {
+        categories: Array.isArray(state.categories) ? state.categories : [],
+        theme: localStorage.getItem(THEME_SETTING_KEY) || "light"
+      },
+      products: Array.isArray(products) ? products : []
+    };
+  }
+
+  async function downloadJson(filename, payloadObj) {
+    const content = JSON.stringify(payloadObj, null, 2);
+    const blob = new Blob([content], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   async function readSelectedJsonText() {
@@ -554,22 +613,91 @@
     });
   }
 
-  function parseJsonBackup(text) {
-    const raw = JSON.parse(String(text || "{}"));
-    const products = Array.isArray(raw) ? raw : (Array.isArray(raw.products) ? raw.products : []);
-    const categories = Array.isArray(raw.categories) ? raw.categories : [];
-    if (!Array.isArray(products)) {
-      throw new Error("JSON 格式錯誤：缺少 products 陣列");
+  function parseBackupProducts(rawProducts) {
+    if (!Array.isArray(rawProducts)) {
+      throw new Error("JSON 內容缺少 products 陣列");
     }
-    return { products, categories };
+    const output = [];
+    rawProducts.forEach((item) => {
+      if (!item || typeof item !== "object") {
+        return;
+      }
+      const category = String(item.category || "").trim();
+      const name = String(item.name || "").trim();
+      const barcode = String(item.barcode || "").trim();
+      const expiryDate = normalizeDateInput(item.expiryDate);
+      if (!category || !name || !barcode || !expiryDate) {
+        return;
+      }
+      output.push({
+        id: item.id
+          ? String(item.id)
+          : (typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `id_${Date.now()}_${Math.random().toString(16).slice(2)}`),
+        category,
+        name,
+        barcode,
+        expiryDate,
+        createdAt: item.createdAt ? String(item.createdAt) : new Date().toISOString()
+      });
+    });
+    return output;
   }
 
-  async function downloadFile(filename, content, mimeType = "application/octet-stream") {
+  async function restoreFromBackupJson(text) {
+    let parsed;
+    try {
+      parsed = JSON.parse(String(text || ""));
+    } catch (_error) {
+      throw new Error("JSON 內容格式錯誤");
+    }
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("JSON 內容無效");
+    }
+
+    const importedProducts = parseBackupProducts(parsed.products);
+    const existingProducts = await getAllProductsFromIndexedDb();
+    const mergedProducts = mergeProductsKeepExisting(existingProducts, importedProducts);
+    const addedCount = Math.max(0, mergedProducts.length - existingProducts.length);
+
+    const ok = window.confirm(`將新增 ${addedCount} 筆商品資料，是否繼續還原？`);
+    if (!ok) {
+      return { addedCount: 0, totalCount: existingProducts.length, cancelled: true };
+    }
+
+    await replaceAllProductsIndexedDb(mergedProducts);
+
+    const existingCategories = Array.isArray(state.categories) ? state.categories : [];
+    const backupCategories = parsed.settings && Array.isArray(parsed.settings.categories)
+      ? parsed.settings.categories.map((c) => String(c || "").trim()).filter(Boolean)
+      : [];
+    const derivedCategories = Array.from(new Set(mergedProducts.map((p) => p.category)));
+    const categories = Array.from(new Set([...existingCategories, ...backupCategories, ...derivedCategories]));
+    if (categories.length > 0) {
+      state.categories = categories;
+      await setCategories(state.categories);
+      renderCategories();
+    }
+
+    const backupTheme = parsed.settings && parsed.settings.theme ? String(parsed.settings.theme) : "";
+    if (backupTheme) {
+      applyTheme(backupTheme);
+    }
+
+    if (await hasSelectedFile()) {
+      await writeProductsToSelectedFile(mergedProducts);
+    }
+
+    return { addedCount, totalCount: mergedProducts.length, cancelled: false };
+  }
+
+  async function downloadCsv(filename, content) {
     if (isNativeFileMode() && typeof nativeBridge.exportCsv === "function") {
       await nativeBridge.exportCsv(filename, content);
       return;
     }
-    const blob = new Blob([content], { type: mimeType });
+    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -581,15 +709,8 @@
   }
 
   async function loadInitialState() {
-    const savedMode = await getSetting(MODE_SETTING_KEY);
-    state.storageMode = savedMode === "file" ? "file" : "indexeddb";
-    state.fileHandle = null;
-    if (!isNativeFileMode() && state.storageMode === "file") {
-      state.storageMode = "indexeddb";
-      await setSetting(MODE_SETTING_KEY, "indexeddb");
-      showToast("已自動切回內建資料庫模式（網頁版無法保留檔案存取授權）");
-    }
-    updateStorageModeLabel();
+    state.storageMode = "file";
+    await setSetting(MODE_SETTING_KEY, "file");
 
     state.categories = await getCategories();
     renderCategories();
@@ -639,7 +760,7 @@
         const products = await getAllProductsFromIndexedDb();
         const csv = toCsv(products);
         const today = new Date().toISOString().slice(0, 10);
-        await downloadFile(`expiry-products-${today}.csv`, csv, "text/csv;charset=utf-8;");
+        await downloadCsv(`expiry-products-${today}.csv`, csv);
         showToast("CSV 匯出成功");
       } catch (error) {
         showToast(`匯出失敗: ${error.message}`, true);
@@ -650,13 +771,12 @@
       ui.exportJsonBtn.addEventListener("click", async () => {
         try {
           const products = await getAllProductsFromIndexedDb();
-          const categories = await getCategories();
-          const payload = toJsonBackup(products, categories);
+          const payload = buildBackupJsonPayload(products);
           const today = new Date().toISOString().slice(0, 10);
-          await downloadFile(`expiry-backup-${today}.json`, payload, "application/json;charset=utf-8;");
-          showToast("JSON 備份匯出成功");
+          await downloadJson(`expiry-backup-${today}.json`, payload);
+          showToast("JSON 備份成功");
         } catch (error) {
-          showToast(`JSON 匯出失敗: ${error.message}`, true);
+          showToast(`JSON 備份失敗: ${error.message}`, true);
         }
       });
     }
@@ -666,14 +786,6 @@
         ui.importCsvFileInput.click();
       }
     });
-
-    if (ui.importJsonFileBtn) {
-      ui.importJsonFileBtn.addEventListener("click", () => {
-        if (ui.importJsonFileInput) {
-          ui.importJsonFileInput.click();
-        }
-      });
-    }
 
     ui.importCsvFileInput.addEventListener("change", async () => {
       try {
@@ -702,41 +814,25 @@
       }
     });
 
+    if (ui.importJsonFileBtn) {
+      ui.importJsonFileBtn.addEventListener("click", async () => {
+        if (ui.importJsonFileInput) {
+          ui.importJsonFileInput.click();
+        }
+      });
+    }
+
     if (ui.importJsonFileInput) {
       ui.importJsonFileInput.addEventListener("change", async () => {
         try {
           const jsonText = await readSelectedJsonText();
-          const parsed = parseJsonBackup(jsonText);
-          const existingProducts = await getAllProductsFromIndexedDb();
-          const mergedPreview = mergeProductsKeepExisting(existingProducts, parsed.products);
-          const addedCountPreview = Math.max(0, mergedPreview.length - existingProducts.length);
-          const shouldContinue = window.confirm(
-            `JSON 還原預覽：將新增 ${addedCountPreview} 筆資料。\n是否繼續還原？`
-          );
-          if (!shouldContinue) {
-            ui.importJsonFileInput.value = "";
+          const result = await restoreFromBackupJson(jsonText);
+          if (result.cancelled) {
             showToast("已取消 JSON 還原");
+            ui.importJsonFileInput.value = "";
             return;
           }
-          const products = mergedPreview;
-          await replaceAllProductsIndexedDb(products);
-
-          const importedCategories = Array.isArray(parsed.categories) ? parsed.categories : [];
-          const mergedCategories = Array.from(new Set([
-            ...state.categories,
-            ...products.map((p) => p.category).filter(Boolean),
-            ...importedCategories
-          ]));
-          state.categories = mergedCategories;
-          await setCategories(state.categories);
-          renderCategories();
-
-          if (await hasSelectedFile()) {
-            await writeProductsToSelectedFile(products);
-          }
-
-          const addedCount = Math.max(0, products.length - existingProducts.length);
-          showToast(`JSON 還原成功，新增 ${addedCount} 筆，目前共 ${products.length} 筆`);
+          showToast(`JSON 還原成功，新增 ${result.addedCount} 筆，目前共 ${result.totalCount} 筆商品`);
           ui.importJsonFileInput.value = "";
         } catch (error) {
           showToast(`JSON 還原失敗: ${error.message}`, true);
@@ -756,7 +852,6 @@
         return;
       }
       state.categories.push(value);
-      state.categories.sort((a, b) => a.localeCompare(b, "zh-Hant"));
       try {
         await setCategories(state.categories);
         renderCategories();
@@ -787,6 +882,93 @@
         showToast("分類已刪除");
       } catch (error) {
         showToast(`刪除失敗: ${error.message}`, true);
+      }
+    });
+
+    ui.categoryList.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+      if (event.target && event.target.closest && event.target.closest(".chip-delete")) {
+        return;
+      }
+      const chip = event.target && event.target.closest ? event.target.closest(".category-chip") : null;
+      if (!chip || chip.parentElement !== ui.categoryList) {
+        return;
+      }
+      categoryPressChip = chip;
+      categoryStartX = Number(event.clientX) || 0;
+      categoryStartY = Number(event.clientY) || 0;
+      cancelCategoryPressTimer();
+      categoryPressTimer = setTimeout(() => {
+        categoryDragActive = true;
+        categoryDraggingChip = categoryPressChip;
+        if (categoryDraggingChip) {
+          categoryDraggingChip.classList.add("is-dragging");
+        }
+        ui.categoryList.classList.add("is-reordering");
+      }, CATEGORY_LONG_PRESS_MS);
+    });
+
+    ui.categoryList.addEventListener("pointermove", (event) => {
+      if (!categoryPressChip) {
+        return;
+      }
+      const x = Number(event.clientX) || 0;
+      const y = Number(event.clientY) || 0;
+      if (!categoryDragActive) {
+        const dx = Math.abs(x - categoryStartX);
+        const dy = Math.abs(y - categoryStartY);
+        if (dx > CATEGORY_MOVE_TOLERANCE || dy > CATEGORY_MOVE_TOLERANCE) {
+          cancelCategoryPressTimer();
+          categoryPressChip = null;
+        }
+        return;
+      }
+      event.preventDefault();
+      const targetChip = findCategoryChipFromPoint(x, y);
+      if (!targetChip || !categoryDraggingChip || targetChip === categoryDraggingChip) {
+        return;
+      }
+      const targetRect = targetChip.getBoundingClientRect();
+      const insertAfter = x > targetRect.left + targetRect.width / 2;
+      if (insertAfter) {
+        ui.categoryList.insertBefore(categoryDraggingChip, targetChip.nextSibling);
+      } else {
+        ui.categoryList.insertBefore(categoryDraggingChip, targetChip);
+      }
+    });
+
+    const finalizeCategoryReorder = async () => {
+      const didReorder = categoryDragActive;
+      resetCategoryDragState();
+      if (!didReorder) {
+        return;
+      }
+      applyCategoryDomOrderToState();
+      try {
+        await setCategories(state.categories);
+        renderCategories();
+        showToast("分類排序已更新");
+      } catch (error) {
+        showToast(`分類排序儲存失敗: ${error.message}`, true);
+      }
+    };
+
+    ui.categoryList.addEventListener("pointerup", () => {
+      finalizeCategoryReorder();
+    });
+    ui.categoryList.addEventListener("pointercancel", () => {
+      finalizeCategoryReorder();
+    });
+    ui.categoryList.addEventListener("pointerleave", () => {
+      if (!categoryDragActive) {
+        resetCategoryDragState();
+      }
+    });
+    ui.categoryList.addEventListener("contextmenu", (event) => {
+      if (categoryDragActive || categoryPressTimer) {
+        event.preventDefault();
       }
     });
   }

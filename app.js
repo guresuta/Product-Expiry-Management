@@ -8,14 +8,12 @@
   const MODE_SETTING_KEY = "storageMode";
   const DEFAULT_MODE = "indexeddb";
   const EXPIRING_SOON_DAYS = 60;
-  const BARCODE_SCANNER_HINT = "請將條碼對準鏡頭中央";
-  const OCR_SCANNER_HINT = "請框選要辨識的文字";
+  const SCANNER_CENTER_HINT = "請把條碼對準鏡頭中央。";
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
-  const UNCATEGORIZED_LABEL = "未分類";
   const THEME_KEYS = new Set([
-    "light", "light-2", "light-3", "light-4", "light-5",
-    "dark", "dark-2", "dark-3", "dark-4", "dark-5"
+    "light", "light-2", "light-3", "light-4", "light-5", "light-6",
+    "dark", "dark-2", "dark-3", "dark-4", "dark-5", "dark-6"
   ]);
 
   const state = {
@@ -27,17 +25,11 @@
       running: false,
       rafId: null,
       stream: null,
-      track: null,
-      capabilities: null,
       detector: null,
       mode: "barcode",
       barcodeTarget: "input",
       detecting: false,
-      lastSnapshotDataUrl: "",
-      torchOn: false,
-      roiNorm: null,
-      roiSelecting: false,
-      roiStart: null
+      lastSnapshotDataUrl: ""
     },
     formCollapsed: false
     ,
@@ -65,12 +57,6 @@
     scannerTitle: document.getElementById("scannerTitle"),
     scannerVideo: document.getElementById("scannerVideo"),
     ocrBoxesLayer: document.getElementById("ocrBoxesLayer"),
-    ocrRoiLayer: document.getElementById("ocrRoiLayer"),
-    ocrRoiBox: document.getElementById("ocrRoiBox"),
-    clearOcrRoiBtn: document.getElementById("clearOcrRoiBtn"),
-    focusRing: document.getElementById("focusRing"),
-    torchWrap: document.getElementById("torchWrap"),
-    toggleTorchBtn: document.getElementById("toggleTorchBtn"),
     exposureWrap: document.getElementById("exposureWrap"),
     exposureSlider: document.getElementById("exposureSlider"),
     exposureValue: document.getElementById("exposureValue"),
@@ -96,12 +82,6 @@
     errorModal: document.getElementById("errorModal"),
     errorModalMessage: document.getElementById("errorModalMessage"),
     closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
-    ocrResultModal: document.getElementById("ocrResultModal"),
-    ocrCandidateList: document.getElementById("ocrCandidateList"),
-    ocrSelectedText: document.getElementById("ocrSelectedText"),
-    applyOcrTextBtn: document.getElementById("applyOcrTextBtn"),
-    clearOcrTextBtn: document.getElementById("clearOcrTextBtn"),
-    closeOcrResultModalBtn: document.getElementById("closeOcrResultModalBtn"),
     productTableBody: document.getElementById("productTableBody"),
     selectAllProducts: document.getElementById("selectAllProducts"),
     selectAllProductsMobile: document.getElementById("selectAllProductsMobile"),
@@ -237,169 +217,6 @@
     return !!nativeBridge;
   }
 
-  function isIosDevice() {
-    const ua = String(navigator.userAgent || "");
-    const platform = String(navigator.platform || "");
-    const isTouchMac = platform === "MacIntel" && navigator.maxTouchPoints > 1;
-    return /iPhone|iPad|iPod/i.test(ua) || isTouchMac;
-  }
-
-  function getScannerHint(mode) {
-    return mode === "ocr" ? OCR_SCANNER_HINT : BARCODE_SCANNER_HINT;
-  }
-
-  function isLandscapeByViewport() {
-    return (window.innerWidth || 0) > (window.innerHeight || 0);
-  }
-
-  function isSmallLandscapeByDeviceResolution() {
-    const sw = Number(window.screen && window.screen.width) || 0;
-    const sh = Number(window.screen && window.screen.height) || 0;
-    const shortEdge = Math.min(sw, sh);
-    return isLandscapeByViewport() && shortEdge > 0 && shortEdge <= 600;
-  }
-
-  function applySearchRowLayoutByDeviceResolution() {
-    if (!ui.searchInput || !ui.scanSearchBtn) {
-      return;
-    }
-    const row = ui.searchInput.closest(".search-row");
-    if (!row) {
-      return;
-    }
-
-    const forceInline = isSmallLandscapeByDeviceResolution();
-    document.body.classList.toggle("force-search-inline", forceInline);
-  }
-
-  function syncListToolControlHeights() {
-    if (!ui.searchInput || !ui.scanSearchBtn || !ui.categoryFilter || !ui.sortSelect) {
-      return;
-    }
-    const baseHeight = Math.ceil(Math.max(
-      ui.categoryFilter.getBoundingClientRect().height || 0,
-      ui.sortSelect.getBoundingClientRect().height || 0
-    ));
-    if (!baseHeight) {
-      return;
-    }
-    ui.searchInput.style.height = `${baseHeight}px`;
-    ui.searchInput.style.minHeight = `${baseHeight}px`;
-    ui.scanSearchBtn.style.height = `${baseHeight}px`;
-    ui.scanSearchBtn.style.minHeight = `${baseHeight}px`;
-  }
-
-  function preprocessImageForOcr(imageDataUrl, rotateDeg = 0) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const srcW = img.naturalWidth || img.width;
-        const srcH = img.naturalHeight || img.height;
-        if (!srcW || !srcH) {
-          reject(new Error("無法讀取影像尺寸"));
-          return;
-        }
-        const scale = Math.min(1.35, Math.max(1, 1400 / Math.max(srcW, srcH)));
-        const width = Math.max(1, Math.round(srcW * scale));
-        const height = Math.max(1, Math.round(srcH * scale));
-        const canvas = document.createElement("canvas");
-        const quarterTurns = ((((Math.round(rotateDeg / 90) % 4) + 4) % 4));
-        const swapWH = quarterTurns % 2 === 1;
-        canvas.width = swapWH ? height : width;
-        canvas.height = swapWH ? width : height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("無法建立 OCR 前處理畫布"));
-          return;
-        }
-        ctx.save();
-        if (quarterTurns === 1) {
-          ctx.translate(canvas.width, 0);
-          ctx.rotate(Math.PI / 2);
-        } else if (quarterTurns === 2) {
-          ctx.translate(canvas.width, canvas.height);
-          ctx.rotate(Math.PI);
-        } else if (quarterTurns === 3) {
-          ctx.translate(0, canvas.height);
-          ctx.rotate(-Math.PI / 2);
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-        ctx.restore();
-        const imageData = ctx.getImageData(0, 0, width, height);
-        const data = imageData.data;
-        let mean = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          let y = 0.299 * r + 0.587 * g + 0.114 * b;
-          y = (y - 128) * 1.22 + 128; // 輕量對比增強（偏重速度）
-          const v = Math.max(0, Math.min(255, y));
-          mean += v;
-          data[i] = v;
-          data[i + 1] = v;
-          data[i + 2] = v;
-        }
-        // 近似自適應二值化：以區塊平均亮度作為局部門檻
-        mean /= (data.length / 4);
-        const globalBase = Math.max(95, Math.min(185, mean * 0.95));
-        const block = 24;
-        for (let by = 0; by < height; by += block) {
-          for (let bx = 0; bx < width; bx += block) {
-            const yEnd = Math.min(height, by + block);
-            const xEnd = Math.min(width, bx + block);
-            let sum = 0;
-            let count = 0;
-            for (let y = by; y < yEnd; y += 1) {
-              for (let x = bx; x < xEnd; x += 1) {
-                const idx = (y * width + x) * 4;
-                sum += data[idx];
-                count += 1;
-              }
-            }
-            const localMean = count > 0 ? (sum / count) : globalBase;
-            const threshold = Math.max(70, Math.min(210, localMean * 0.92));
-            for (let y = by; y < yEnd; y += 1) {
-              for (let x = bx; x < xEnd; x += 1) {
-                const idx = (y * width + x) * 4;
-                const v = data[idx] > threshold ? 255 : 0;
-                data[idx] = v;
-                data[idx + 1] = v;
-                data[idx + 2] = v;
-              }
-            }
-          }
-        }
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = () => reject(new Error("OCR 前處理失敗：影像載入錯誤"));
-      img.src = imageDataUrl;
-    });
-  }
-
-  async function runTesseractOcr(imageDataUrl) {
-    if (!window.Tesseract || typeof window.Tesseract.recognize !== "function") {
-      throw new Error("OCR 引擎尚未載入，請檢查網路後重試");
-    }
-    const processedImage = await preprocessImageForOcr(imageDataUrl, 0);
-    const result = await window.Tesseract.recognize(processedImage, "chi_tra", {
-      tessedit_pageseg_mode: "6",
-      tessedit_char_whitelist: " 一-龥",
-      tessedit_char_blacklist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()-_=+[]{}\\|;:'\",.<>/?，。！？；：、（）《》【】「」『』．",
-      preserve_interword_spaces: "1"
-    });
-    const text = normalizeOcrChineseText((result && result.data && result.data.text) || "");
-    const candidates = extractOcrCandidates(result)
-      .map((item) => normalizeOcrChineseText(item))
-      .filter(Boolean);
-    const normalizedText = text || candidates[0] || "";
-    if (!normalizedText && candidates.length === 0) {
-      return { text: "", candidates: [] };
-    }
-    return { text: normalizedText, candidates };
-  }
-
   function showToast(message, isError = false) {
     if (isError) {
       showErrorModal(message);
@@ -426,70 +243,6 @@
     if (ui.errorModal) {
       ui.errorModal.classList.add("hidden");
     }
-  }
-
-  function extractOcrCandidates(result) {
-    const lines = ((result && result.data && result.data.lines) || [])
-      .map((line) => String(line.text || "").trim())
-      .filter(Boolean);
-    if (lines.length > 0) {
-      return Array.from(new Set(lines));
-    }
-    const fullText = String((result && result.data && result.data.text) || "");
-    return Array.from(new Set(
-      fullText
-        .split(/\r?\n|[|]/g)
-        .map((s) => s.trim())
-        .filter(Boolean)
-    ));
-  }
-
-  function normalizeOcrChineseText(value) {
-    return String(value || "")
-      .replace(/[^\u4e00-\u9fff\s]/g, "")
-      .replace(/\s+/g, "")
-      .trim();
-  }
-
-  function closeOcrResultModal() {
-    if (ui.ocrResultModal) {
-      ui.ocrResultModal.classList.add("hidden");
-    }
-    if (ui.ocrCandidateList) {
-      ui.ocrCandidateList.innerHTML = "";
-    }
-    if (ui.ocrSelectedText) {
-      ui.ocrSelectedText.value = "";
-    }
-  }
-
-  function appendSelectedOcrText(text) {
-    if (!ui.ocrSelectedText || !text) {
-      return;
-    }
-    const current = String(ui.ocrSelectedText.value || "").trim();
-    ui.ocrSelectedText.value = current ? `${current} ${text}` : text;
-  }
-
-  function openOcrResultModal(candidates) {
-    const safeCandidates = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
-    if (!ui.ocrResultModal || !ui.ocrCandidateList || !ui.ocrSelectedText) {
-      if (safeCandidates[0]) {
-        ui.nameInput.value = safeCandidates[0];
-      }
-      return;
-    }
-    ui.ocrCandidateList.innerHTML = "";
-    safeCandidates.forEach((text) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "ocr-candidate-btn";
-      btn.textContent = text;
-      btn.addEventListener("click", () => appendSelectedOcrText(text));
-      ui.ocrCandidateList.appendChild(btn);
-    });
-    ui.ocrSelectedText.value = safeCandidates[0] || "";
-    ui.ocrResultModal.classList.remove("hidden");
   }
 
   function playTone(type) {
@@ -584,12 +337,6 @@
     });
   }
 
-  async function setSetting(key, value) {
-    await withStore(STORE_SETTINGS, "readwrite", (store) => {
-      store.put({ key, value });
-    });
-  }
-
   async function replaceAllProductsIndexedDb(products) {
     await withStore(STORE_PRODUCTS, "readwrite", (store) => {
       const clearReq = store.clear();
@@ -676,8 +423,9 @@
       return;
     }
     const fromSettings = state.categories || [];
-    const fromProducts = state.products.map((item) => normalizeCategory(item.category));
-    const all = Array.from(new Set([UNCATEGORIZED_LABEL, ...fromSettings, ...fromProducts]));
+    const hasUncategorized = state.products.some((item) => !String(item.category || "").trim());
+    const fromProducts = state.products.map((item) => item.category).filter(Boolean);
+    const all = Array.from(new Set([...fromSettings, ...fromProducts]));
     const current = ui.categoryFilter.value || "";
 
     ui.categoryFilter.innerHTML = "";
@@ -693,12 +441,18 @@
       ui.categoryFilter.appendChild(option);
     });
 
-    ui.categoryFilter.value = all.includes(current) ? current : "";
-  }
+    if (hasUncategorized || !all.includes("未分類")) {
+      const option = document.createElement("option");
+      option.value = "__uncategorized__";
+      option.textContent = "未分類";
+      ui.categoryFilter.appendChild(option);
+    }
 
-  function normalizeCategory(value) {
-    const text = String(value || "").trim();
-    return text || UNCATEGORIZED_LABEL;
+    if (current === "__uncategorized__") {
+      ui.categoryFilter.value = "__uncategorized__";
+      return;
+    }
+    ui.categoryFilter.value = all.includes(current) ? current : "";
   }
 
   function serializeProductsPayload(products) {
@@ -785,9 +539,7 @@
   }
 
   function compareDate(a, b) {
-    const ta = a ? new Date(`${a}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
-    const tb = b ? new Date(`${b}T00:00:00`).getTime() : Number.POSITIVE_INFINITY;
-    return ta - tb;
+    return new Date(`${a}T00:00:00`).getTime() - new Date(`${b}T00:00:00`).getTime();
   }
 
   function getStatusRank(expiryDate) {
@@ -802,9 +554,6 @@
   }
 
   function getStatus(expiryDate) {
-    if (!expiryDate) {
-      return { label: "未填寫", badgeClass: "warning" };
-    }
     const today = new Date();
     const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
     const expiry = new Date(`${expiryDate}T00:00:00`).getTime();
@@ -824,10 +573,10 @@
   }
 
   function sortForView(products) {
-    const by = ui.sortSelect ? ui.sortSelect.value : "expiry";
+    const by = ui.sortSelect ? ui.sortSelect.value : "default";
     const cloned = [...products];
     if (by === "category") {
-      return cloned.sort((a, b) => normalizeCategory(a.category).localeCompare(normalizeCategory(b.category), "zh-Hant"));
+      return cloned.sort((a, b) => a.category.localeCompare(b.category, "zh-Hant"));
     }
     if (by === "expiry") {
       return cloned.sort((a, b) => compareDate(a.expiryDate, b.expiryDate));
@@ -842,7 +591,7 @@
     if (!keyword) {
       return true;
     }
-    const text = `${normalizeCategory(product.category)} ${product.name || ""} ${product.barcode || ""}`.toLowerCase();
+    const text = `${product.category} ${product.name} ${product.barcode}`.toLowerCase();
     return text.includes(keyword.toLowerCase());
   }
 
@@ -851,7 +600,10 @@
     const categoryFilter = ui.categoryFilter ? ui.categoryFilter.value : "";
     const filtered = state.products.filter((item) => {
       const keywordMatch = productMatchesKeyword(item, keyword);
-      const categoryMatch = !categoryFilter || normalizeCategory(item.category) === categoryFilter;
+      const categoryMatch = !categoryFilter
+        || (categoryFilter === "__uncategorized__"
+          ? !String(item.category || "").trim()
+          : item.category === categoryFilter);
       return keywordMatch && categoryMatch;
     });
     const sorted = sortForView(filtered);
@@ -868,10 +620,10 @@
       tr.setAttribute("data-product-id", product.id);
       tr.setAttribute("data-barcode", product.barcode || "");
       tr.innerHTML = `
-        <td data-label="分類">${escapeHtml(normalizeCategory(product.category))}</td>
-        <td data-label="商品名稱">${escapeHtml(product.name || "")}</td>
-        <td data-label="條碼">${escapeHtml(product.barcode || "")}</td>
-        <td data-label="有效日期">${escapeHtml(product.expiryDate || "")}</td>
+        <td data-label="分類">${escapeHtml(product.category)}</td>
+        <td data-label="商品名稱">${escapeHtml(product.name)}</td>
+        <td data-label="條碼">${escapeHtml(product.barcode)}</td>
+        <td data-label="有效日期">${escapeHtml(product.expiryDate)}</td>
         <td data-label="狀態"><span class="badge ${status.badgeClass}">${status.label}</span></td>
         <td data-label="操作">
           <div class="action-stack">
@@ -885,94 +637,34 @@
       `;
       ui.productTableBody.appendChild(tr);
 
-      const LONG_PRESS_MS = 550;
-      const MOVE_TOLERANCE_PX = 12;
-      let pressStartX = 0;
-      let pressStartY = 0;
-      let longPressFired = false;
-
-      const isInteractiveTarget = (target) => {
-        return !!(target && target.closest && target.closest("input, button, select, textarea, a, label"));
-      };
-
-      const scheduleLongPress = (clientX, clientY) => {
+      tr.addEventListener("pointerdown", (event) => {
+        if (event.target && event.target.closest && event.target.closest("input.row-select-product")) {
+          return;
+        }
         clearTimeout(longPressTimer);
-        longPressFired = false;
-        pressStartX = Number(clientX) || 0;
-        pressStartY = Number(clientY) || 0;
         longPressTimer = setTimeout(() => {
-          longPressFired = true;
           openBarcodeModalForProduct(product);
-        }, LONG_PRESS_MS);
-      };
-
+        }, 600);
+      });
       const cancelLongPress = () => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
       };
-
-      const maybeCancelByMove = (clientX, clientY) => {
-        const dx = Math.abs((Number(clientX) || 0) - pressStartX);
-        const dy = Math.abs((Number(clientY) || 0) - pressStartY);
-        if (dx > MOVE_TOLERANCE_PX || dy > MOVE_TOLERANCE_PX) {
-          cancelLongPress();
-        }
-      };
-
-      tr.addEventListener("pointerdown", (event) => {
-        if (event.pointerType === "mouse" && event.button !== 0) {
-          return;
-        }
-        if (isInteractiveTarget(event.target)) {
-          return;
-        }
-        scheduleLongPress(event.clientX, event.clientY);
-      });
-      tr.addEventListener("pointermove", (event) => {
-        maybeCancelByMove(event.clientX, event.clientY);
-      });
       tr.addEventListener("pointerup", cancelLongPress);
       tr.addEventListener("pointerleave", cancelLongPress);
       tr.addEventListener("pointercancel", cancelLongPress);
-
-      // Fallback for devices/browsers where long-press may bypass pointer events.
-      tr.addEventListener("touchstart", (event) => {
-        if (isInteractiveTarget(event.target)) {
-          return;
-        }
-        const touch = event.touches && event.touches[0];
-        if (!touch) {
-          return;
-        }
-        scheduleLongPress(touch.clientX, touch.clientY);
-      }, { passive: true });
-      tr.addEventListener("touchmove", (event) => {
-        const touch = event.touches && event.touches[0];
-        if (!touch) {
-          return;
-        }
-        maybeCancelByMove(touch.clientX, touch.clientY);
-      }, { passive: true });
-      tr.addEventListener("touchend", cancelLongPress, { passive: true });
-      tr.addEventListener("touchcancel", cancelLongPress, { passive: true });
-
-      tr.addEventListener("contextmenu", (event) => {
-        if (longPressFired || longPressTimer) {
-          event.preventDefault();
-        }
-      });
     });
-    const syncSelectAllState = (checkbox) => {
-      if (!checkbox) {
+    const syncSelectAllState = (checkboxEl) => {
+      if (!checkboxEl) {
         return;
       }
       if (sorted.length === 0) {
-        checkbox.checked = false;
-        checkbox.indeterminate = false;
+        checkboxEl.checked = false;
+        checkboxEl.indeterminate = false;
       } else {
         const selectedCount = sorted.filter((item) => state.selectedProductIds.has(item.id)).length;
-        checkbox.checked = selectedCount === sorted.length;
-        checkbox.indeterminate = selectedCount > 0 && selectedCount < sorted.length;
+        checkboxEl.checked = selectedCount === sorted.length;
+        checkboxEl.indeterminate = selectedCount > 0 && selectedCount < sorted.length;
       }
     };
     syncSelectAllState(ui.selectAllProducts);
@@ -1012,19 +704,56 @@
   }
 
   async function loadInitialState() {
-    const savedMode = await getSetting(MODE_SETTING_KEY);
-    const normalizedMode = savedMode === "file" ? "file" : DEFAULT_MODE;
-    state.storageMode = normalizedMode;
-    state.fileHandle = null;
-    if (!isNativeFileMode() && state.storageMode === "file") {
-      state.storageMode = DEFAULT_MODE;
-      await setSetting(MODE_SETTING_KEY, DEFAULT_MODE);
-      showToast("已自動切回內建資料庫模式（網頁版無法保留檔案存取授權）");
-    }
+    const savedMode = (await getSetting(MODE_SETTING_KEY)) || DEFAULT_MODE;
+    const savedFileHandle = null;
+    state.storageMode = savedMode;
+    state.fileHandle = savedFileHandle || null;
+
     state.categories = await getCategories();
     renderCategoryOptions(state.categories);
     renderEditCategoryOptions(state.categories);
     renderCategoryFilterOptions();
+
+    if (state.storageMode === "file" && isNativeFileMode()) {
+      if (await hasSelectedFile()) {
+        try {
+          const fileProducts = sortProducts(await readProductsFromSelectedFile());
+          if (Array.isArray(fileProducts) && fileProducts.length > 0) {
+            state.products = fileProducts;
+          } else {
+            const indexedProducts = sortProducts(await getAllProductsFromIndexedDb());
+            state.products = indexedProducts;
+            if (indexedProducts.length > 0) {
+              await writeProductsToSelectedFile(indexedProducts);
+            }
+          }
+        } catch (error) {
+          showToast(`讀取檔案資料庫失敗: ${error.message}`, true);
+          state.products = sortProducts(await getAllProductsFromIndexedDb());
+        }
+      } else {
+        state.products = sortProducts(await getAllProductsFromIndexedDb());
+      }
+      renderProducts();
+      return;
+    }
+
+    if (state.storageMode === "file" && state.fileHandle) {
+      try {
+        const granted = await hasReadWritePermission(state.fileHandle);
+        if (granted) {
+          state.products = sortProducts(await readProductsFromSelectedFile());
+        } else {
+          state.products = sortProducts(await getAllProductsFromIndexedDb());
+          showToast("無法讀取檔案資料庫，已先顯示 IndexedDB 資料", true);
+        }
+      } catch (error) {
+        state.products = sortProducts(await getAllProductsFromIndexedDb());
+        showToast(`讀取檔案資料庫失敗: ${error.message}`, true);
+      }
+      renderProducts();
+      return;
+    }
 
     state.products = sortProducts(await getAllProductsFromIndexedDb());
     renderProducts();
@@ -1033,8 +762,14 @@
   function getProductDateFromForm() {
     const raw = ui.expiryInput.value.trim();
     if (!raw) {
-      ui.hiddenDatePicker.value = "";
-      return "";
+      const today = new Date();
+      const yyyy = String(today.getFullYear());
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      const fallback = `${yyyy}-${mm}-${dd}`;
+      ui.expiryInput.value = fallback;
+      ui.hiddenDatePicker.value = fallback;
+      return fallback;
     }
     const parsed = normalizeDateInput(raw);
     if (!parsed) {
@@ -1055,8 +790,8 @@
   async function addProductFromForm(event) {
     event.preventDefault();
 
-    const category = normalizeCategory(ui.categoryInput.value);
-    const name = ui.nameInput.value.trim();
+    const category = ui.categoryInput.value.trim() || "未分類";
+    const name = ui.nameInput.value.trim() || "未命名商品";
     const barcode = ui.barcodeInput.value.trim();
     const expiryDate = getProductDateFromForm();
 
@@ -1158,13 +893,12 @@
     if (!target) {
       throw new Error("找不到要編輯的商品");
     }
-    const category = normalizeCategory(ui.editCategorySelect.value);
+    const category = (ui.editCategorySelect.value || "").trim();
     const name = (ui.editNameInput.value || "").trim();
     const barcode = (ui.editBarcodeInput.value || "").trim();
-    const rawExpiry = String(ui.editExpiryInput.value || "").trim();
-    const expiryDate = rawExpiry ? normalizeDateInput(rawExpiry) : "";
-    if (rawExpiry && !expiryDate) {
-      throw new Error("日期格式錯誤，請使用 YYYY-MM-DD / YYYY/MM/DD / YYYYMMDD");
+    const expiryDate = normalizeDateInput(ui.editExpiryInput.value || "");
+    if (!category || !name || !barcode || !expiryDate) {
+      throw new Error("請完整填寫分類、名稱、條碼與有效日期");
     }
     const prevProducts = state.products.map((item) => ({ ...item }));
     try {
@@ -1368,14 +1102,9 @@
   }
 
 function applyFormCollapsed() {
-  const forceExpandedOnLargeScreen = window.matchMedia("(min-width: 1340px) and (min-height: 830px)").matches;
-  const isCollapsed = forceExpandedOnLargeScreen ? false : state.formCollapsed;
+  const isCollapsed = state.formCollapsed;
   const layout = document.querySelector(".layout.split-layout");
   const form = ui.productForm;
-
-  if (forceExpandedOnLargeScreen) {
-    state.formCollapsed = false;
-  }
 
   if (isCollapsed) {
     layout.classList.add("form-is-collapsed");
@@ -1402,81 +1131,6 @@ function applyFormCollapsed() {
     ui.captureOcrBtn.disabled = false;
   }
 
-  function updateTorchUi() {
-    if (!ui.torchWrap || !ui.toggleTorchBtn) {
-      return;
-    }
-    const caps = state.scanner.capabilities || {};
-    const hasTorch = !!caps.torch;
-    ui.torchWrap.classList.toggle("hidden", !hasTorch);
-    if (!hasTorch) {
-      return;
-    }
-    ui.toggleTorchBtn.textContent = state.scanner.torchOn ? "關閉手電筒" : "開啟手電筒";
-  }
-
-  async function setTorch(on) {
-    const track = state.scanner.track;
-    const caps = state.scanner.capabilities || {};
-    if (!track || !caps.torch || typeof track.applyConstraints !== "function") {
-      throw new Error("此裝置不支援手電筒控制");
-    }
-    await track.applyConstraints({ advanced: [{ torch: !!on }] });
-    state.scanner.torchOn = !!on;
-    updateTorchUi();
-  }
-
-  function showFocusRing(clientX, clientY) {
-    if (state.scanner.mode === "ocr") {
-      return;
-    }
-    if (!ui.focusRing || !ui.scannerVideo) {
-      return;
-    }
-    const rect = ui.scannerVideo.getBoundingClientRect();
-    const left = Math.max(rect.left, Math.min(rect.right, clientX));
-    const top = Math.max(rect.top, Math.min(rect.bottom, clientY));
-    ui.focusRing.style.left = `${left - rect.left}px`;
-    ui.focusRing.style.top = `${top - rect.top}px`;
-    ui.focusRing.classList.remove("hidden");
-    ui.focusRing.classList.add("show");
-    clearTimeout(showFocusRing.timer);
-    showFocusRing.timer = setTimeout(() => {
-      ui.focusRing.classList.remove("show");
-      ui.focusRing.classList.add("hidden");
-    }, 650);
-  }
-
-  async function focusAtPoint(clientX, clientY) {
-    const track = state.scanner.track;
-    const caps = state.scanner.capabilities || {};
-    if (!track || typeof track.applyConstraints !== "function") {
-      return;
-    }
-    const rect = ui.scannerVideo.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) {
-      return;
-    }
-    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
-
-    const advanced = [];
-    if (caps.pointsOfInterest) {
-      advanced.push({ pointsOfInterest: [{ x, y }] });
-    }
-    if (Array.isArray(caps.focusMode)) {
-      if (caps.focusMode.includes("single-shot")) {
-        advanced.push({ focusMode: "single-shot" });
-      } else if (caps.focusMode.includes("continuous")) {
-        advanced.push({ focusMode: "continuous" });
-      }
-    }
-    if (advanced.length === 0) {
-      return;
-    }
-    await track.applyConstraints({ advanced });
-  }
-
   async function setupCameraControls() {
     const stream = state.scanner.stream;
     if (!stream) {
@@ -1486,12 +1140,8 @@ function applyFormCollapsed() {
     if (!track) {
       return;
     }
-    state.scanner.track = track;
     const caps = typeof track.getCapabilities === "function" ? track.getCapabilities() : {};
-    state.scanner.capabilities = caps;
     const settings = typeof track.getSettings === "function" ? track.getSettings() : {};
-    state.scanner.torchOn = !!settings.torch;
-    updateTorchUi();
 
     if (ui.exposureWrap && ui.exposureSlider && ui.exposureValue) {
       const hasExposure = Number.isFinite(caps.exposureCompensation?.min) && Number.isFinite(caps.exposureCompensation?.max);
@@ -1530,53 +1180,6 @@ function applyFormCollapsed() {
     }
   }
 
-  function setOcrRoiVisible(visible) {
-    if (!ui.ocrRoiLayer || !ui.clearOcrRoiBtn) {
-      return;
-    }
-    ui.ocrRoiLayer.classList.toggle("hidden", !visible);
-    ui.clearOcrRoiBtn.classList.toggle("hidden", !visible);
-  }
-
-  function clearOcrRoiSelection() {
-    state.scanner.roiNorm = null;
-    state.scanner.roiStart = null;
-    state.scanner.roiSelecting = false;
-    if (ui.ocrRoiBox) {
-      ui.ocrRoiBox.classList.add("hidden");
-      ui.ocrRoiBox.style.left = "";
-      ui.ocrRoiBox.style.top = "";
-      ui.ocrRoiBox.style.width = "";
-      ui.ocrRoiBox.style.height = "";
-    }
-  }
-
-  function updateRoiBoxByPixels(x1, y1, x2, y2, rect) {
-    if (!ui.ocrRoiBox) {
-      return;
-    }
-    const left = Math.max(0, Math.min(x1, x2));
-    const top = Math.max(0, Math.min(y1, y2));
-    const width = Math.abs(x2 - x1);
-    const height = Math.abs(y2 - y1);
-    if (width < 4 || height < 4) {
-      ui.ocrRoiBox.classList.add("hidden");
-      state.scanner.roiNorm = null;
-      return;
-    }
-    ui.ocrRoiBox.classList.remove("hidden");
-    ui.ocrRoiBox.style.left = `${left}px`;
-    ui.ocrRoiBox.style.top = `${top}px`;
-    ui.ocrRoiBox.style.width = `${width}px`;
-    ui.ocrRoiBox.style.height = `${height}px`;
-    state.scanner.roiNorm = {
-      x: left / rect.width,
-      y: top / rect.height,
-      w: width / rect.width,
-      h: height / rect.height
-    };
-  }
-
   function captureVideoFrameDataUrl() {
     const video = ui.scannerVideo;
     const sourceWidth = video.videoWidth || 0;
@@ -1597,46 +1200,15 @@ function applyFormCollapsed() {
       throw new Error("無法建立影像畫布");
     }
     ctx.drawImage(video, 0, 0, width, height);
-
-    const roi = state.scanner.roiNorm;
-    if (!roi || state.scanner.mode !== "ocr") {
-      return canvas.toDataURL("image/png");
-    }
-
-    const displayW = video.clientWidth || width;
-    const displayH = video.clientHeight || height;
-    const videoScale = Math.max(displayW / sourceWidth, displayH / sourceHeight);
-    const drawW = sourceWidth * videoScale;
-    const drawH = sourceHeight * videoScale;
-    const offsetX = (displayW - drawW) / 2;
-    const offsetY = (displayH - drawH) / 2;
-
-    const roiLeft = roi.x * displayW;
-    const roiTop = roi.y * displayH;
-    const roiRight = roiLeft + roi.w * displayW;
-    const roiBottom = roiTop + roi.h * displayH;
-
-    const srcX1 = Math.max(0, Math.min(sourceWidth, (roiLeft - offsetX) / videoScale));
-    const srcY1 = Math.max(0, Math.min(sourceHeight, (roiTop - offsetY) / videoScale));
-    const srcX2 = Math.max(0, Math.min(sourceWidth, (roiRight - offsetX) / videoScale));
-    const srcY2 = Math.max(0, Math.min(sourceHeight, (roiBottom - offsetY) / videoScale));
-    const srcW = Math.max(1, Math.round(srcX2 - srcX1));
-    const srcH = Math.max(1, Math.round(srcY2 - srcY1));
-
-    const cropCanvas = document.createElement("canvas");
-    cropCanvas.width = srcW;
-    cropCanvas.height = srcH;
-    const cropCtx = cropCanvas.getContext("2d");
-    if (!cropCtx) {
-      return canvas.toDataURL("image/png");
-    }
-    cropCtx.drawImage(video, srcX1, srcY1, srcW, srcH, 0, 0, srcW, srcH);
-    return cropCanvas.toDataURL("image/png");
+    return canvas.toDataURL("image/jpeg", 0.72);
   }
 
-  async function runOcrFromVideo() {
+  async function runNativeMlKitOcrFromVideo() {
+    if (!(isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function")) {
+      throw new Error("目前環境不支援 Google Lens 掃描");
+    }
     ui.captureOcrBtn.disabled = true;
-    ui.scannerHint.textContent = getScannerHint("ocr");
+    ui.scannerHint.textContent = SCANNER_CENTER_HINT;
     try {
       if (!ui.scannerVideo || !ui.scannerVideo.srcObject) {
         throw new Error("[OCR_E_VIDEO_NOT_READY] 鏡頭尚未初始化完成");
@@ -1647,17 +1219,10 @@ function applyFormCollapsed() {
       const dataUrl = captureVideoFrameDataUrl();
       playTone("shutter");
       state.scanner.lastSnapshotDataUrl = dataUrl;
-      ui.scannerHint.textContent = "辨識中，請稍候...";
-      const ocrResult = await runTesseractOcr(dataUrl);
-      const text = String(ocrResult.text || "").trim();
-      if (!text) {
-        throw new Error("未辨識到文字，請調整光線或重新拍攝");
-      }
       stopScanner();
-      openOcrResultModal((ocrResult.candidates && ocrResult.candidates.length > 0) ? ocrResult.candidates : [text]);
-      showToast("OCR 完成，請選取需要文字");
+      await nativeBridge.openGoogleLensWithImageDataUrl(dataUrl);
+      showToast("已開啟 Google Lens，請在 Lens 內選字複製");
     } finally {
-      state.scanner.lastSnapshotDataUrl = "";
       if (ui.captureOcrBtn) {
         ui.captureOcrBtn.disabled = false;
       }
@@ -1672,8 +1237,12 @@ function applyFormCollapsed() {
     state.scanner.mode = mode;
     state.scanner.barcodeTarget = barcodeTarget;
     if (mode === "ocr") {
-      state.scanner.mode = "ocr";
-      state.scanner.detector = null;
+      if (isNativeFileMode() && nativeBridge && typeof nativeBridge.openGoogleLensWithImageDataUrl === "function") {
+        state.scanner.mode = "ocr_lens";
+        state.scanner.detector = null;
+      } else {
+        throw new Error("目前環境不支援 Google Lens 掃描");
+      }
     } else {
       state.scanner.detector = await createBarcodeDetector();
     }
@@ -1687,18 +1256,14 @@ function applyFormCollapsed() {
     ui.scannerTitle.textContent = mode === "barcode" ? "條碼掃描" : "文字 OCR 掃描";
     ui.scannerModal.classList.remove("hidden");
     await setupCameraControls();
-    ui.scannerHint.textContent = getScannerHint(mode);
-    setOcrRoiVisible(state.scanner.mode === "ocr");
-    if (state.scanner.mode !== "ocr") {
-      clearOcrRoiSelection();
-    }
-    setOcrCaptureButtonVisible(state.scanner.mode === "ocr");
+    ui.scannerHint.textContent = SCANNER_CENTER_HINT;
+    setOcrCaptureButtonVisible(state.scanner.mode === "ocr_lens");
     if (ui.captureOcrBtn) {
-      ui.captureOcrBtn.textContent = "拍照辨識";
+      ui.captureOcrBtn.textContent = "Google Lens掃描";
     }
     clearOcrBoxes();
     state.scanner.running = true;
-    if (state.scanner.mode !== "ocr") {
+    if (state.scanner.mode !== "ocr_lens") {
       scanLoop();
     }
   }
@@ -1737,7 +1302,7 @@ function applyFormCollapsed() {
         }
       }
     } catch (_error) {
-      ui.scannerHint.textContent = getScannerHint(state.scanner.mode);
+      ui.scannerHint.textContent = SCANNER_CENTER_HINT;
     } finally {
       state.scanner.detecting = false;
     }
@@ -1758,28 +1323,15 @@ function applyFormCollapsed() {
       state.scanner.stream.getTracks().forEach((track) => track.stop());
       state.scanner.stream = null;
     }
-    state.scanner.track = null;
-    state.scanner.capabilities = null;
-    state.scanner.torchOn = false;
-    state.scanner.lastSnapshotDataUrl = "";
 
     ui.scannerVideo.pause();
     ui.scannerVideo.srcObject = null;
     ui.scannerModal.classList.add("hidden");
     setOcrCaptureButtonVisible(false);
-    if (ui.torchWrap) {
-      ui.torchWrap.classList.add("hidden");
-    }
-    if (ui.focusRing) {
-      ui.focusRing.classList.remove("show");
-      ui.focusRing.classList.add("hidden");
-    }
     if (ui.exposureWrap) {
       ui.exposureWrap.classList.add("hidden");
     }
     clearOcrBoxes();
-    clearOcrRoiSelection();
-    setOcrRoiVisible(false);
   }
 
   function wireEvents() {
@@ -1836,18 +1388,18 @@ function applyFormCollapsed() {
         showToast(`編輯失敗: ${error.message}`, true);
       }
     });
-    const bindSelectAllChange = (checkbox) => {
-      if (!checkbox) {
+    const bindSelectAllHandler = (checkboxEl) => {
+      if (!checkboxEl) {
         return;
       }
-      checkbox.addEventListener("change", () => {
+      checkboxEl.addEventListener("change", () => {
         const rows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
         if (rows.length === 0) {
           state.selectedProductIds.clear();
           renderProducts();
           return;
         }
-        if (checkbox.checked) {
+        if (checkboxEl.checked) {
           rows.forEach((row) => {
             const rowId = row.getAttribute("data-select-id");
             if (rowId) {
@@ -1865,8 +1417,8 @@ function applyFormCollapsed() {
         renderProducts();
       });
     };
-    bindSelectAllChange(ui.selectAllProducts);
-    bindSelectAllChange(ui.selectAllProductsMobile);
+    bindSelectAllHandler(ui.selectAllProducts);
+    bindSelectAllHandler(ui.selectAllProductsMobile);
 
     ui.scanBtn.addEventListener("click", async () => {
       try {
@@ -1893,97 +1445,12 @@ function applyFormCollapsed() {
     });
 
     ui.stopScanBtn.addEventListener("click", stopScanner);
-    if (ui.toggleTorchBtn) {
-      ui.toggleTorchBtn.addEventListener("click", async () => {
-        try {
-          await setTorch(!state.scanner.torchOn);
-        } catch (error) {
-          showToast(error.message || "手電筒切換失敗", true);
-        }
-      });
-    }
-    if (ui.scannerVideo) {
-      ui.scannerVideo.addEventListener("pointerdown", async (event) => {
-        if (!state.scanner.running) {
-          return;
-        }
-        showFocusRing(event.clientX, event.clientY);
-        try {
-          await focusAtPoint(event.clientX, event.clientY);
-        } catch (_error) {
-        }
-      });
-    }
-    if (ui.ocrRoiLayer) {
-      ui.ocrRoiLayer.addEventListener("pointerdown", (event) => {
-        if (!state.scanner.running || state.scanner.mode !== "ocr") {
-          return;
-        }
-        showFocusRing(event.clientX, event.clientY);
-        focusAtPoint(event.clientX, event.clientY).catch(() => {});
-        const rect = ui.ocrRoiLayer.getBoundingClientRect();
-        if (typeof ui.ocrRoiLayer.setPointerCapture === "function") {
-          try {
-            ui.ocrRoiLayer.setPointerCapture(event.pointerId);
-          } catch (_error) {
-          }
-        }
-        state.scanner.roiSelecting = true;
-        state.scanner.roiStart = {
-          x: Math.max(0, Math.min(rect.width, event.clientX - rect.left)),
-          y: Math.max(0, Math.min(rect.height, event.clientY - rect.top))
-        };
-        updateRoiBoxByPixels(
-          state.scanner.roiStart.x,
-          state.scanner.roiStart.y,
-          state.scanner.roiStart.x,
-          state.scanner.roiStart.y,
-          rect
-        );
-      });
-      ui.ocrRoiLayer.addEventListener("pointermove", (event) => {
-        if (!state.scanner.roiSelecting || !state.scanner.roiStart) {
-          return;
-        }
-        const rect = ui.ocrRoiLayer.getBoundingClientRect();
-        const x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
-        const y = Math.max(0, Math.min(rect.height, event.clientY - rect.top));
-        updateRoiBoxByPixels(state.scanner.roiStart.x, state.scanner.roiStart.y, x, y, rect);
-      });
-      const finishRoiSelection = (event) => {
-        if (state.scanner.roiSelecting && state.scanner.roiStart) {
-          const rect = ui.ocrRoiLayer.getBoundingClientRect();
-          const endX = event ? Math.max(0, Math.min(rect.width, event.clientX - rect.left)) : state.scanner.roiStart.x;
-          const endY = event ? Math.max(0, Math.min(rect.height, event.clientY - rect.top)) : state.scanner.roiStart.y;
-          const dx = Math.abs(endX - state.scanner.roiStart.x);
-          const dy = Math.abs(endY - state.scanner.roiStart.y);
-          if (dx < 4 && dy < 4) {
-            const defaultW = rect.width * 0.46;
-            const defaultH = rect.height * 0.30;
-            const left = Math.max(0, Math.min(rect.width - defaultW, state.scanner.roiStart.x - defaultW / 2));
-            const top = Math.max(0, Math.min(rect.height - defaultH, state.scanner.roiStart.y - defaultH / 2));
-            updateRoiBoxByPixels(left, top, left + defaultW, top + defaultH, rect);
-          }
-        }
-        state.scanner.roiSelecting = false;
-        state.scanner.roiStart = null;
-      };
-      ui.ocrRoiLayer.addEventListener("pointerup", finishRoiSelection);
-      ui.ocrRoiLayer.addEventListener("pointercancel", finishRoiSelection);
-      ui.ocrRoiLayer.addEventListener("pointerleave", finishRoiSelection);
-    }
-    if (ui.clearOcrRoiBtn) {
-      ui.clearOcrRoiBtn.addEventListener("click", () => {
-        clearOcrRoiSelection();
-        showToast("已清除 OCR 框選範圍");
-      });
-    }
     if (ui.captureOcrBtn) {
       ui.captureOcrBtn.addEventListener("click", async () => {
         try {
-          await runOcrFromVideo();
+          await runNativeMlKitOcrFromVideo();
         } catch (error) {
-          ui.scannerHint.textContent = getScannerHint("ocr");
+          ui.scannerHint.textContent = SCANNER_CENTER_HINT;
           showToast(error.message, true);
         }
       });
@@ -1997,7 +1464,7 @@ function applyFormCollapsed() {
       ui.exposureSlider.addEventListener("change", async () => {
         try {
           await applyExposureCompensation(ui.exposureSlider.value);
-          ui.scannerHint.textContent = getScannerHint(state.scanner.mode);
+          ui.scannerHint.textContent = SCANNER_CENTER_HINT;
         } catch (_error) {
           showToast("此裝置不支援曝光補償", true);
         }
@@ -2069,35 +1536,6 @@ function applyFormCollapsed() {
       ui.errorModal.addEventListener("click", (event) => {
         if (event.target === ui.errorModal) {
           closeErrorModal();
-        }
-      });
-    }
-    if (ui.applyOcrTextBtn) {
-      ui.applyOcrTextBtn.addEventListener("click", () => {
-        const selected = String((ui.ocrSelectedText && ui.ocrSelectedText.value) || "").trim();
-        if (!selected) {
-          showToast("請先選取或輸入要套用的文字", true);
-          return;
-        }
-        ui.nameInput.value = selected;
-        closeOcrResultModal();
-        showToast("已套用到商品名稱");
-      });
-    }
-    if (ui.clearOcrTextBtn) {
-      ui.clearOcrTextBtn.addEventListener("click", () => {
-        if (ui.ocrSelectedText) {
-          ui.ocrSelectedText.value = "";
-        }
-      });
-    }
-    if (ui.closeOcrResultModalBtn) {
-      ui.closeOcrResultModalBtn.addEventListener("click", closeOcrResultModal);
-    }
-    if (ui.ocrResultModal) {
-      ui.ocrResultModal.addEventListener("click", (event) => {
-        if (event.target === ui.ocrResultModal) {
-          closeOcrResultModal();
         }
       });
     }
@@ -2195,26 +1633,8 @@ function applyFormCollapsed() {
       showErrorModal(msg);
     });
     wireEvents();
-    window.addEventListener("resize", applyFormCollapsed);
     applyFormCollapsed();
-    applySearchRowLayoutByDeviceResolution();
-    syncListToolControlHeights();
-    window.addEventListener("resize", applySearchRowLayoutByDeviceResolution);
-    window.addEventListener("orientationchange", applySearchRowLayoutByDeviceResolution);
-    window.addEventListener("resize", syncListToolControlHeights);
-    window.addEventListener("orientationchange", syncListToolControlHeights);
-    if (window.visualViewport && typeof window.visualViewport.addEventListener === "function") {
-      window.visualViewport.addEventListener("resize", applySearchRowLayoutByDeviceResolution);
-      window.visualViewport.addEventListener("resize", syncListToolControlHeights);
-    }
-    if (document.fonts && typeof document.fonts.ready === "object" && typeof document.fonts.ready.then === "function") {
-      document.fonts.ready.then(syncListToolControlHeights).catch(() => {});
-    }
     await loadInitialState();
-    syncListToolControlHeights();
-    if (isIosDevice() && !isNativeFileMode()) {
-      showToast("iOS 提示：OCR 使用內建辨識，建議在充足光線下拍攝");
-    }
     await registerServiceWorker();
   }
 

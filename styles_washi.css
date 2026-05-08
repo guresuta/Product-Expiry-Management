@@ -21,38 +21,109 @@ html[data-theme="dark"] {
 
 /* 更改部分開始：和紙膠帶感配色 */
 
-html[data-theme="light-2"] { /* 櫻花和紙 */
-  --bg: #fdf6f7; --bg-accent: #f9ebeb; --panel: rgba(255, 252, 252, 0.9); --line: #e8d3d8;
-  --text: #5a4a4d; --muted: #a69195; --primary: #d697ab; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: rgba(253, 246, 247, 0.95);
+html[data-theme="light-2"] {
+  --bg: #eef2ff;
+  --bg-accent: #dfe8ff;
+  --panel: rgba(255, 255, 255, 0.92);
+  --line: #cfdaf4;
+  --text: #354073;
+  --muted: #727ead;
+  --primary: #4f67c8;
+  --danger: #c87597;
+  --warn: #c89a46;
+  --ok: #79a2b8;
+  --topbar: rgba(238, 242, 255, 0.95);
 }
-html[data-theme="light-3"] { /* 蘇芳和紙 (冷綠) */
-  --bg: #f5f7f2; --bg-accent: #ecefe7; --panel: rgba(255, 255, 255, 0.9); --line: #ced6c4;
-  --text: #444a3e; --muted: #8d9682; --primary: #7a9478; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: rgba(245, 247, 242, 0.95);
+html[data-theme="light-3"] {
+  --bg: #ecf9f4;
+  --bg-accent: #e9f2ff;
+  --panel: rgba(255, 255, 255, 0.92);
+  --line: #c9d9d3;
+  --text: #314742;
+  --muted: #78958c;
+  --primary: #2e9685;
+  --danger: #d07a87;
+  --warn: #d7a24a;
+  --ok: #4d8fca;
+  --topbar: rgba(236, 249, 244, 0.95);
 }
-html[data-theme="light-4"] { /* 琉璃和紙 (淡紫藍) */
-  --bg: #f2f4f7; --bg-accent: #e8ebf0; --panel: rgba(255, 255, 255, 0.9); --line: #ccd2db;
-  --text: #3d434a; --muted: #828a96; --primary: #8ba2b5; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: rgba(242, 244, 247, 0.95);
+html[data-theme="light-4"] {
+  --bg: #ffeef5; --bg-accent: #f6e9f1; --panel: rgba(255, 255, 255, 0.92); --line: #dcc8d3;
+  --text: #503a45; --muted: #9a7888; --primary: #b15b87; --danger: #cb5f7e; --warn: #d5a14b; --ok: #8aa99b; --topbar: rgba(255, 238, 245, 0.95);
 }
-html[data-theme="light-5"] { /* 芥子和紙 */
-  --bg: #fcf9f2; --bg-accent: #f2ede1; --panel: rgba(255, 255, 255, 0.9); --line: #e0d8c3;
-  --text: #4a463a; --muted: #968e76; --primary: #b5a277; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: rgba(252, 249, 242, 0.95);
+html[data-theme="light-5"] {
+  --bg: #fff4e9; --bg-accent: #f6ecdf; --panel: rgba(255, 255, 255, 0.92); --line: #dfd1c0;
+  --text: #4d4035; --muted: #968272; --primary: #b37a46; --danger: #c9796f; --warn: #d39a42; --ok: #8fa89a; --topbar: rgba(255, 244, 233, 0.95);
+}
+html[data-theme="light-6"] {
+  --bg: #f7efff; --bg-accent: #efe4fb; --panel: rgba(255, 255, 255, 0.92); --line: #d9cbe8;
+  --text: #473a56; --muted: #8e7ea6; --primary: #7c5aa7; --danger: #c2779c; --warn: #caa25a; --ok: #8ea89a; --topbar: rgba(247, 239, 255, 0.95);
 }
 
-html[data-theme="dark-2"] { /* 深染紫 */
-  --bg: #2b2629; --bg-accent: #362f33; --panel: #332d30; --line: #4a4145;
-  --text: #e3dadf; --muted: #9c8b91; --primary: #b08e9a; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: #2b2629;
+html[data-theme="dark-2"] {
+  --bg: #1a2b25;              /* 極深的橄欖綠背景[cite: 1] */
+  --bg-accent: #23362e;       
+  --panel: #20312a;           
+  --line: #354a41;            
+  --text: #e6edea;            
+  --muted: #8ba398;           
+  --primary: #22a382;         /* 提亮的和紙綠[cite: 1] */
+  --danger: #ec705d;          /* 柔和紅[cite: 1] */
+  --warn: #f7ac3e;            /* 柔和橘[cite: 1] */
+  --ok: #94b8a6;              
+  --topbar: #1a2b25;
 }
-html[data-theme="dark-3"] { /* 墨綠和紙 */
-  --bg: #262b28; --bg-accent: #2e3630; --panel: #2d332e; --line: #414a42;
-  --text: #dae3dd; --muted: #8b9c8e; --primary: #8eaf96; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: #262b28;
+html[data-theme="dark-3"] {
+  --bg: #161e2b;              /* 深海藍背景，與 dark-2 的綠色基底區隔 */
+  --bg-accent: #1e2a3d;       /* 稍亮的藍色背景強調 */
+  --panel: #1b2433;           
+  --line: #32435c;            /* 帶藍色的灰邊線 */
+  --text: #e0e8f0;            /* 帶冷調的紙張白文字[cite: 1] */
+  --muted: #8ba3bd;           
+  --primary: #009ad9;         /* 圖片中的經典天藍色改為主色調[cite: 1] */
+  --danger: #da7f7f;          
+  --warn: #deaf4f;            
+  --ok: #21b473;              /* 將綠色改為確認/成功色，達成藍綠各半[cite: 1] */
+  --topbar: #161e2b;
 }
-html[data-theme="dark-4"] { /* 鐵紺和紙 (深藍) */
-  --bg: #25282b; --bg-accent: #2e3236; --panel: #2c3033; --line: #41464a;
-  --text: #dae0e3; --muted: #8b949c; --primary: #8ea1af; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: #25282b;
+html[data-theme="dark-4"] {
+  --bg: #2b1a1a;              /* 深褐紅背景，維持與 dark-2/3 一致的明度 */
+  --bg-accent: #3d2222;       /* 稍亮的紅褐背景強調 */
+  --panel: #331f1f;           
+  --line: #523535;            /* 帶紅色的灰邊線 */
+  --text: #f0e4e4;            /* 帶粉調的紙張白文字 */
+  --muted: #bd9b9b;           
+  --primary: #d45d5d;         /* 和紙質感的乾漆紅[cite: 1] */
+  --danger: #e25b45;          
+  --warn: #f39800;            
+  --ok: #94b4a1;              
+  --topbar: #2b1a1a;
 }
-html[data-theme="dark-5"] { /* 焦茶和紙 */
-  --bg: #2b2925; --bg-accent: #36322e; --panel: #33302c; --line: #4a453f;
-  --text: #e3deda; --muted: #9c948b; --primary: #af9c8e; --danger: #d48a8a; --warn: #e6b455; --ok: #94b4a1; --topbar: #2b2925;
+html[data-theme="dark-5"] {
+  --bg: #2b231a;              /* 深琥珀褐背景[cite: 1] */
+  --bg-accent: #3d3122;       /* 稍亮的褐橘背景強調[cite: 1] */
+  --panel: #332a1f;           
+  --line: #524635;            /* 帶橘褐色的灰邊線[cite: 1] */
+  --text: #f0ece4;            /* 暖調紙張白文字[cite: 1] */
+  --muted: #bdae9b;           
+  --primary: #f39800;         /* 鮮明的和紙橘[cite: 1] */
+  --danger: #da7f7f;          
+  --warn: #e6b455;            
+  --ok: #94b8a6;              
+  --topbar: #2b231a;
+}
+html[data-theme="dark-6"] {
+  --bg: #241a2f;
+  --bg-accent: #352348;
+  --panel: #2d2040;
+  --line: #4b3a5f;
+  --text: #efe7f7;
+  --muted: #b09ec5;
+  --primary: #9a73cc;
+  --danger: #d182aa;
+  --warn: #ceac66;
+  --ok: #9ab6a7;
+  --topbar: #241a2f;
 }
 
 /* 更改部分結束 */
@@ -125,9 +196,7 @@ margin: 0 auto;
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
 }
-
 
 .nav-link {
   /* 讓設定按鈕看起來像貼在右上角的標籤 */
@@ -151,9 +220,7 @@ margin: 0 auto;
 
 /* 響應式調整：手機版縮小字體防止擁擠 */
 @media (max-width: 600px) {
-  .actions {
-    gap: 0.4rem;
-  }
+	
   .topbar-inner .subtitle {
     display: none; /* 手機版隱藏副標題以節省空間 */
   }
@@ -162,20 +229,7 @@ margin: 0 auto;
 /* 針對直式手機的微調 */
 @media (max-width: 600px) {
   .topbar-inner h1 { font-size: 1.2rem; }
-  .filter-row { flex-direction: column; }
-  .search-row {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-  }
-  .search-row > #searchInput.search-input {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .search-row > #scanSearchBtn {
-    flex: 0 0 auto;
-    margin: 0;
-  }
+  .filter-row, .search-row { flex-direction: column; }
   
   /* 讓滾動條更明顯一點，提示使用者可以左右滑 */
   .table-wrap {
@@ -200,62 +254,6 @@ margin: 0 auto;
   .form-panel { position: sticky; top: 5rem; z-index: 10; }
   /* 收疊時左側變窄 */
   .layout.split-layout.form-is-collapsed { grid-template-columns: 100px 1fr; }
-}
-
-/* 1920x1080 等大型桌機：讓商品清單區塊向右擴充，內容維持單行 */
-@media (min-width: 1340px) and (min-height: 830px) {
-  #toggleFormBtn {
-    display: none !important;
-  }
-
-  .container {
-    width: calc(100% - 0.35rem);
-    max-width: none;
-  }
-
-  .layout.split-layout {
-    grid-template-columns: 350px minmax(0, 1fr);
-  }
-
-  .layout.split-layout.form-is-collapsed {
-    grid-template-columns: 72px minmax(0, 1fr);
-  }
-
-  .table-wrap {
-    overflow-x: hidden;
-  }
-
-  .table-wrap table {
-    table-layout: auto;
-    width: 100%;
-  }
-
-  .table-wrap th,
-  .table-wrap td {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    word-break: normal;
-  }
-
-  .list-panel {
-    min-width: 0;
-  }
-
-  .table-wrap th:nth-child(3),
-  .table-wrap td:nth-child(3) {
-    min-width: 11.5rem; /* 條碼 */
-  }
-
-  .table-wrap th:nth-child(4),
-  .table-wrap td:nth-child(4) {
-    min-width: 8.2rem; /* 有效日期 */
-  }
-
-  .list-tools .filter-row,
-  .list-tools .search-row {
-    flex-wrap: nowrap;
-  }
 }
 
 @media (max-width: 991px) {
@@ -296,36 +294,6 @@ margin: 0 auto;
   margin: 0 0 1rem;
   padding-left: 0.8rem;
   border-left: 4px solid var(--primary);
-}
-
-.list-header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-
-.list-header-top .section-title-bar {
-  margin-bottom: 0.65rem;
-}
-
-.mobile-select-all {
-  display: none;
-  align-items: center;
-  gap: 0.35rem;
-  color: var(--muted);
-  font-size: 0.86rem;
-  user-select: none;
-}
-
-.mobile-select-all .row-select-product {
-  width: 1.05rem;
-  height: 1.05rem;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
 }
 
 /* 收疊關鍵：隱藏元素 */
@@ -380,83 +348,7 @@ margin: 0 auto;
   min-width: 4.2em;
 }
 
-#scanSearchBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  box-sizing: border-box;
-  padding: 0 0.65rem;
-  line-height: 1;
-}
-
-#scanSearchBtn .stacked-btn-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  width: auto;
-  height: 100%;
-  line-height: 1;
-  text-align: center;
-}
-
-#scanSearchBtn .stacked-btn-text > span {
-  display: block;
-  line-height: 1;
-  min-width: 0;
-}
-
-@media (orientation: landscape) and (min-width: 601px) {
-#scanSearchBtn {
-  min-width: 4.2em;
-  letter-spacing: 0;
-}
-}
-
-@media (orientation: landscape) and (max-width: 1080px) {
-  #scanSearchBtn {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    line-height: 1 !important;
-  }
-  #scanSearchBtn .stacked-btn-text {
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-    height: 100% !important;
-    line-height: 1 !important;
-    transform: translateY(0) !important;
-  }
-  #scanSearchBtn .stacked-btn-text > span {
-    line-height: 1 !important;
-  }
-}
-
 @media (orientation: landscape) {
-  .list-tools .search-row {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    gap: 0.45rem;
-  }
-  .list-tools #searchInput {
-    width: auto !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-  }
-  .list-tools #scanSearchBtn {
-    flex: 0 0 auto !important;
-    margin: 0 !important;
-    align-self: center !important;
-  }
-
   #toggleFormBtn.toggle-expand-hint {
     min-width: 0;
     width: auto;
@@ -508,6 +400,21 @@ label {
 }
 
 /* --- 商品清單工具列 --- */
+.list-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.list-header .section-title-bar {
+  margin: 0 auto 0 0;
+}
+
+.list-header .list-tools {
+  flex: 1 0 100%;
+}
+
 .list-tools {
   display: flex;
   flex-direction: column;
@@ -515,36 +422,9 @@ label {
   margin-bottom: 1.5rem;
 }
 
-:root {
-  --list-tool-control-height: 2.45rem;
-}
-
 .filter-row, .search-row {
   display: flex;
   gap: 12px; /* 增加下拉選單之間或輸入框與按鈕間的間隔 */
-}
-
-.search-row {
-  flex-wrap: nowrap;
-  align-items: center;
-}
-
-.search-row > #searchInput.search-input {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.search-row > #scanSearchBtn {
-  flex: 0 0 auto;
-  align-self: stretch;
-}
-
-.list-tools .filter-row .search-input,
-.list-tools .search-row .search-input,
-.list-tools .search-row > #scanSearchBtn {
-  height: var(--list-tool-control-height);
-  min-height: var(--list-tool-control-height);
-  box-sizing: border-box;
 }
 
 /* 商品清單表格補強 */
@@ -591,7 +471,22 @@ word-break: break-word;
 }
 
 html[data-theme^="dark"] .selected-count-badge {
-  color: #e8e4d8;
+  color: #3f3a33;
+}
+
+.mobile-select-all {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.mobile-select-all input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--primary);
 }
 
 #selectAllProducts,
@@ -658,7 +553,6 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   margin-top: 0.85rem;
   margin-bottom: 0.85rem;
 }
-
 
 .theme-mode-group label {
   display: flex;
@@ -733,6 +627,10 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   background: rgba(255, 255, 255, 0.85);
   border-radius: 3px;
   padding: 0.28rem 0.4rem 0.28rem 0.6rem;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .chip-delete {
@@ -745,6 +643,28 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   color: #666;
   line-height: 1;
   font-weight: 700;
+}
+
+.category-list.is-reordering {
+  touch-action: none;
+}
+
+.category-chip.is-dragging {
+  opacity: 0.92;
+  cursor: grabbing;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.26);
+  transform: translateY(-6px) scale(1.04);
+  z-index: 10;
+  animation: chip-float 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes chip-float {
+  from {
+    transform: translateY(-5px) scale(1.035);
+  }
+  to {
+    transform: translateY(-8px) scale(1.045);
+  }
 }
 
 #categoryList.category-list {
@@ -781,7 +701,12 @@ html[data-theme="dark-5"] #categoryList .category-chip,
 html[data-theme="dark-5"] #categoryList .chip-delete,
 html[data-theme="dark-5"] .table-wrap tbody tr,
 html[data-theme="dark-5"] .table-wrap tbody td,
-html[data-theme="dark-5"] .table-wrap tbody td::before {
+html[data-theme="dark-5"] .table-wrap tbody td::before,
+html[data-theme="dark-6"] #categoryList .category-chip,
+html[data-theme="dark-6"] #categoryList .chip-delete,
+html[data-theme="dark-6"] .table-wrap tbody tr,
+html[data-theme="dark-6"] .table-wrap tbody td,
+html[data-theme="dark-6"] .table-wrap tbody td::before {
   color: #3f3a33;
 }
 
@@ -839,40 +764,6 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
   position: absolute;
   inset: 0;
   pointer-events: none;
-}
-
-.ocr-roi-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  cursor: crosshair;
-  touch-action: none;
-}
-
-.ocr-roi-box {
-  position: absolute;
-  border: 2px dashed #f7f1d5;
-  background: rgba(247, 241, 213, 0.12);
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.22);
-  pointer-events: none;
-}
-
-.focus-ring {
-  position: absolute;
-  width: 72px;
-  height: 72px;
-  margin-left: -36px;
-  margin-top: -36px;
-  border: 2px solid #f7f1d5;
-  border-radius: 10px;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.28);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-
-.focus-ring.show {
-  opacity: 1;
 }
 
 .camera-control {
@@ -933,29 +824,6 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
-}
-
-.ocr-candidate-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0.6rem 0 0.85rem;
-  max-height: 30vh;
-  overflow-y: auto;
-}
-
-.ocr-candidate-btn {
-  border: 1px solid var(--line);
-  background: var(--bg-accent);
-  color: var(--text);
-  border-radius: 2px;
-  padding: 0.35rem 0.55rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.ocr-candidate-btn:hover {
-  background: #fff;
 }
 
 #barcodeSvg {
@@ -1098,6 +966,12 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
     display: none;
   }
 
+  .mobile-select-all {
+    display: inline-flex;
+    margin: 0 0 0 auto;
+    flex-direction: row;
+  }
+
   .table-wrap tbody {
     display: flex;
     flex-direction: column;
@@ -1157,80 +1031,4 @@ html[data-theme="dark-5"] .table-wrap tbody td::before {
   .table-wrap .danger-btn {
     width: 100%;
   }
-
-  .mobile-select-all {
-    display: inline-flex;
-    justify-content: flex-end;
-    margin-bottom: 0.35rem;
-  }
-}
-
-/* 最終覆蓋：橫向小螢幕時，搜尋框與掃碼搜尋固定同列 */
-@media (max-width: 600px) and (orientation: landscape), (max-width: 600px) and (min-aspect-ratio: 1/1) {
-  .list-tools .search-row {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    column-gap: 0.45rem !important;
-    row-gap: 0 !important;
-  }
-  .list-tools .search-row > #searchInput.search-input {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-  .list-tools .search-row > #scanSearchBtn {
-    justify-self: end !important;
-    align-self: center !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-  }
-}
-
-/* 裝置解析度與 CSS viewport 不一致時的保險覆蓋（手機橫向） */
-@media (orientation: landscape) and (pointer: coarse) and (max-height: 600px) {
-  .list-tools .search-row {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    align-items: center !important;
-    column-gap: 0.45rem !important;
-    row-gap: 0 !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-  }
-  .list-tools .search-row > #searchInput.search-input {
-    width: 100% !important;
-    min-width: 0 !important;
-  }
-  .list-tools .search-row > #scanSearchBtn {
-    justify-self: end !important;
-    align-self: center !important;
-    margin: 0 !important;
-    white-space: nowrap !important;
-    width: auto !important;
-    min-width: 0 !important;
-  }
-}
-
-/* 以實際裝置解析度（screen short-edge <= 600）強制同列顯示搜尋列 */
-body.force-search-inline .list-tools .search-row {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto !important;
-  align-items: center !important;
-  column-gap: 0.45rem !important;
-  row-gap: 0 !important;
-}
-
-body.force-search-inline .list-tools .search-row > #searchInput.search-input {
-  width: 100% !important;
-  min-width: 0 !important;
-}
-
-body.force-search-inline .list-tools .search-row > #scanSearchBtn {
-  justify-self: end !important;
-  align-self: center !important;
-  margin: 0 !important;
-  width: auto !important;
-  min-width: 0 !important;
-  flex: 0 0 auto !important;
-  white-space: nowrap !important;
 }
