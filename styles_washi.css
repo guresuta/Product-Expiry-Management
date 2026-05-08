@@ -377,6 +377,20 @@ margin: 0 auto;
   }
 }
 
+@media (orientation: landscape) and (max-width: 600px) {
+  #scanSearchBtn .stacked-btn-text {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.2rem;
+    line-height: 1.2;
+  }
+  #scanSearchBtn .stacked-btn-text > span {
+    display: inline;
+    min-width: 0;
+  }
+}
+
 @media (orientation: landscape) {
   #toggleFormBtn.toggle-expand-hint {
     min-width: 0;
