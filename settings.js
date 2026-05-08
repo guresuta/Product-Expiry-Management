@@ -790,6 +790,45 @@
     });
   }
 
+  function pickFirstValue(obj, keys) {
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(obj, key) && obj[key] != null) {
+        return obj[key];
+      }
+    }
+    return "";
+  }
+
+  function extractRawProductsContainer(parsed) {
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    if (Array.isArray(parsed.products)) {
+      return parsed.products;
+    }
+    if (Array.isArray(parsed.items)) {
+      return parsed.items;
+    }
+    if (Array.isArray(parsed.records)) {
+      return parsed.records;
+    }
+    if (parsed.data && typeof parsed.data === "object") {
+      if (Array.isArray(parsed.data.products)) {
+        return parsed.data.products;
+      }
+      if (Array.isArray(parsed.data.items)) {
+        return parsed.data.items;
+      }
+      if (Array.isArray(parsed.data.records)) {
+        return parsed.data.records;
+      }
+    }
+    return null;
+  }
+
   function parseBackupProducts(rawProducts) {
     if (!Array.isArray(rawProducts)) {
       throw new Error("JSON 內容缺少 products 陣列");
@@ -799,10 +838,10 @@
       if (!item || typeof item !== "object") {
         return;
       }
-      const category = String(item.category || "").trim();
-      const name = String(item.name || "").trim();
-      const barcode = String(item.barcode || "").trim();
-      const expiryRaw = String(item.expiryDate || "").trim();
+      const category = String(pickFirstValue(item, ["category", "分類", "productCategory", "cat"])).trim();
+      const name = String(pickFirstValue(item, ["name", "商品名稱", "productName", "title"])).trim();
+      const barcode = String(pickFirstValue(item, ["barcode", "條碼", "code", "ean", "upc", "sku"])).trim();
+      const expiryRaw = String(pickFirstValue(item, ["expiryDate", "有效日期", "expiry", "expiry_date", "expireDate", "date"])).trim();
       const expiryDate = normalizeCsvDateInput(expiryRaw);
       const hasAnyField = !!(category || name || barcode || expiryRaw);
       if (!hasAnyField) {
@@ -835,7 +874,7 @@
       throw new Error("JSON 內容無效");
     }
 
-    const rawProducts = Array.isArray(parsed.products) ? parsed.products : (Array.isArray(parsed) ? parsed : null);
+    const rawProducts = extractRawProductsContainer(parsed);
     const importedProducts = parseBackupProducts(rawProducts);
     if (importedProducts.length === 0) {
       throw new Error("JSON 無有效商品資料");
