@@ -709,8 +709,13 @@
   }
 
   async function loadInitialState() {
-    state.storageMode = "file";
-    await setSetting(MODE_SETTING_KEY, "file");
+    const savedMode = await getSetting(MODE_SETTING_KEY);
+    if (savedMode === "file" || savedMode === "indexeddb") {
+      state.storageMode = savedMode;
+    } else {
+      state.storageMode = isNativeFileMode() ? "file" : "indexeddb";
+      await setSetting(MODE_SETTING_KEY, state.storageMode);
+    }
 
     state.categories = await getCategories();
     renderCategories();

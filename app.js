@@ -691,6 +691,11 @@
     await replaceAllProductsIndexedDb(state.products);
     if (state.storageMode === "file") {
       if (!(await hasSelectedFile())) {
+        if (!isNativeFileMode()) {
+          state.storageMode = "indexeddb";
+          await setSetting(MODE_SETTING_KEY, "indexeddb");
+          return;
+        }
         throw new Error("目前為檔案資料庫模式，請先到設定頁選擇資料庫檔案");
       }
       if (!isNativeFileMode()) {
@@ -708,6 +713,10 @@
     const savedFileHandle = null;
     state.storageMode = savedMode;
     state.fileHandle = savedFileHandle || null;
+    if (state.storageMode === "file" && !isNativeFileMode() && !state.fileHandle) {
+      state.storageMode = "indexeddb";
+      await setSetting(MODE_SETTING_KEY, "indexeddb");
+    }
 
     state.categories = await getCategories();
     renderCategoryOptions(state.categories);
