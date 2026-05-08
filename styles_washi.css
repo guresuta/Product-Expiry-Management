@@ -379,16 +379,21 @@ margin: 0 auto;
 
 @media (orientation: landscape) and (max-width: 600px) {
   .search-row {
+    display: flex !important;
     flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between;
     align-items: center;
     gap: 0.45rem;
   }
   #searchInput {
-    flex: 1 1 auto;
+    flex: 1 1 auto !important;
     min-width: 0;
   }
   #scanSearchBtn {
-    flex: 0 0 auto;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    align-self: center !important;
   }
 }
 
