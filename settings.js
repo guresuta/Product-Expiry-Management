@@ -59,6 +59,7 @@
   let categoryPressChip = null;
   let categoryDraggingChip = null;
   let categoryDragActive = false;
+  let categoryPointerId = null;
   let categoryStartX = 0;
   let categoryStartY = 0;
 
@@ -325,6 +326,13 @@
   function resetCategoryDragState() {
     if (categoryDraggingChip) {
       categoryDraggingChip.classList.remove("is-dragging");
+      try {
+        if (categoryPointerId !== null && categoryDraggingChip.hasPointerCapture && categoryDraggingChip.hasPointerCapture(categoryPointerId)) {
+          categoryDraggingChip.releasePointerCapture(categoryPointerId);
+        }
+      } catch (_error) {
+        // ignore release failures
+      }
     }
     if (ui.categoryList) {
       ui.categoryList.classList.remove("is-reordering");
@@ -332,6 +340,7 @@
     categoryPressChip = null;
     categoryDraggingChip = null;
     categoryDragActive = false;
+    categoryPointerId = null;
     cancelCategoryPressTimer();
   }
 
@@ -929,7 +938,9 @@
       if (!chip || chip.parentElement !== ui.categoryList) {
         return;
       }
+      event.preventDefault();
       categoryPressChip = chip;
+      categoryPointerId = event.pointerId;
       categoryStartX = Number(event.clientX) || 0;
       categoryStartY = Number(event.clientY) || 0;
       cancelCategoryPressTimer();
@@ -938,6 +949,13 @@
         categoryDraggingChip = categoryPressChip;
         if (categoryDraggingChip) {
           categoryDraggingChip.classList.add("is-dragging");
+          try {
+            if (categoryPointerId !== null && categoryDraggingChip.setPointerCapture) {
+              categoryDraggingChip.setPointerCapture(categoryPointerId);
+            }
+          } catch (_error) {
+            // ignore capture failures
+          }
         }
         ui.categoryList.classList.add("is-reordering");
       }, CATEGORY_LONG_PRESS_MS);
