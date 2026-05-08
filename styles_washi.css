@@ -478,6 +478,10 @@ label {
   margin-bottom: 1.5rem;
 }
 
+:root {
+  --list-tool-control-height: 2.45rem;
+}
+
 .filter-row, .search-row {
   display: flex;
   gap: 12px; /* 增加下拉選單之間或輸入框與按鈕間的間隔 */
@@ -496,6 +500,14 @@ label {
 .search-row > #scanSearchBtn {
   flex: 0 0 auto;
   align-self: stretch;
+}
+
+.list-tools .filter-row .search-input,
+.list-tools .search-row .search-input,
+.list-tools .search-row > #scanSearchBtn {
+  height: var(--list-tool-control-height);
+  min-height: var(--list-tool-control-height);
+  box-sizing: border-box;
 }
 
 /* 商品清單表格補強 */
