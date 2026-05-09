@@ -1342,6 +1342,10 @@ function applyFormCollapsed() {
       }
     });
     ui.productTableBody.addEventListener("contextmenu", async (event) => {
+      // 桌面滑鼠右鍵不觸發條碼視窗，避免取代左鍵長按行為
+      if (event.button === 2) {
+        return;
+      }
       const row = event.target && event.target.closest ? event.target.closest("tr[data-product-id]") : null;
       if (!row || shouldIgnoreLongPressTarget(event.target)) {
         return;
