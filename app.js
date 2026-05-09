@@ -91,6 +91,10 @@
   };
 
   let longPressTimer = null;
+  let longPressProductId = null;
+  let longPressStartX = 0;
+  let longPressStartY = 0;
+  let suppressRowClickUntil = 0;
   let brightnessRaised = false;
   let pendingDeleteIds = [];
 
@@ -578,6 +582,45 @@
     return text.includes(keyword.toLowerCase());
   }
 
+  function shouldIgnoreLongPressTarget(target) {
+    return !!(target && target.closest && target.closest("button, input, select, textarea, a, label"));
+  }
+
+  function cancelLongPress() {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    longPressProductId = null;
+  }
+
+  function scheduleLongPressForRow(rowEl, clientX, clientY) {
+    if (!rowEl) {
+      return;
+    }
+    const productId = rowEl.getAttribute("data-product-id");
+    if (!productId) {
+      return;
+    }
+    cancelLongPress();
+    longPressProductId = productId;
+    longPressStartX = Number(clientX) || 0;
+    longPressStartY = Number(clientY) || 0;
+    longPressTimer = setTimeout(async () => {
+      const target = state.products.find((item) => item.id === longPressProductId);
+      cancelLongPress();
+      if (!target) {
+        return;
+      }
+      suppressRowClickUntil = Date.now() + 450;
+      await openBarcodeModalForProduct(target);
+    }, 650);
+  }
+
+  function isLongPressMoveExceeded(clientX, clientY) {
+    const dx = Math.abs((Number(clientX) || 0) - longPressStartX);
+    const dy = Math.abs((Number(clientY) || 0) - longPressStartY);
+    return dx > 12 || dy > 12;
+  }
+
   function renderProducts() {
     const keyword = ui.searchInput.value.trim();
     const categoryFilter = ui.categoryFilter ? ui.categoryFilter.value : "";
@@ -619,23 +662,6 @@
         </td>
       `;
       ui.productTableBody.appendChild(tr);
-
-      tr.addEventListener("pointerdown", (event) => {
-        if (event.target && event.target.closest && event.target.closest("input.row-select-product")) {
-          return;
-        }
-        clearTimeout(longPressTimer);
-        longPressTimer = setTimeout(() => {
-          openBarcodeModalForProduct(product);
-        }, 600);
-      });
-      const cancelLongPress = () => {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-      };
-      tr.addEventListener("pointerup", cancelLongPress);
-      tr.addEventListener("pointerleave", cancelLongPress);
-      tr.addEventListener("pointercancel", cancelLongPress);
     });
     const syncSelectAllState = (checkboxEl) => {
       if (!checkboxEl) {
@@ -1277,6 +1303,10 @@ function applyFormCollapsed() {
     });
 
     ui.productTableBody.addEventListener("click", async (event) => {
+      if (Date.now() < suppressRowClickUntil) {
+        event.preventDefault();
+        return;
+      }
       const deleteButton = event.target.closest("button[data-delete-id]");
       const editButton = event.target.closest("button[data-edit-id]");
       const selectCheckbox = event.target.closest("input.row-select-product");
@@ -1311,6 +1341,61 @@ function applyFormCollapsed() {
         showToast(`編輯失敗: ${error.message}`, true);
       }
     });
+    ui.productTableBody.addEventListener("contextmenu", async (event) => {
+      const row = event.target && event.target.closest ? event.target.closest("tr[data-product-id]") : null;
+      if (!row || shouldIgnoreLongPressTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const productId = row.getAttribute("data-product-id");
+      const target = state.products.find((item) => item.id === productId);
+      if (!target) {
+        return;
+      }
+      suppressRowClickUntil = Date.now() + 450;
+      await openBarcodeModalForProduct(target);
+    });
+    ui.productTableBody.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse") {
+        return;
+      }
+      const row = event.target && event.target.closest ? event.target.closest("tr[data-product-id]") : null;
+      if (!row || shouldIgnoreLongPressTarget(event.target)) {
+        return;
+      }
+      scheduleLongPressForRow(row, event.clientX, event.clientY);
+    });
+    ui.productTableBody.addEventListener("pointermove", (event) => {
+      if (!longPressTimer) {
+        return;
+      }
+      if (isLongPressMoveExceeded(event.clientX, event.clientY)) {
+        cancelLongPress();
+      }
+    });
+    ui.productTableBody.addEventListener("pointerup", cancelLongPress);
+    ui.productTableBody.addEventListener("pointercancel", cancelLongPress);
+    ui.productTableBody.addEventListener("pointerleave", cancelLongPress);
+    ui.productTableBody.addEventListener("touchstart", (event) => {
+      const firstTouch = event.touches && event.touches[0];
+      const row = event.target && event.target.closest ? event.target.closest("tr[data-product-id]") : null;
+      if (!firstTouch || !row || shouldIgnoreLongPressTarget(event.target)) {
+        return;
+      }
+      scheduleLongPressForRow(row, firstTouch.clientX, firstTouch.clientY);
+    }, { passive: true });
+    ui.productTableBody.addEventListener("touchmove", (event) => {
+      if (!longPressTimer) {
+        return;
+      }
+      const firstTouch = event.touches && event.touches[0];
+      if (!firstTouch || isLongPressMoveExceeded(firstTouch.clientX, firstTouch.clientY)) {
+        cancelLongPress();
+      }
+    }, { passive: true });
+    ui.productTableBody.addEventListener("touchend", cancelLongPress, { passive: true });
+    ui.productTableBody.addEventListener("touchcancel", cancelLongPress, { passive: true });
     const bindSelectAllHandler = (checkboxEl) => {
       if (!checkboxEl) {
         return;
