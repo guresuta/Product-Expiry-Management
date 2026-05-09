@@ -20,7 +20,7 @@
 不要直接用 `file://` 開啟，請用本機 HTTP 伺服器：
 
 ```powershell
-cd "D:\AI Code\WebHAN"
+cd "檔案路徑"
 python -m http.server 8080
 ```
 
