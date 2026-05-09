@@ -1357,7 +1357,7 @@ function applyFormCollapsed() {
       await openBarcodeModalForProduct(target);
     });
     ui.productTableBody.addEventListener("pointerdown", (event) => {
-      if (event.pointerType === "mouse") {
+      if (event.pointerType === "mouse" && event.button !== 0) {
         return;
       }
       const row = event.target && event.target.closest ? event.target.closest("tr[data-product-id]") : null;
