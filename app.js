@@ -657,7 +657,6 @@
       ui.selectedCountBadge.textContent = `已勾選 ${selectedCount} 筆`;
       ui.selectedCountBadge.classList.toggle("hidden", selectedCount <= 0);
     }
-
     ui.emptyHint.style.display = sorted.length === 0 ? "block" : "none";
   }
 
@@ -891,7 +890,21 @@
     }
     const prevProducts = state.products.map((item) => ({ ...item }));
     try {
-      target.category = category;
+      const selectedIds = Array.from(state.selectedProductIds || []);
+      const selectedIdSet = new Set(
+        selectedIds.filter((selectedId) => state.products.some((item) => item.id === selectedId))
+      );
+
+      // 有勾選多筆時，編輯視窗中的分類會同步套用到所有已勾選商品
+      if (selectedIdSet.size > 1) {
+        state.products.forEach((item) => {
+          if (selectedIdSet.has(item.id)) {
+            item.category = category || "未分類";
+          }
+        });
+      } else {
+        target.category = category;
+      }
       target.name = name;
       target.barcode = barcode;
       target.barcodeFormat = (ui.editBarcodeInput && ui.editBarcodeInput.dataset && ui.editBarcodeInput.dataset.barcodeFormat)
@@ -901,7 +914,11 @@
       await persistCurrentProducts();
       renderProducts();
       closeEditProductModal();
-      showToast("商品已更新");
+      if (selectedIdSet.size > 1) {
+        showToast(`已同步更新 ${selectedIdSet.size} 筆商品分類`);
+      } else {
+        showToast("商品已更新");
+      }
     } catch (error) {
       state.products = prevProducts;
       throw error;
