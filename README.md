@@ -33,6 +33,7 @@
 - `sw.js`：Service Worker（快取/離線）
 - `manifest.webmanifest`：PWA 設定
 - `icons/`：App 圖示
+- `favicon.ico`：瀏覽器分頁 圖示
 
 ## 本機執行
 
