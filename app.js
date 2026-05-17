@@ -6,6 +6,10 @@
   const STORE_PRODUCTS = "products";
   const STORE_SETTINGS = "settings";
   const MODE_SETTING_KEY = "storageMode";
+  const STORAGE_SETUP_KEY = "storageSetupCompleted";
+  const FILE_HANDLE_SETTING_KEY = "storageFileHandle";
+  const LAST_SEEN_VERSION_KEY = "lastSeenAppVersion";
+  const INDEXEDDB_ADD_COUNT_KEY = "indexedDbAddCountSinceBackup";
   const DEFAULT_MODE = "indexeddb";
   const EXPIRING_SOON_DAYS = 60;
   const SCANNER_CENTER_HINT = "請把條碼對準鏡頭中央。";
@@ -29,24 +33,45 @@
       mode: "barcode",
       barcodeTarget: "input",
       detecting: false,
-      lastSnapshotDataUrl: ""
+      lastSnapshotDataUrl: "",
+      torchSupported: false,
+      torchOn: false,
+      torchPersistent: false
     },
-    formCollapsed: false
-    ,
+    calendarCollapsed: false,
     editingProductId: null,
-    selectedProductIds: new Set()
+    selectedProductIds: new Set(),
+    calendarMonth: new Date(),
+    calendarSelectedDate: "",
+    healthFilter: ""
   };
 
   const nativeBridge = createNativeBridge();
 
   const ui = {
     productForm: document.getElementById("productForm"),
-    toggleFormBtn: document.getElementById("toggleFormBtn"),
+    addProductModal: document.getElementById("addProductModal"),
+    openAddProductBtn: document.getElementById("openAddProductBtn"),
+    cancelAddProductBtn: document.getElementById("cancelAddProductBtn"),
+    storageSetupModal: document.getElementById("storageSetupModal"),
+    chooseIndexedDbStorageBtn: document.getElementById("chooseIndexedDbStorageBtn"),
+    chooseFileStorageBtn: document.getElementById("chooseFileStorageBtn"),
+    updateNoticeModal: document.getElementById("updateNoticeModal"),
+    updateNoticeTitle: document.getElementById("updateNoticeTitle"),
+    updateNoticeList: document.getElementById("updateNoticeList"),
+    closeUpdateNoticeBtn: document.getElementById("closeUpdateNoticeBtn"),
     categoryInput: document.getElementById("categoryInput"),
     nameInput: document.getElementById("nameInput"),
     barcodeInput: document.getElementById("barcodeInput"),
     expiryInput: document.getElementById("expiryInput"),
     pickDateBtn: document.getElementById("pickDateBtn"),
+    calendarPrevBtn: document.getElementById("calendarPrevBtn"),
+    calendarNextBtn: document.getElementById("calendarNextBtn"),
+    calendarMonthLabel: document.getElementById("calendarMonthLabel"),
+    calendarPanel: document.querySelector(".calendar-panel"),
+    calendarContent: document.getElementById("calendarContent"),
+    toggleCalendarBtn: document.getElementById("toggleCalendarBtn"),
+    expiryCalendarGrid: document.getElementById("expiryCalendarGrid"),
     hiddenDatePicker: document.getElementById("hiddenDatePicker"),
     clearFormBtn: document.getElementById("clearFormBtn"),
     scanBtn: document.getElementById("scanBtn"),
@@ -56,6 +81,7 @@
     exposureWrap: document.getElementById("exposureWrap"),
     exposureSlider: document.getElementById("exposureSlider"),
     exposureValue: document.getElementById("exposureValue"),
+    toggleTorchBtn: document.getElementById("toggleTorchBtn"),
     scannerHint: document.getElementById("scannerHint"),
     barcodeModal: document.getElementById("barcodeModal"),
     barcodeSvg: document.getElementById("barcodeSvg"),
@@ -69,6 +95,8 @@
     editNameInput: document.getElementById("editNameInput"),
     editBarcodeInput: document.getElementById("editBarcodeInput"),
     editExpiryInput: document.getElementById("editExpiryInput"),
+    editPickDateBtn: document.getElementById("editPickDateBtn"),
+    editHiddenDatePicker: document.getElementById("editHiddenDatePicker"),
     editScanBtn: document.getElementById("editScanBtn"),
     saveEditProductBtn: document.getElementById("saveEditProductBtn"),
     cancelEditProductBtn: document.getElementById("cancelEditProductBtn"),
@@ -82,6 +110,21 @@
     selectAllProducts: document.getElementById("selectAllProducts"),
     selectAllProductsMobile: document.getElementById("selectAllProductsMobile"),
     selectedCountBadge: document.getElementById("selectedCountBadge"),
+    healthCheckBar: document.getElementById("healthCheckBar"),
+    missingDateCount: document.getElementById("missingDateCount"),
+    missingBarcodeCount: document.getElementById("missingBarcodeCount"),
+    duplicateBarcodeCount: document.getElementById("duplicateBarcodeCount"),
+    expiredCount: document.getElementById("expiredCount"),
+    expiring60Count: document.getElementById("expiring60Count"),
+    expiring30Count: document.getElementById("expiring30Count"),
+    backupReminderModal: document.getElementById("backupReminderModal"),
+    backupNowBtn: document.getElementById("backupNowBtn"),
+    backupLaterBtn: document.getElementById("backupLaterBtn"),
+    duplicateBarcodeModal: document.getElementById("duplicateBarcodeModal"),
+    duplicateBarcodeMessage: document.getElementById("duplicateBarcodeMessage"),
+    overwriteDuplicateBtn: document.getElementById("overwriteDuplicateBtn"),
+    keepDuplicateBtn: document.getElementById("keepDuplicateBtn"),
+    cancelDuplicateBtn: document.getElementById("cancelDuplicateBtn"),
     emptyHint: document.getElementById("emptyHint"),
     categoryFilter: document.getElementById("categoryFilter"),
     sortSelect: document.getElementById("sortSelect"),
@@ -95,8 +138,10 @@
   let longPressStartX = 0;
   let longPressStartY = 0;
   let suppressRowClickUntil = 0;
+  let suppressNativeContextMenuUntil = 0;
   let brightnessRaised = false;
   let pendingDeleteIds = [];
+  let pendingDuplicateChoice = null;
 
   function applySavedTheme() {
     const saved = localStorage.getItem(THEME_SETTING_KEY) || "light";
@@ -196,6 +241,24 @@
 
   function isNativeFileMode() {
     return !!nativeBridge;
+  }
+
+  function supportsWebFileStorage() {
+    return typeof window.showSaveFilePicker === "function";
+  }
+
+  function supportsExternalFileStorage() {
+    return isNativeFileMode() || supportsWebFileStorage();
+  }
+
+  function getAppRelease() {
+    const release = window.APP_RELEASE || {};
+    const version = String(release.version || "v0.0.0").trim() || "v0.0.0";
+    const title = String(release.title || `${version}更新內容`).trim();
+    const items = Array.isArray(release.items)
+      ? release.items.map((item) => String(item || "").trim()).filter(Boolean)
+      : [];
+    return { version, title, items };
   }
 
   function showToast(message, isError = false) {
@@ -344,6 +407,28 @@
     return (await fileHandle.requestPermission(options)) === "granted";
   }
 
+  async function hasReadWritePermissionGrant(fileHandle) {
+    if (!fileHandle || typeof fileHandle.queryPermission !== "function") {
+      return false;
+    }
+    return (await fileHandle.queryPermission({ mode: "readwrite" })) === "granted";
+  }
+
+  async function chooseStorageFileHandle() {
+    if (!supportsWebFileStorage()) {
+      throw new Error("此瀏覽器不支援指定本機檔案位置，請使用 IndexedDB 並定期備份 JSON");
+    }
+    return window.showSaveFilePicker({
+      suggestedName: "expiry-manager-data.json",
+      types: [
+        {
+          description: "商品效期資料 JSON",
+          accept: { "application/json": [".json"] }
+        }
+      ]
+    });
+  }
+
   function parseProductsPayload(text) {
     if (!text || !String(text).trim()) {
       return [];
@@ -474,6 +559,62 @@
     await writer.close();
   }
 
+  function buildBackupJsonPayload(products) {
+    return {
+      schema: "expiry-manager-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      app: {
+        version: getAppRelease().version,
+        db: APP_DB,
+        mode: state.storageMode || "indexeddb"
+      },
+      settings: {
+        categories: state.categories || []
+      },
+      products: Array.isArray(products) ? products : []
+    };
+  }
+
+  async function downloadJson(filename, payloadObj) {
+    const content = JSON.stringify(payloadObj, null, 2);
+    const blob = new Blob([content], { type: "application/json;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function backupCurrentProductsJson() {
+    const today = new Date().toISOString().slice(0, 10);
+    await downloadJson(`expiry-backup-${today}.json`, buildBackupJsonPayload(state.products));
+    await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
+    if (ui.backupReminderModal) {
+      ui.backupReminderModal.classList.add("hidden");
+    }
+    showToast("JSON 備份成功");
+  }
+
+  async function recordIndexedDbAddForBackupReminder() {
+    try {
+      if (state.storageMode !== "indexeddb") {
+        return;
+      }
+      const current = Number(await getSetting(INDEXEDDB_ADD_COUNT_KEY)) || 0;
+      const next = current + 1;
+      await setSetting(INDEXEDDB_ADD_COUNT_KEY, next);
+      if (next >= 30 && ui.backupReminderModal) {
+        ui.backupReminderModal.classList.remove("hidden");
+      }
+    } catch (_error) {
+      // 備份提醒計數失敗不應影響商品新增流程。
+    }
+  }
+
   async function hasSelectedFile() {
     if (isNativeFileMode()) {
       return nativeBridge.hasFile();
@@ -541,10 +682,7 @@
   }
 
   function getStatus(expiryDate) {
-    const today = new Date();
-    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-    const expiry = new Date(`${expiryDate}T00:00:00`).getTime();
-    const diffDays = Math.floor((expiry - startOfToday) / (24 * 60 * 60 * 1000));
+    const diffDays = getDaysUntilExpiry(expiryDate);
 
     if (diffDays < 0) {
       return { label: "已過期", badgeClass: "expired" };
@@ -553,6 +691,70 @@
       return { label: "即期", badgeClass: "warning" };
     }
     return { label: "未到期", badgeClass: "valid" };
+  }
+
+  function getDaysUntilExpiry(expiryDate) {
+    const raw = String(expiryDate || "").trim();
+    if (!raw) {
+      return Number.POSITIVE_INFINITY;
+    }
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+    const expiry = new Date(`${raw}T00:00:00`).getTime();
+    if (!Number.isFinite(expiry)) {
+      return Number.POSITIVE_INFINITY;
+    }
+    return Math.floor((expiry - startOfToday) / (24 * 60 * 60 * 1000));
+  }
+
+  function isExpiredProduct(product) {
+    return getStatus(product.expiryDate).label === "已過期";
+  }
+
+  function isExpiringWithin(product, days) {
+    const diffDays = getDaysUntilExpiry(product.expiryDate);
+    return diffDays >= 0 && diffDays <= days;
+  }
+
+  function isExpiringBetween(product, minDays, maxDays) {
+    const diffDays = getDaysUntilExpiry(product.expiryDate);
+    return diffDays >= minDays && diffDays <= maxDays;
+  }
+
+  function getDuplicateBarcodeSet(products) {
+    const counts = new Map();
+    (products || []).forEach((item) => {
+      const barcode = String(item.barcode || "").trim();
+      if (!barcode) {
+        return;
+      }
+      counts.set(barcode, (counts.get(barcode) || 0) + 1);
+    });
+    return new Set(Array.from(counts.entries()).filter((entry) => entry[1] > 1).map((entry) => entry[0]));
+  }
+
+  function productMatchesCategoryFilter(product, categoryFilter) {
+    if (!categoryFilter) {
+      return true;
+    }
+    if (categoryFilter === "__uncategorized__") {
+      return !String(product.category || "").trim();
+    }
+    return product.category === categoryFilter;
+  }
+
+  function getHealthStats(products = state.products) {
+    const scopedProducts = Array.isArray(products) ? products : [];
+    const duplicateSet = getDuplicateBarcodeSet(scopedProducts);
+    return {
+      missingDate: scopedProducts.filter((item) => !String(item.expiryDate || "").trim()).length,
+      missingBarcode: scopedProducts.filter((item) => !String(item.barcode || "").trim()).length,
+      duplicateBarcode: scopedProducts.filter((item) => duplicateSet.has(String(item.barcode || "").trim())).length,
+      expired: scopedProducts.filter((item) => isExpiredProduct(item)).length,
+      expiring60: scopedProducts.filter((item) => isExpiringBetween(item, 31, 60)).length,
+      expiring30: scopedProducts.filter((item) => isExpiringWithin(item, 30)).length,
+      duplicateSet
+    };
   }
 
   function sortProducts(products) {
@@ -574,6 +776,57 @@
     return cloned.sort((a, b) => compareDate(a.expiryDate, b.expiryDate));
   }
 
+  function productMatchesHealthFilter(product, stats) {
+    if (!state.healthFilter) {
+      return true;
+    }
+    if (state.healthFilter === "missing-date") {
+      return !String(product.expiryDate || "").trim();
+    }
+    if (state.healthFilter === "missing-barcode") {
+      return !String(product.barcode || "").trim();
+    }
+    if (state.healthFilter === "duplicate-barcode") {
+      return stats.duplicateSet.has(String(product.barcode || "").trim());
+    }
+    if (state.healthFilter === "expired") {
+      return isExpiredProduct(product);
+    }
+    if (state.healthFilter === "expiring-60") {
+      return isExpiringBetween(product, 31, 60);
+    }
+    if (state.healthFilter === "expiring-30") {
+      return isExpiringWithin(product, 30);
+    }
+    return true;
+  }
+
+  function syncHealthCheckUi(stats) {
+    if (ui.missingDateCount) {
+      ui.missingDateCount.textContent = String(stats.missingDate);
+    }
+    if (ui.missingBarcodeCount) {
+      ui.missingBarcodeCount.textContent = String(stats.missingBarcode);
+    }
+    if (ui.duplicateBarcodeCount) {
+      ui.duplicateBarcodeCount.textContent = String(stats.duplicateBarcode);
+    }
+    if (ui.expiredCount) {
+      ui.expiredCount.textContent = String(stats.expired);
+    }
+    if (ui.expiring60Count) {
+      ui.expiring60Count.textContent = String(stats.expiring60);
+    }
+    if (ui.expiring30Count) {
+      ui.expiring30Count.textContent = String(stats.expiring30);
+    }
+    if (ui.healthCheckBar) {
+      ui.healthCheckBar.querySelectorAll("[data-health-filter]").forEach((button) => {
+        button.classList.toggle("is-active", button.getAttribute("data-health-filter") === state.healthFilter);
+      });
+    }
+  }
+
   function productMatchesKeyword(product, keyword) {
     if (!keyword) {
       return true;
@@ -586,10 +839,28 @@
     return !!(target && target.closest && target.closest("button, input, select, textarea, a, label"));
   }
 
+  function shouldKeepHealthFilterForClick(target) {
+    return !!(target && target.closest && target.closest(
+      "button, input, select, textarea, a, label, .modal, tr[data-product-id], .calendar-day"
+    ));
+  }
+
+  function clearHealthFilter() {
+    if (!state.healthFilter) {
+      return;
+    }
+    state.healthFilter = "";
+    renderProducts();
+  }
+
   function cancelLongPress() {
     clearTimeout(longPressTimer);
     longPressTimer = null;
     longPressProductId = null;
+  }
+
+  function suppressNativeContextMenuTemporarily() {
+    suppressNativeContextMenuUntil = Date.now() + 1400;
   }
 
   function scheduleLongPressForRow(rowEl, clientX, clientY) {
@@ -611,6 +882,7 @@
         return;
       }
       suppressRowClickUntil = Date.now() + 450;
+      suppressNativeContextMenuTemporarily();
       await openBarcodeModalForProduct(target);
     }, 650);
   }
@@ -621,16 +893,83 @@
     return dx > 12 || dy > 12;
   }
 
+  function formatMonthLabel(dateObj) {
+    const year = dateObj.getFullYear();
+    const month = dateObj.getMonth() + 1;
+    return `${year}年${month}月`;
+  }
+
+  function renderExpiryCalendar() {
+    if (!ui.expiryCalendarGrid || !ui.calendarMonthLabel) {
+      return;
+    }
+    const monthDate = state.calendarMonth instanceof Date ? state.calendarMonth : new Date();
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const firstWeekday = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const productExpiryDates = new Set();
+    state.products.forEach((item) => {
+      const raw = String(item.expiryDate || "").trim();
+      if (!raw) {
+        return;
+      }
+      const normalized = normalizeDateInput(raw);
+      if (!normalized) {
+        return;
+      }
+      productExpiryDates.add(normalized);
+    });
+
+    ui.calendarMonthLabel.textContent = formatMonthLabel(firstDay);
+    ui.expiryCalendarGrid.innerHTML = "";
+
+    for (let i = 0; i < firstWeekday; i += 1) {
+      const emptyCell = document.createElement("div");
+      emptyCell.className = "calendar-day empty";
+      ui.expiryCalendarGrid.appendChild(emptyCell);
+    }
+
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      const cell = document.createElement("div");
+      cell.className = "calendar-day";
+      cell.textContent = String(day);
+      cell.dataset.date = dateStr;
+      if (productExpiryDates.has(dateStr)) {
+        cell.classList.add("has-expiring");
+        cell.title = "有商品有效日期";
+        cell.addEventListener("click", () => {
+          if (state.calendarSelectedDate === dateStr) {
+            state.calendarSelectedDate = "";
+          } else {
+            state.calendarSelectedDate = dateStr;
+          }
+          renderProducts();
+        });
+      }
+      if (state.calendarSelectedDate === dateStr) {
+        cell.classList.add("is-selected");
+      }
+      ui.expiryCalendarGrid.appendChild(cell);
+    }
+  }
+
   function renderProducts() {
     const keyword = ui.searchInput.value.trim();
     const categoryFilter = ui.categoryFilter ? ui.categoryFilter.value : "";
-    const filtered = state.products.filter((item) => {
+    const sortMode = ui.sortSelect ? ui.sortSelect.value : "";
+    const selectedDate = String(state.calendarSelectedDate || "").trim();
+    const categoryScopedProducts = state.products.filter((item) => productMatchesCategoryFilter(item, categoryFilter));
+    const healthStats = getHealthStats(categoryScopedProducts);
+    syncHealthCheckUi(healthStats);
+    const filtered = categoryScopedProducts.filter((item) => {
       const keywordMatch = productMatchesKeyword(item, keyword);
-      const categoryMatch = !categoryFilter
-        || (categoryFilter === "__uncategorized__"
-          ? !String(item.category || "").trim()
-          : item.category === categoryFilter);
-      return keywordMatch && categoryMatch;
+      const dateMatch = !selectedDate || String(item.expiryDate || "").trim() === selectedDate;
+      const healthMatch = productMatchesHealthFilter(item, healthStats);
+      return keywordMatch && dateMatch && healthMatch;
     });
     const sorted = sortForView(filtered);
     const validIds = new Set(state.products.map((item) => item.id));
@@ -681,9 +1020,14 @@
     if (ui.selectedCountBadge) {
       const selectedCount = state.selectedProductIds.size;
       ui.selectedCountBadge.textContent = `已勾選 ${selectedCount} 筆`;
-      ui.selectedCountBadge.classList.toggle("hidden", selectedCount <= 0);
+      ui.selectedCountBadge.classList.toggle("is-hidden", selectedCount <= 0);
     }
     ui.emptyHint.style.display = sorted.length === 0 ? "block" : "none";
+    renderExpiryCalendar();
+  }
+
+  function handleSortModeChange() {
+    renderProducts();
   }
 
   function escapeHtml(str) {
@@ -716,7 +1060,7 @@
   async function loadInitialState() {
     const savedMode = (await getSetting(MODE_SETTING_KEY)) || DEFAULT_MODE;
     state.storageMode = savedMode;
-    state.fileHandle = null;
+    state.fileHandle = await getSetting(FILE_HANDLE_SETTING_KEY);
     if (state.storageMode === "file" && !(await hasSelectedFile())) {
       state.storageMode = "indexeddb";
       await setSetting(MODE_SETTING_KEY, "indexeddb");
@@ -753,12 +1097,12 @@
 
     if (state.storageMode === "file" && state.fileHandle) {
       try {
-        const granted = await hasReadWritePermission(state.fileHandle);
+        const granted = await hasReadWritePermissionGrant(state.fileHandle);
         if (granted) {
           state.products = sortProducts(await readProductsFromSelectedFile());
         } else {
           state.products = sortProducts(await getAllProductsFromIndexedDb());
-          showToast("無法讀取檔案資料庫，已先顯示 IndexedDB 資料", true);
+          showToast("需要重新授權本機檔案位置，已先顯示 IndexedDB 資料");
         }
       } catch (error) {
         state.products = sortProducts(await getAllProductsFromIndexedDb());
@@ -770,6 +1114,112 @@
 
     state.products = sortProducts(await getAllProductsFromIndexedDb());
     renderProducts();
+  }
+
+  function openStorageSetupModal() {
+    if (!ui.storageSetupModal) {
+      return;
+    }
+    if (ui.chooseFileStorageBtn) {
+      ui.chooseFileStorageBtn.disabled = !supportsExternalFileStorage();
+    }
+    ui.storageSetupModal.classList.remove("hidden");
+  }
+
+  function closeStorageSetupModal() {
+    if (ui.storageSetupModal) {
+      ui.storageSetupModal.classList.add("hidden");
+    }
+  }
+
+  async function completeIndexedDbStorageSetup() {
+    state.storageMode = "indexeddb";
+    state.fileHandle = null;
+    await setSetting(MODE_SETTING_KEY, "indexeddb");
+    await setSetting(FILE_HANDLE_SETTING_KEY, null);
+    await setSetting(STORAGE_SETUP_KEY, true);
+    closeStorageSetupModal();
+    showToast("已使用 IndexedDB 儲存資料");
+    await maybeShowUpdateNotice();
+  }
+
+  async function completeFileStorageSetup() {
+    if (isNativeFileMode()) {
+      if (!(await hasSelectedFile())) {
+        throw new Error("尚未指定本機檔案位置，請先改用 IndexedDB，並定期備份 JSON");
+      }
+      state.storageMode = "file";
+      await setSetting(MODE_SETTING_KEY, "file");
+      await setSetting(STORAGE_SETUP_KEY, true);
+      if (state.products.length > 0 && await hasSelectedFile()) {
+        await writeProductsToSelectedFile(state.products);
+      }
+      closeStorageSetupModal();
+      showToast("已使用本機檔案位置儲存資料");
+      await maybeShowUpdateNotice();
+      return;
+    }
+
+    const handle = await chooseStorageFileHandle();
+    state.fileHandle = handle;
+    state.storageMode = "file";
+    await setSetting(FILE_HANDLE_SETTING_KEY, handle);
+    await setSetting(MODE_SETTING_KEY, "file");
+    await setSetting(STORAGE_SETUP_KEY, true);
+
+    const existingProducts = await readProductsFromSelectedFile();
+    if (Array.isArray(existingProducts) && existingProducts.length > 0) {
+      state.products = sortProducts(existingProducts);
+      await replaceAllProductsIndexedDb(state.products);
+      renderProducts();
+    } else {
+      await writeProductsToSelectedFile(state.products);
+    }
+
+    closeStorageSetupModal();
+    showToast("已使用本機檔案位置儲存資料");
+    await maybeShowUpdateNotice();
+  }
+
+  async function maybeShowStorageSetup() {
+    const completed = await getSetting(STORAGE_SETUP_KEY);
+    if (completed === true) {
+      return;
+    }
+    openStorageSetupModal();
+  }
+
+  async function closeUpdateNotice() {
+    await setSetting(LAST_SEEN_VERSION_KEY, getAppRelease().version);
+    if (ui.updateNoticeModal) {
+      ui.updateNoticeModal.classList.add("hidden");
+    }
+  }
+
+  async function maybeShowUpdateNotice() {
+    const storageSetupCompleted = await getSetting(STORAGE_SETUP_KEY);
+    if (storageSetupCompleted !== true) {
+      return;
+    }
+    const lastSeenVersion = await getSetting(LAST_SEEN_VERSION_KEY);
+    const release = getAppRelease();
+    if (lastSeenVersion === release.version) {
+      return;
+    }
+    if (ui.updateNoticeTitle) {
+      ui.updateNoticeTitle.textContent = release.title;
+    }
+    if (ui.updateNoticeList) {
+      ui.updateNoticeList.innerHTML = "";
+      release.items.forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        ui.updateNoticeList.appendChild(li);
+      });
+    }
+    if (ui.updateNoticeModal) {
+      ui.updateNoticeModal.classList.remove("hidden");
+    }
   }
 
   function getProductDateFromForm() {
@@ -800,6 +1250,60 @@
     }
   }
 
+  function openAddProductModal() {
+    renderCategoryOptions(state.categories);
+    if (ui.addProductModal) {
+      ui.addProductModal.classList.remove("hidden");
+    }
+    if (ui.nameInput) {
+      ui.nameInput.focus();
+    }
+  }
+
+  function closeAddProductModal() {
+    if (ui.addProductModal) {
+      ui.addProductModal.classList.add("hidden");
+    }
+  }
+
+  function findDuplicateBarcodeProduct(barcode, excludeId = "") {
+    const normalized = String(barcode || "").trim();
+    if (!normalized) {
+      return null;
+    }
+    return state.products.find((item) =>
+      item.id !== excludeId && String(item.barcode || "").trim() === normalized
+    ) || null;
+  }
+
+  function requestDuplicateBarcodeChoice({ barcode, productName, mode }) {
+    if (!ui.duplicateBarcodeModal) {
+      return Promise.resolve("keep");
+    }
+    if (ui.duplicateBarcodeMessage) {
+      const action = mode === "edit" ? "儲存" : "新增";
+      ui.duplicateBarcodeMessage.textContent = `條碼 ${barcode} 已存在於「${productName || "未命名商品"}」。請選擇要覆蓋既有商品、仍然${action}，或取消。`;
+    }
+    if (ui.keepDuplicateBtn) {
+      ui.keepDuplicateBtn.textContent = mode === "edit" ? "仍然儲存" : "仍然新增";
+    }
+    ui.duplicateBarcodeModal.classList.remove("hidden");
+    return new Promise((resolve) => {
+      pendingDuplicateChoice = resolve;
+    });
+  }
+
+  function resolveDuplicateBarcodeChoice(choice) {
+    if (ui.duplicateBarcodeModal) {
+      ui.duplicateBarcodeModal.classList.add("hidden");
+    }
+    if (pendingDuplicateChoice) {
+      const resolve = pendingDuplicateChoice;
+      pendingDuplicateChoice = null;
+      resolve(choice);
+    }
+  }
+
   async function addProductFromForm(event) {
     event.preventDefault();
 
@@ -824,13 +1328,43 @@
       createdAt: new Date().toISOString()
     };
 
-    const prevProducts = [...state.products];
+    const prevProducts = state.products.map((item) => ({ ...item }));
     try {
-      state.products.push(product);
+      const duplicate = findDuplicateBarcodeProduct(barcode);
+      let addedCount = 1;
+      if (duplicate) {
+        const choice = await requestDuplicateBarcodeChoice({
+          barcode,
+          productName: duplicate.name,
+          mode: "add"
+        });
+        if (choice === "cancel") {
+          return;
+        }
+        if (choice === "overwrite") {
+          Object.assign(duplicate, {
+            category,
+            name,
+            barcode,
+            barcodeFormat: product.barcodeFormat,
+            expiryDate
+          });
+          addedCount = 0;
+        } else {
+          state.products.push(product);
+        }
+      } else {
+        state.products.push(product);
+      }
       sortProducts(state.products);
       await persistCurrentProducts();
       renderProducts();
       clearForm();
+      closeAddProductModal();
+      if (addedCount > 0) {
+        await recordIndexedDbAddForBackupReminder();
+      }
+      showToast(addedCount > 0 ? "商品已新增" : "已覆蓋既有商品");
     } catch (error) {
       state.products = prevProducts;
       throw error;
@@ -890,6 +1424,9 @@
     ui.editBarcodeInput.value = target.barcode || "";
     ui.editBarcodeInput.dataset.barcodeFormat = target.barcodeFormat || inferBarcodeFormat(target.barcode || "");
     ui.editExpiryInput.value = target.expiryDate || "";
+    if (ui.editHiddenDatePicker) {
+      ui.editHiddenDatePicker.value = normalizeDateInput(target.expiryDate || "") || "";
+    }
     ui.editProductModal.classList.remove("hidden");
   }
 
@@ -916,6 +1453,21 @@
     }
     const prevProducts = state.products.map((item) => ({ ...item }));
     try {
+      const duplicate = findDuplicateBarcodeProduct(barcode, id);
+      let overwriteDuplicateId = "";
+      if (duplicate) {
+        const choice = await requestDuplicateBarcodeChoice({
+          barcode,
+          productName: duplicate.name,
+          mode: "edit"
+        });
+        if (choice === "cancel") {
+          return;
+        }
+        if (choice === "overwrite") {
+          overwriteDuplicateId = duplicate.id;
+        }
+      }
       const selectedIds = Array.from(state.selectedProductIds || []);
       const selectedIdSet = new Set(
         selectedIds.filter((selectedId) => state.products.some((item) => item.id === selectedId))
@@ -937,6 +1489,10 @@
         ? ui.editBarcodeInput.dataset.barcodeFormat
         : inferBarcodeFormat(barcode);
       target.expiryDate = expiryDate;
+      if (overwriteDuplicateId) {
+        state.products = state.products.filter((item) => item.id !== overwriteDuplicateId);
+        state.selectedProductIds.delete(overwriteDuplicateId);
+      }
       await persistCurrentProducts();
       renderProducts();
       closeEditProductModal();
@@ -1133,27 +1689,66 @@
     }
   }
 
-function applyFormCollapsed() {
-  const isCollapsed = state.formCollapsed;
-  const layout = document.querySelector(".layout.split-layout");
-  const form = ui.productForm;
-
-  if (isCollapsed) {
-    layout.classList.add("form-is-collapsed");
-    form.style.maxHeight = "0px"; // 搭配 CSS 過渡實現平滑摺疊
-    form.style.opacity = "0";
-    form.style.pointerEvents = "none";
-    ui.toggleFormBtn.textContent = "展開新增商品表單";
-    ui.toggleFormBtn.classList.add("toggle-expand-hint");
-  } else {
-    layout.classList.remove("form-is-collapsed");
-    form.style.maxHeight = "1000px"; // 給予足夠大的值
-    form.style.opacity = "1";
-    form.style.pointerEvents = "auto";
-    ui.toggleFormBtn.textContent = "收疊新增商品表單";
-    ui.toggleFormBtn.classList.remove("toggle-expand-hint");
+  function applyCalendarCollapsed() {
+    if (ui.calendarPanel) {
+      ui.calendarPanel.classList.toggle("hidden", state.calendarCollapsed);
+    }
+    if (ui.toggleCalendarBtn) {
+      ui.toggleCalendarBtn.textContent = state.calendarCollapsed ? "打開月曆" : "關閉月曆";
+    }
   }
-}
+
+  function toggleCalendar() {
+    state.calendarCollapsed = !state.calendarCollapsed;
+    applyCalendarCollapsed();
+  }
+
+  function getScannerVideoTrack() {
+    const stream = state.scanner.stream;
+    if (!stream || !stream.getVideoTracks) {
+      return null;
+    }
+    return stream.getVideoTracks()[0] || null;
+  }
+
+  function updateTorchButton() {
+    if (!ui.toggleTorchBtn) {
+      return;
+    }
+    ui.toggleTorchBtn.disabled = !state.scanner.torchSupported;
+    if (!state.scanner.torchOn) {
+      ui.toggleTorchBtn.textContent = "打開手電筒";
+    } else if (!state.scanner.torchPersistent) {
+      ui.toggleTorchBtn.textContent = "長亮手電筒";
+    } else {
+      ui.toggleTorchBtn.textContent = "關閉手電筒";
+    }
+  }
+
+  async function setTorch(on) {
+    const track = getScannerVideoTrack();
+    if (!track || typeof track.applyConstraints !== "function") {
+      throw new Error("此裝置不支援手電筒控制");
+    }
+    await track.applyConstraints({ advanced: [{ torch: !!on }] });
+    state.scanner.torchOn = !!on;
+    if (!on) {
+      state.scanner.torchPersistent = false;
+    }
+    updateTorchButton();
+  }
+
+  async function toggleTorchMode() {
+    if (!state.scanner.torchOn) {
+      await setTorch(true);
+      state.scanner.torchPersistent = false;
+    } else if (!state.scanner.torchPersistent) {
+      state.scanner.torchPersistent = true;
+    } else {
+      await setTorch(false);
+    }
+    updateTorchButton();
+  }
 
   async function setupCameraControls() {
     const stream = state.scanner.stream;
@@ -1166,6 +1761,12 @@ function applyFormCollapsed() {
     }
     const caps = typeof track.getCapabilities === "function" ? track.getCapabilities() : {};
     const settings = typeof track.getSettings === "function" ? track.getSettings() : {};
+    state.scanner.torchSupported = caps.torch === true;
+    state.scanner.torchOn = settings.torch === true;
+    if (!state.scanner.torchOn) {
+      state.scanner.torchPersistent = false;
+    }
+    updateTorchButton();
 
     if (ui.exposureWrap && ui.exposureSlider && ui.exposureValue) {
       const hasExposure = Number.isFinite(caps.exposureCompensation?.min) && Number.isFinite(caps.exposureCompensation?.max);
@@ -1205,10 +1806,12 @@ function applyFormCollapsed() {
     state.scanner.mode = mode;
     state.scanner.barcodeTarget = barcodeTarget;
     state.scanner.detector = await createBarcodeDetector();
-    state.scanner.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } },
-      audio: false
-    });
+    if (!state.scanner.stream) {
+      state.scanner.stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+    }
 
     ui.scannerVideo.srcObject = state.scanner.stream;
     await ui.scannerVideo.play();
@@ -1261,7 +1864,9 @@ function applyFormCollapsed() {
     state.scanner.rafId = requestAnimationFrame(scanLoop);
   }
 
-  function stopScanner() {
+  function stopScanner(options = {}) {
+    const forceTorchOff = !!options.forceTorchOff;
+    const keepTorchTrack = state.scanner.torchOn && state.scanner.torchPersistent && !forceTorchOff;
     state.scanner.running = false;
     state.scanner.detecting = false;
 
@@ -1270,9 +1875,19 @@ function applyFormCollapsed() {
       state.scanner.rafId = null;
     }
 
-    if (state.scanner.stream) {
+    if (state.scanner.stream && !keepTorchTrack) {
+      if (state.scanner.torchOn) {
+        setTorch(false).catch(() => {
+          state.scanner.torchOn = false;
+          state.scanner.torchPersistent = false;
+          updateTorchButton();
+        });
+      }
       state.scanner.stream.getTracks().forEach((track) => track.stop());
       state.scanner.stream = null;
+      state.scanner.torchSupported = false;
+      state.scanner.torchOn = false;
+      state.scanner.torchPersistent = false;
     }
 
     ui.scannerVideo.pause();
@@ -1281,6 +1896,7 @@ function applyFormCollapsed() {
     if (ui.exposureWrap) {
       ui.exposureWrap.classList.add("hidden");
     }
+    updateTorchButton();
   }
 
   function wireEvents() {
@@ -1295,11 +1911,120 @@ function applyFormCollapsed() {
     ui.clearFormBtn.addEventListener("click", clearForm);
     ui.searchInput.addEventListener("input", renderProducts);
     ui.categoryFilter.addEventListener("change", renderProducts);
-    ui.sortSelect.addEventListener("change", renderProducts);
+    ui.sortSelect.addEventListener("change", handleSortModeChange);
 
-    ui.toggleFormBtn.addEventListener("click", () => {
-      state.formCollapsed = !state.formCollapsed;
-      applyFormCollapsed();
+    if (ui.openAddProductBtn) {
+      ui.openAddProductBtn.addEventListener("click", () => {
+        openAddProductModal();
+        ui.openAddProductBtn.blur();
+      });
+    }
+    if (ui.cancelAddProductBtn) {
+      ui.cancelAddProductBtn.addEventListener("click", closeAddProductModal);
+    }
+    if (ui.addProductModal) {
+      ui.addProductModal.addEventListener("click", (event) => {
+        if (event.target === ui.addProductModal) {
+          closeAddProductModal();
+        }
+      });
+    }
+    if (ui.toggleCalendarBtn) {
+      ui.toggleCalendarBtn.addEventListener("click", () => {
+        toggleCalendar();
+        ui.toggleCalendarBtn.blur();
+      });
+    }
+    if (ui.chooseIndexedDbStorageBtn) {
+      ui.chooseIndexedDbStorageBtn.addEventListener("click", async () => {
+        try {
+          await completeIndexedDbStorageSetup();
+        } catch (error) {
+          showToast(`儲存設定失敗: ${error.message}`, true);
+        }
+      });
+    }
+    if (ui.chooseFileStorageBtn) {
+      ui.chooseFileStorageBtn.addEventListener("click", async () => {
+        try {
+          await completeFileStorageSetup();
+        } catch (error) {
+          showToast(`本機檔案位置設定失敗: ${error.message}`, true);
+        }
+      });
+    }
+    if (ui.closeUpdateNoticeBtn) {
+      ui.closeUpdateNoticeBtn.addEventListener("click", async () => {
+        try {
+          await closeUpdateNotice();
+        } catch (error) {
+          showToast(`更新公告狀態儲存失敗: ${error.message}`, true);
+        }
+      });
+    }
+    if (ui.updateNoticeModal) {
+      ui.updateNoticeModal.addEventListener("click", async (event) => {
+        if (event.target === ui.updateNoticeModal) {
+          try {
+            await closeUpdateNotice();
+          } catch (error) {
+            showToast(`更新公告狀態儲存失敗: ${error.message}`, true);
+          }
+        }
+      });
+    }
+    if (ui.healthCheckBar) {
+      ui.healthCheckBar.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-health-filter]");
+        if (!button) {
+          return;
+        }
+        const filter = button.getAttribute("data-health-filter") || "";
+        state.healthFilter = state.healthFilter === filter ? "" : filter;
+        if (state.healthFilter === "missing-date" && state.calendarSelectedDate) {
+          state.calendarSelectedDate = "";
+        }
+        renderProducts();
+      });
+    }
+    if (ui.backupNowBtn) {
+      ui.backupNowBtn.addEventListener("click", async () => {
+        try {
+          await backupCurrentProductsJson();
+        } catch (error) {
+          showToast(`JSON 備份失敗: ${error.message}`, true);
+        }
+      });
+    }
+    if (ui.backupLaterBtn) {
+      ui.backupLaterBtn.addEventListener("click", async () => {
+        await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
+        if (ui.backupReminderModal) {
+          ui.backupReminderModal.classList.add("hidden");
+        }
+      });
+    }
+    if (ui.overwriteDuplicateBtn) {
+      ui.overwriteDuplicateBtn.addEventListener("click", () => resolveDuplicateBarcodeChoice("overwrite"));
+    }
+    if (ui.keepDuplicateBtn) {
+      ui.keepDuplicateBtn.addEventListener("click", () => resolveDuplicateBarcodeChoice("keep"));
+    }
+    if (ui.cancelDuplicateBtn) {
+      ui.cancelDuplicateBtn.addEventListener("click", () => resolveDuplicateBarcodeChoice("cancel"));
+    }
+    if (ui.duplicateBarcodeModal) {
+      ui.duplicateBarcodeModal.addEventListener("click", (event) => {
+        if (event.target === ui.duplicateBarcodeModal) {
+          resolveDuplicateBarcodeChoice("cancel");
+        }
+      });
+    }
+    document.addEventListener("click", (event) => {
+      if (!state.healthFilter || shouldKeepHealthFilterForClick(event.target)) {
+        return;
+      }
+      clearHealthFilter();
     });
 
     ui.productTableBody.addEventListener("click", async (event) => {
@@ -1342,16 +2067,17 @@ function applyFormCollapsed() {
       }
     });
     ui.productTableBody.addEventListener("contextmenu", async (event) => {
-      // 桌面滑鼠右鍵不觸發條碼視窗，避免取代左鍵長按行為
-      if (event.button === 2) {
-        return;
-      }
       const row = event.target && event.target.closest ? event.target.closest("tr[data-product-id]") : null;
       if (!row || shouldIgnoreLongPressTarget(event.target)) {
         return;
       }
       event.preventDefault();
       event.stopPropagation();
+      // 桌面滑鼠右鍵只阻止瀏覽器選單，不觸發條碼視窗。
+      if (event.button === 2) {
+        cancelLongPress();
+        return;
+      }
       const productId = row.getAttribute("data-product-id");
       const target = state.products.find((item) => item.id === productId);
       if (!target) {
@@ -1449,6 +2175,17 @@ function applyFormCollapsed() {
     });
 
     ui.stopScanBtn.addEventListener("click", stopScanner);
+    if (ui.toggleTorchBtn) {
+      ui.toggleTorchBtn.addEventListener("click", async () => {
+        try {
+          await toggleTorchMode();
+        } catch (error) {
+          showToast(error.message, true);
+          state.scanner.torchSupported = false;
+          updateTorchButton();
+        }
+      });
+    }
     if (ui.exposureSlider) {
       ui.exposureSlider.addEventListener("input", () => {
         if (ui.exposureValue) {
@@ -1557,6 +2294,31 @@ function applyFormCollapsed() {
         const normalized = normalizeDateInput(ui.editExpiryInput.value);
         if (normalized) {
           ui.editExpiryInput.value = normalized;
+          if (ui.editHiddenDatePicker) {
+            ui.editHiddenDatePicker.value = normalized;
+          }
+        }
+      });
+    }
+    if (ui.editPickDateBtn) {
+      ui.editPickDateBtn.addEventListener("click", () => {
+        const current = normalizeDateInput(ui.editExpiryInput.value);
+        if (current && ui.editHiddenDatePicker) {
+          ui.editHiddenDatePicker.value = current;
+        }
+
+        if (ui.editHiddenDatePicker && typeof ui.editHiddenDatePicker.showPicker === "function") {
+          ui.editHiddenDatePicker.showPicker();
+        } else if (ui.editHiddenDatePicker) {
+          ui.editHiddenDatePicker.focus();
+          ui.editHiddenDatePicker.click();
+        }
+      });
+    }
+    if (ui.editHiddenDatePicker) {
+      ui.editHiddenDatePicker.addEventListener("change", () => {
+        if (ui.editHiddenDatePicker.value) {
+          ui.editExpiryInput.value = ui.editHiddenDatePicker.value;
         }
       });
     }
@@ -1600,6 +2362,21 @@ function applyFormCollapsed() {
         ui.expiryInput.value = ui.hiddenDatePicker.value;
       }
     });
+
+    if (ui.calendarPrevBtn) {
+      ui.calendarPrevBtn.addEventListener("click", () => {
+        const current = state.calendarMonth instanceof Date ? state.calendarMonth : new Date();
+        state.calendarMonth = new Date(current.getFullYear(), current.getMonth() - 1, 1);
+        renderExpiryCalendar();
+      });
+    }
+    if (ui.calendarNextBtn) {
+      ui.calendarNextBtn.addEventListener("click", () => {
+        const current = state.calendarMonth instanceof Date ? state.calendarMonth : new Date();
+        state.calendarMonth = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+        renderExpiryCalendar();
+      });
+    }
   }
 
   async function registerServiceWorker() {
@@ -1626,13 +2403,22 @@ function applyFormCollapsed() {
       const msg = reason && reason.message ? reason.message : String(reason || "程式發生未處理錯誤");
       showErrorModal(msg);
     });
+    window.addEventListener("contextmenu", (event) => {
+      if (Date.now() >= suppressNativeContextMenuUntil) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
     wireEvents();
-    applyFormCollapsed();
+    applyCalendarCollapsed();
     await loadInitialState();
+    await maybeShowStorageSetup();
+    await maybeShowUpdateNotice();
     await registerServiceWorker();
   }
 
-  window.addEventListener("beforeunload", stopScanner);
+  window.addEventListener("beforeunload", () => stopScanner({ forceTorchOff: true }));
   init().catch((error) => {
     showToast(`初始化失敗: ${error.message}`, true);
   });

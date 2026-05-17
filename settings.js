@@ -6,6 +6,8 @@
   const STORE_PRODUCTS = "products";
   const STORE_SETTINGS = "settings";
   const MODE_SETTING_KEY = "storageMode";
+  const STORAGE_SETUP_KEY = "storageSetupCompleted";
+  const FILE_HANDLE_SETTING_KEY = "storageFileHandle";
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
   const THEME_PRESETS = [
@@ -45,9 +47,15 @@
     importCsvFileBtn: document.getElementById("importCsvFileBtn"),
     importJsonFileInput: document.getElementById("importJsonFileInput"),
     importJsonFileBtn: document.getElementById("importJsonFileBtn"),
+    storageModeLabel: document.getElementById("storageModeLabel"),
+    useIndexedDbStorageBtn: document.getElementById("useIndexedDbStorageBtn"),
+    chooseStorageFileBtn: document.getElementById("chooseStorageFileBtn"),
     newCategoryInput: document.getElementById("newCategoryInput"),
     addCategoryBtn: document.getElementById("addCategoryBtn"),
     categoryList: document.getElementById("categoryList"),
+    appVersionLabel: document.getElementById("appVersionLabel"),
+    currentReleaseLabel: document.getElementById("currentReleaseLabel"),
+    releaseHistoryList: document.getElementById("releaseHistoryList"),
     errorModal: document.getElementById("errorModal"),
     errorModalMessage: document.getElementById("errorModalMessage"),
     closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
@@ -128,6 +136,78 @@
 
   function isNativeFileMode() {
     return !!nativeBridge;
+  }
+
+  function supportsWebFileStorage() {
+    return typeof window.showSaveFilePicker === "function";
+  }
+
+  function supportsExternalFileStorage() {
+    return isNativeFileMode() || supportsWebFileStorage();
+  }
+
+  async function chooseStorageFileHandle() {
+    if (!supportsWebFileStorage()) {
+      throw new Error("此瀏覽器不支援指定本機檔案位置，請使用 IndexedDB 並定期備份 JSON");
+    }
+    return window.showSaveFilePicker({
+      suggestedName: "expiry-manager-data.json",
+      types: [
+        {
+          description: "商品效期資料 JSON",
+          accept: { "application/json": [".json"] }
+        }
+      ]
+    });
+  }
+
+  function renderStorageMode() {
+    if (ui.storageModeLabel) {
+      const label = state.storageMode === "file" ? "本機檔案位置" : "IndexedDB";
+      ui.storageModeLabel.textContent = `目前模式：${label}`;
+    }
+    if (ui.chooseStorageFileBtn) {
+      ui.chooseStorageFileBtn.disabled = !supportsExternalFileStorage();
+    }
+  }
+
+  function renderAppVersion() {
+    if (!ui.appVersionLabel) {
+      return;
+    }
+    const release = window.APP_RELEASE || {};
+    const version = String(release.version || "").trim();
+    ui.appVersionLabel.textContent = version || "版本";
+  }
+
+  function renderReleaseHistory() {
+    const release = window.APP_RELEASE || {};
+    const version = String(release.version || "").trim();
+    if (ui.currentReleaseLabel) {
+      ui.currentReleaseLabel.textContent = version ? `目前版本：${version}` : "目前版本：未設定";
+    }
+    if (!ui.releaseHistoryList) {
+      return;
+    }
+    const history = Array.isArray(release.history) && release.history.length > 0
+      ? release.history
+      : [release];
+    ui.releaseHistoryList.innerHTML = "";
+    history.forEach((entry) => {
+      const section = document.createElement("section");
+      section.className = "release-history-entry";
+      const title = document.createElement("h3");
+      title.textContent = String(entry.title || entry.version || "更新內容");
+      const list = document.createElement("ul");
+      (Array.isArray(entry.items) ? entry.items : []).forEach((item) => {
+        const li = document.createElement("li");
+        li.textContent = String(item || "");
+        list.appendChild(li);
+      });
+      section.appendChild(title);
+      section.appendChild(list);
+      ui.releaseHistoryList.appendChild(section);
+    });
   }
 
   function showToast(message, isError = false) {
@@ -457,6 +537,17 @@
     return !!state.fileHandle;
   }
 
+  async function hasReadWritePermission(fileHandle) {
+    if (!fileHandle) {
+      return false;
+    }
+    const options = { mode: "readwrite" };
+    if ((await fileHandle.queryPermission(options)) === "granted") {
+      return true;
+    }
+    return (await fileHandle.requestPermission(options)) === "granted";
+  }
+
   async function writeProductsToSelectedFile(products) {
     const payload = serializeProductsPayload(products);
     if (isNativeFileMode()) {
@@ -466,6 +557,53 @@
     const writer = await state.fileHandle.createWritable();
     await writer.write(payload);
     await writer.close();
+  }
+
+  async function switchToIndexedDbStorage() {
+    state.storageMode = "indexeddb";
+    state.fileHandle = null;
+    await setSetting(MODE_SETTING_KEY, "indexeddb");
+    await setSetting(FILE_HANDLE_SETTING_KEY, null);
+    await setSetting(STORAGE_SETUP_KEY, true);
+    renderStorageMode();
+    showToast("已改用 IndexedDB");
+  }
+
+  async function switchToFileStorage() {
+    const products = await getAllProductsFromIndexedDb();
+
+    if (isNativeFileMode()) {
+      if (!(await hasSelectedFile())) {
+        throw new Error("尚未指定本機檔案位置，請先使用 IndexedDB 並定期備份 JSON");
+      }
+      state.storageMode = "file";
+      await setSetting(MODE_SETTING_KEY, "file");
+      await setSetting(STORAGE_SETUP_KEY, true);
+      await writeProductsToSelectedFile(products);
+      renderStorageMode();
+      showToast("已改用本機檔案位置，並寫入目前資料");
+      return;
+    }
+
+    const handle = await chooseStorageFileHandle();
+    const ok = await hasReadWritePermission(handle);
+    if (!ok) {
+      throw new Error("未取得檔案讀寫權限");
+    }
+    state.fileHandle = handle;
+    state.storageMode = "file";
+    await setSetting(FILE_HANDLE_SETTING_KEY, handle);
+    await setSetting(MODE_SETTING_KEY, "file");
+    await setSetting(STORAGE_SETUP_KEY, true);
+    await writeProductsToSelectedFile(products);
+    renderStorageMode();
+    showToast("已改用本機檔案位置，並寫入目前資料");
+  }
+
+  function isFilePickerAbort(error) {
+    const name = String(error && error.name || "");
+    const message = String(error && error.message || "");
+    return name === "AbortError" || message.includes("user aborted");
   }
 
   function normalizeDateInput(raw) {
@@ -931,15 +1069,23 @@
 
   async function loadInitialState() {
     const savedMode = await getSetting(MODE_SETTING_KEY);
+    state.fileHandle = await getSetting(FILE_HANDLE_SETTING_KEY);
     if (savedMode === "file" || savedMode === "indexeddb") {
       state.storageMode = savedMode;
     } else {
       state.storageMode = isNativeFileMode() ? "file" : "indexeddb";
       await setSetting(MODE_SETTING_KEY, state.storageMode);
     }
+    if (state.storageMode === "file" && !(await hasSelectedFile())) {
+      state.storageMode = "indexeddb";
+      state.fileHandle = null;
+      await setSetting(MODE_SETTING_KEY, "indexeddb");
+      await setSetting(FILE_HANDLE_SETTING_KEY, null);
+    }
 
     state.categories = await getCategories();
     renderCategories();
+    renderStorageMode();
   }
 
   function wireEvents() {
@@ -978,6 +1124,28 @@
           return;
         }
         setThemeByKey(key);
+      });
+    }
+    if (ui.useIndexedDbStorageBtn) {
+      ui.useIndexedDbStorageBtn.addEventListener("click", async () => {
+        try {
+          await switchToIndexedDbStorage();
+        } catch (error) {
+          showToast(`儲存模式切換失敗: ${error.message}`, true);
+        }
+      });
+    }
+    if (ui.chooseStorageFileBtn) {
+      ui.chooseStorageFileBtn.addEventListener("click", async () => {
+        try {
+          await switchToFileStorage();
+        } catch (error) {
+          if (isFilePickerAbort(error)) {
+            showToast("已取消選擇本機檔案位置");
+            return;
+          }
+          showToast(`本機檔案位置設定失敗: ${error.message}`, true);
+        }
       });
     }
 
@@ -1235,6 +1403,8 @@
 
   async function init() {
     loadTheme();
+    renderAppVersion();
+    renderReleaseHistory();
     window.addEventListener("error", (event) => {
       const msg = event && event.error && event.error.message
         ? event.error.message

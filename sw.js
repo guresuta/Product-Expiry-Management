@@ -1,4 +1,4 @@
-const CACHE_NAME = "expiry-manager-cache-v45";
+const CACHE_NAME = "expiry-manager-cache-v113";
 const APP_SHELL_FILES = [
   "./",
   "./inventory-management-app.html",
@@ -6,10 +6,11 @@ const APP_SHELL_FILES = [
   "./styles_washi.css",
   "./app.js",
   "./settings.js",
+  "./version.js",
   "./manifest.webmanifest",
   "./favicon.ico",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-app-192.png",
+  "./icons/icon-app-512.png"
 ];
 
 self.addEventListener("install", (event) => {

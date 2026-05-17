@@ -7,7 +7,7 @@
   <title>零售商品效期管理</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-app-192.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
   <link rel="stylesheet" href="./styles_washi.css">
 </head>
@@ -19,52 +19,50 @@
         <p class="subtitle">離線可用，支援手動輸入與鏡頭條碼掃描</p>
       </div>
       <nav class="actions">
+        <button id="openAddProductBtn" class="btn secondary nav-link transient-nav-btn" type="button">新 增 商 品</button>
+        <button id="toggleCalendarBtn" class="btn secondary nav-link transient-nav-btn" type="button">關閉月曆</button>
         <a class="btn secondary nav-link" href="./settings.html">設定</a>
       </nav>
     </div>
   </header>
 
   <main class="container layout split-layout">
-    <section class="panel form-panel">
-      <div class="panel-head">
-        <h2>新增商品</h2>
-        <button id="toggleFormBtn" class="btn ghost" type="button">收疊</button>
+    <section class="panel calendar-panel" aria-label="商品效期月曆區塊">
+      <div class="calendar-toolbar">
+        <h2 class="section-title-bar">商品效期月曆</h2>
       </div>
-      <form id="productForm" class="form-stack collapsible-content">
-        <label>
-          商品分類
-          <select id="categoryInput" name="category"></select>
-        </label>
-        <label>
-          商品名稱
-          <input id="nameInput" name="name" placeholder="輸入商品名稱">
-        </label>
-        <label>
-          商品條碼
-          <div class="barcode-input-row">
-            <input id="barcodeInput" name="barcode" inputmode="numeric" placeholder="手動輸入條碼">
-            <button id="scanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>鏡頭</span><span>掃描</span></span></button>
+      <section id="calendarContent" class="calendar-block" aria-label="商品效期月曆">
+        <div class="calendar-head">
+          <div class="calendar-nav">
+            <button id="calendarPrevBtn" class="btn ghost" type="button" aria-label="上個月">‹</button>
+            <span id="calendarMonthLabel" class="calendar-month-label"></span>
+            <button id="calendarNextBtn" class="btn ghost" type="button" aria-label="下個月">›</button>
           </div>
-        </label>
-        <label>
-          有效日期
-          <div class="barcode-input-row">
-            <input id="expiryInput" name="expiry" inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
-            <button id="pickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
-          </div>
-          <input id="hiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
-        </label>
-        <div class="form-actions">
-          <button class="btn primary" type="submit">新增商品</button>
-          <button id="clearFormBtn" class="btn ghost" type="button">清空</button>
         </div>
-      </form>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div id="expiryCalendarGrid" class="calendar-grid"></div>
+        <p class="help-text calendar-help">點擊有顏色標記的日期可直接篩選該日商品（再點一次取消）</p>
+      </section>
     </section>
 
     <section class="panel list-panel">
       <div class="list-header">
         <div class="list-header-top">
           <h2 class="section-title-bar">商品清單 <span id="selectedCountBadge" class="selected-count-badge">已勾選 0 筆</span></h2>
+          <div id="healthCheckBar" class="health-check-bar" aria-label="資料健康檢查">
+            <div class="health-check-group">
+              <button class="health-check-btn" type="button" data-health-filter="missing-date">無日期 <span id="missingDateCount">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="missing-barcode">無條碼 <span id="missingBarcodeCount">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="duplicate-barcode">重複條碼 <span id="duplicateBarcodeCount">0</span></button>
+            </div>
+            <div class="health-check-group">
+              <button class="health-check-btn" type="button" data-health-filter="expired">已過期 <span id="expiredCount">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="expiring-60">60天內即期 <span id="expiring60Count">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="expiring-30">30天內即期 <span id="expiring30Count">0</span></button>
+            </div>
+          </div>
           <label class="mobile-select-all" for="selectAllProductsMobile" aria-label="全選商品">
             全選
             <input id="selectAllProductsMobile" class="row-select-product" type="checkbox">
@@ -115,9 +113,6 @@
         <div id="focusRing" class="focus-ring hidden" aria-hidden="true"></div>
       </div>
       <p id="scannerHint" class="help-text">請把條碼對準鏡頭中央。</p>
-      <div id="torchWrap" class="camera-control hidden">
-        <button id="toggleTorchBtn" class="btn secondary" type="button">開啟手電筒</button>
-      </div>
       <div id="exposureWrap" class="camera-control hidden">
         <label for="exposureSlider">曝光補償</label>
         <span class="exposure-sign">-</span>
@@ -127,6 +122,7 @@
       </div>
       <div class="form-actions">
         <button id="stopScanBtn" class="btn ghost" type="button">關閉掃描</button>
+        <button id="toggleTorchBtn" class="btn secondary" type="button" disabled>打開手電筒</button>
       </div>
     </div>
   </div>
@@ -134,7 +130,7 @@
     <div class="modal-content">
       <h3>商品條碼</h3>
       <div class="barcode-meta-row">
-        <strong id="barcodeProductName"></strong>
+        <span id="barcodeProductName"></span>
         <span id="barcodeFormatTag" class="barcode-format-tag"></span>
       </div>
       <div class="barcode-modal-wrap">
@@ -143,6 +139,68 @@
       <p id="barcodeModalText" class="help-text"></p>
       <div class="form-actions">
         <button id="closeBarcodeModalBtn" class="btn ghost" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="addProductModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>新增商品</h3>
+      <form id="productForm" class="form-stack">
+        <label>
+          商品分類
+          <select id="categoryInput" name="category"></select>
+        </label>
+        <label>
+          商品名稱
+          <input id="nameInput" name="name" placeholder="輸入商品名稱">
+        </label>
+        <label>
+          商品條碼
+          <div class="barcode-input-row">
+            <input id="barcodeInput" name="barcode" inputmode="numeric" placeholder="手動輸入條碼">
+            <button id="scanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>鏡頭</span><span>掃描</span></span></button>
+          </div>
+        </label>
+        <label>
+          有效日期
+          <div class="barcode-input-row">
+            <input id="expiryInput" name="expiry" inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+            <button id="pickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
+          </div>
+          <input id="hiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
+        </label>
+        <div class="form-actions">
+          <button class="btn primary" type="submit">新增商品</button>
+          <button id="clearFormBtn" class="btn ghost" type="button">清空</button>
+          <button id="cancelAddProductBtn" class="btn ghost" type="button">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="storageSetupModal" class="modal hidden">
+    <div class="modal-content storage-setup-modal">
+      <h3>選擇資料儲存方式</h3>
+      <p class="help-text">
+        iPhone / iPad Safari 只能使用IndexedDB將資料儲存在本機瀏覽器資料中；若清除 Safari 網站資料，商品資料會被刪除。建議定期匯出 JSON 備份到「檔案 App」或 iCloud Drive。
+      </p>
+      <div class="storage-choice-list">
+        <button id="chooseIndexedDbStorageBtn" class="btn secondary storage-choice-btn" type="button">
+          <span class="storage-choice-title">使用 IndexedDB</span>
+          <span>資料儲存在此瀏覽器與裝置中；清除瀏覽器資料會一併清除本專案資料。</span>
+        </button>
+        <button id="chooseFileStorageBtn" class="btn secondary storage-choice-btn" type="button">
+          <span class="storage-choice-title">使用本機檔案位置</span>
+          <span>可自行指定本機檔案位置；若瀏覽器支援，之後會從同一個資料檔讀寫。</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="updateNoticeModal" class="modal hidden">
+    <div class="modal-content update-notice-modal">
+      <h3 id="updateNoticeTitle">更新內容</h3>
+      <ul id="updateNoticeList" class="update-notice-list"></ul>
+      <div class="form-actions">
+        <button id="closeUpdateNoticeBtn" class="btn primary" type="button">知道了</button>
       </div>
     </div>
   </div>
@@ -167,7 +225,11 @@
         </label>
         <label>
           有效日期
-          <input id="editExpiryInput" required inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+          <div class="barcode-input-row">
+            <input id="editExpiryInput" required inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+            <button id="editPickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
+          </div>
+          <input id="editHiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
         </label>
         <div class="form-actions">
           <button id="saveEditProductBtn" class="btn primary" type="submit">儲存</button>
@@ -185,6 +247,27 @@
       </div>
     </div>
   </div>
+  <div id="backupReminderModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>建議備份資料</h3>
+      <p class="help-text">已新增 30 筆商品。建議立即備份 JSON 檔，避免瀏覽器資料被清除時遺失商品資料。</p>
+      <div class="form-actions">
+        <button id="backupNowBtn" class="btn primary" type="button">備份 JSON</button>
+        <button id="backupLaterBtn" class="btn ghost" type="button">稍後</button>
+      </div>
+    </div>
+  </div>
+  <div id="duplicateBarcodeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>條碼已存在</h3>
+      <p id="duplicateBarcodeMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="overwriteDuplicateBtn" class="btn primary" type="button">覆蓋既有商品</button>
+        <button id="keepDuplicateBtn" class="btn secondary" type="button">仍然新增</button>
+        <button id="cancelDuplicateBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
   <div id="errorModal" class="modal error-modal hidden">
     <div class="modal-content">
       <h3>發生錯誤</h3>
@@ -195,6 +278,7 @@
     </div>
   </div>
   <div id="toast" class="toast hidden"></div>
+  <script src="./version.js" defer></script>
   <script src="./app.js" defer></script>
 </body>
 </html>
