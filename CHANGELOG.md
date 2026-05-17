@@ -13,7 +13,9 @@
   - 新增 `icon-app-192.png`、`icon-app-512.png`，並更新 `favicon.ico`。
   - `manifest.webmanifest` 的 `theme_color` 同步改為淡紫色 `#8f82c7`。
   - 每次前端資產修改皆同步遞增 `sw.js` 的 `CACHE_NAME`。
-  - 目前快取版本為 `expiry-manager-cache-v113`。
+  - 目前快取版本為 `expiry-manager-cache-v114`。
+- 系統設定：
+  - 手機版「返回」按鈕固定在與主頁「設定」按鈕相同的位置與尺寸。
 - 新增商品與版面：
   - 桌面左側新增商品區塊已移除。
   - 新增商品表單改為彈出式 modal。

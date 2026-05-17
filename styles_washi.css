@@ -322,6 +322,10 @@ margin: 0 auto;
     font-size: 0.84rem;
   }
 
+  .settings-nav-actions .nav-link {
+    grid-column: 3;
+  }
+
   #openAddProductBtn.nav-link {
     min-width: 0;
   }
