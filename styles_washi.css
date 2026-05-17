@@ -216,6 +216,7 @@ margin: 0 auto;
   /* 關鍵對齊：確保左右元素垂直居中對齊 */
   align-items: center; 
   padding: 1rem 0; /* 適度留白 */
+  gap: 1.5rem;
 }
 
 .topbar-inner h1 {
@@ -282,7 +283,7 @@ margin: 0 auto;
 }
 
 #openAddProductBtn.nav-link {
-  min-width: 8.6rem;
+  min-width: 14.4rem;
 }
 
 /* 響應式調整：手機版縮小字體防止擁擠 */
@@ -294,9 +295,9 @@ margin: 0 auto;
   .topbar-inner {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 0.65rem;
+    gap: 0.95rem;
     align-items: stretch;
-    padding: 0.75rem 0;
+    padding: 0.85rem 0;
   }
 
   .topbar-inner h1 {
@@ -310,7 +311,7 @@ margin: 0 auto;
 
   .actions {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
     gap: 0.4rem;
     width: 100%;
   }
@@ -323,7 +324,7 @@ margin: 0 auto;
   }
 
   .settings-nav-actions .nav-link {
-    grid-column: 3;
+    grid-column: 2;
   }
 
   #openAddProductBtn.nav-link {

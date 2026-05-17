@@ -38,7 +38,6 @@
       torchOn: false,
       torchPersistent: false
     },
-    calendarCollapsed: false,
     editingProductId: null,
     selectedProductIds: new Set(),
     calendarMonth: new Date(),
@@ -70,7 +69,6 @@
     calendarMonthLabel: document.getElementById("calendarMonthLabel"),
     calendarPanel: document.querySelector(".calendar-panel"),
     calendarContent: document.getElementById("calendarContent"),
-    toggleCalendarBtn: document.getElementById("toggleCalendarBtn"),
     expiryCalendarGrid: document.getElementById("expiryCalendarGrid"),
     hiddenDatePicker: document.getElementById("hiddenDatePicker"),
     clearFormBtn: document.getElementById("clearFormBtn"),
@@ -1689,20 +1687,6 @@
     }
   }
 
-  function applyCalendarCollapsed() {
-    if (ui.calendarPanel) {
-      ui.calendarPanel.classList.toggle("hidden", state.calendarCollapsed);
-    }
-    if (ui.toggleCalendarBtn) {
-      ui.toggleCalendarBtn.textContent = state.calendarCollapsed ? "打開月曆" : "關閉月曆";
-    }
-  }
-
-  function toggleCalendar() {
-    state.calendarCollapsed = !state.calendarCollapsed;
-    applyCalendarCollapsed();
-  }
-
   function getScannerVideoTrack() {
     const stream = state.scanner.stream;
     if (!stream || !stream.getVideoTracks) {
@@ -1927,12 +1911,6 @@
         if (event.target === ui.addProductModal) {
           closeAddProductModal();
         }
-      });
-    }
-    if (ui.toggleCalendarBtn) {
-      ui.toggleCalendarBtn.addEventListener("click", () => {
-        toggleCalendar();
-        ui.toggleCalendarBtn.blur();
       });
     }
     if (ui.chooseIndexedDbStorageBtn) {
@@ -2411,7 +2389,6 @@
       event.stopPropagation();
     }, true);
     wireEvents();
-    applyCalendarCollapsed();
     await loadInitialState();
     await maybeShowStorageSetup();
     await maybeShowUpdateNotice();
