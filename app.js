@@ -24,6 +24,7 @@
     products: [],
     storageMode: DEFAULT_MODE,
     fileHandle: null,
+    pendingFilePermissionRequest: false,
     categories: [],
     scanner: {
       running: false,
@@ -410,6 +411,39 @@
       return false;
     }
     return (await fileHandle.queryPermission({ mode: "readwrite" })) === "granted";
+  }
+
+  async function requestStoredFilePermissionAndLoadProducts() {
+    if (!state.pendingFilePermissionRequest || state.storageMode !== "file" || isNativeFileMode() || !state.fileHandle) {
+      return;
+    }
+    try {
+      const granted = await hasReadWritePermission(state.fileHandle);
+      if (!granted) {
+        showToast("尚未取得本機檔案位置授權，已先顯示 IndexedDB 資料", true);
+        return;
+      }
+      state.pendingFilePermissionRequest = false;
+      state.products = sortProducts(await readProductsFromSelectedFile());
+      renderProducts();
+      showToast("已自動完成本機檔案位置授權");
+    } catch (error) {
+      showToast(`本機檔案位置授權失敗: ${error.message}`, true);
+    }
+  }
+
+  function scheduleStoredFilePermissionRequest() {
+    if (state.pendingFilePermissionRequest || isNativeFileMode() || !state.fileHandle) {
+      return;
+    }
+    state.pendingFilePermissionRequest = true;
+    const requestOnce = () => {
+      document.removeEventListener("pointerdown", requestOnce, true);
+      document.removeEventListener("keydown", requestOnce, true);
+      requestStoredFilePermissionAndLoadProducts();
+    };
+    document.addEventListener("pointerdown", requestOnce, true);
+    document.addEventListener("keydown", requestOnce, true);
   }
 
   async function chooseStorageFileHandle() {
@@ -1100,7 +1134,8 @@
           state.products = sortProducts(await readProductsFromSelectedFile());
         } else {
           state.products = sortProducts(await getAllProductsFromIndexedDb());
-          showToast("需要重新授權本機檔案位置，已先顯示 IndexedDB 資料");
+          scheduleStoredFilePermissionRequest();
+          showToast("將在下一次點擊頁面時自動重新授權本機檔案位置，已先顯示 IndexedDB 資料");
         }
       } catch (error) {
         state.products = sortProducts(await getAllProductsFromIndexedDb());
@@ -1159,6 +1194,10 @@
     }
 
     const handle = await chooseStorageFileHandle();
+    const ok = await hasReadWritePermission(handle);
+    if (!ok) {
+      throw new Error("未取得檔案讀寫權限");
+    }
     state.fileHandle = handle;
     state.storageMode = "file";
     await setSetting(FILE_HANDLE_SETTING_KEY, handle);
