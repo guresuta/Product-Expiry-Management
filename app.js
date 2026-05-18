@@ -118,6 +118,7 @@
     backupReminderModal: document.getElementById("backupReminderModal"),
     backupNowBtn: document.getElementById("backupNowBtn"),
     backupLaterBtn: document.getElementById("backupLaterBtn"),
+    backToTopBtn: document.getElementById("backToTopBtn"),
     duplicateBarcodeModal: document.getElementById("duplicateBarcodeModal"),
     duplicateBarcodeMessage: document.getElementById("duplicateBarcodeMessage"),
     overwriteDuplicateBtn: document.getElementById("overwriteDuplicateBtn"),
@@ -285,6 +286,17 @@
     if (ui.errorModal) {
       ui.errorModal.classList.add("hidden");
     }
+  }
+
+  function syncBackToTopButton() {
+    if (!ui.backToTopBtn) {
+      return;
+    }
+    ui.backToTopBtn.classList.toggle("hidden", window.scrollY < 520);
+  }
+
+  function scrollToPageTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function isFilePermissionActivationError(message) {
@@ -1001,8 +1013,8 @@
         <td data-label="狀態"><span class="badge ${status.badgeClass}">${status.label}</span></td>
         <td data-label="操作">
           <div class="action-stack">
-            <button class="btn secondary" data-edit-id="${product.id}" type="button">編輯</button>
-            <button class="btn danger-btn" data-delete-id="${product.id}" type="button">刪除</button>
+            <button class="btn secondary" data-edit-id="${product.id}" type="button">編　輯</button>
+            <button class="btn secondary" data-delete-id="${product.id}" type="button">刪　除</button>
           </div>
         </td>
         <td class="select-col" data-label="選取">
@@ -1997,6 +2009,11 @@
           ui.backupReminderModal.classList.add("hidden");
         }
       });
+    }
+    if (ui.backToTopBtn) {
+      ui.backToTopBtn.addEventListener("click", scrollToPageTop);
+      window.addEventListener("scroll", syncBackToTopButton, { passive: true });
+      syncBackToTopButton();
     }
     if (ui.overwriteDuplicateBtn) {
       ui.overwriteDuplicateBtn.addEventListener("click", () => resolveDuplicateBarcodeChoice("overwrite"));
