@@ -322,9 +322,7 @@ margin: 0 auto;
   }
 
   .topbar-inner > div:first-child::after {
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(13rem, 82%);
+    display: none;
   }
 
   .topbar-inner .subtitle {
