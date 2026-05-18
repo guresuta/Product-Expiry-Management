@@ -13,7 +13,7 @@
   - 新增 `icon-app-192.png`、`icon-app-512.png`，並更新 `favicon.ico`。
   - `manifest.webmanifest` 的 `theme_color` 同步改為淡紫色 `#8f82c7`。
   - 每次前端資產修改皆同步遞增 `sw.js` 的 `CACHE_NAME`。
-  - 目前快取版本為 `expiry-manager-cache-v117`。
+  - 目前快取版本為 `expiry-manager-cache-v118`。
 - 系統設定：
   - 手機版「返回」按鈕固定在與主頁「設定」按鈕相同的位置與尺寸。
   - 設定頁「返回」按鈕位置同步對齊主頁「設定」按鈕。
@@ -56,6 +56,8 @@
   - 主頁初始化時先使用 `queryPermission()` 檢查 File System Access 權限，避免無使用者互動時直接觸發 `User activation is required` 錯誤。
   - 若瀏覽器要求重新授權本機檔案位置，主頁不再自動發起授權提示，會先顯示 IndexedDB 資料。
   - 初始選擇儲存方式視窗已補充瀏覽器可能要求確認檔案編輯權限的說明。
+  - 修正安裝成手機 PWA 後開啟時，非使用者手勢觸發 `requestPermission()` 造成 `User activation is required` 錯誤彈窗的問題。
+  - 自動儲存時若尚未取得本機檔案位置授權，會先儲存在 IndexedDB，不再跳出「發生錯誤」視窗。
 - 備份與提醒：
   - IndexedDB 模式下，每新增 30 筆商品會跳出 JSON 備份提醒。
   - 點「備份 JSON」會下載目前商品資料 JSON 並重置提醒計數。

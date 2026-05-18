@@ -287,6 +287,11 @@
     }
   }
 
+  function isFilePermissionActivationError(message) {
+    const text = String(message || "");
+    return text.includes("requestPermission") && text.includes("User activation is required");
+  }
+
   function playTone(type) {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -394,15 +399,21 @@
     });
   }
 
-  async function hasReadWritePermission(fileHandle) {
+  async function hasReadWritePermission(fileHandle, options = {}) {
     if (!fileHandle) {
       return false;
     }
-    const options = { mode: "readwrite" };
-    if ((await fileHandle.queryPermission(options)) === "granted") {
+    const permissionOptions = { mode: "readwrite" };
+    if ((await fileHandle.queryPermission(permissionOptions)) === "granted") {
       return true;
     }
-    return (await fileHandle.requestPermission(options)) === "granted";
+    if (!options.request) {
+      return false;
+    }
+    if (navigator.userActivation && !navigator.userActivation.isActive) {
+      return false;
+    }
+    return (await fileHandle.requestPermission(permissionOptions)) === "granted";
   }
 
   async function hasReadWritePermissionGrant(fileHandle) {
@@ -1048,7 +1059,8 @@
       if (!isNativeFileMode()) {
         const ok = await hasReadWritePermission(state.fileHandle);
         if (!ok) {
-          throw new Error("未取得檔案讀寫權限");
+          showToast("瀏覽器尚未授權本機檔案位置，已先儲存在 IndexedDB");
+          return;
         }
       }
       await writeProductsToSelectedFile(state.products);
@@ -1159,7 +1171,7 @@
     }
 
     const handle = await chooseStorageFileHandle();
-    const ok = await hasReadWritePermission(handle);
+    const ok = await hasReadWritePermission(handle, { request: true });
     if (!ok) {
       throw new Error("未取得檔案讀寫權限");
     }
@@ -2378,11 +2390,21 @@
       const msg = event && event.error && event.error.message
         ? event.error.message
         : (event && event.message ? event.message : "程式發生未預期錯誤");
+      if (isFilePermissionActivationError(msg)) {
+        event.preventDefault();
+        showToast("瀏覽器尚未授權本機檔案位置，已先使用 IndexedDB");
+        return;
+      }
       showErrorModal(msg);
     });
     window.addEventListener("unhandledrejection", (event) => {
       const reason = event && event.reason;
       const msg = reason && reason.message ? reason.message : String(reason || "程式發生未處理錯誤");
+      if (isFilePermissionActivationError(msg)) {
+        event.preventDefault();
+        showToast("瀏覽器尚未授權本機檔案位置，已先使用 IndexedDB");
+        return;
+      }
       showErrorModal(msg);
     });
     window.addEventListener("contextmenu", (event) => {
