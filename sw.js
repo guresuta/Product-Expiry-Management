@@ -1,0 +1,90 @@
+const CACHE_NAME = "expiry-manager-cache-v285";
+const APP_SHELL_FILES = [
+  "./",
+  "./inventory-management-app.html",
+  "./settings.html",
+  "./privacy-policy.html",
+  "./styles_washi.css",
+  "./i18n.js",
+  "./app.js",
+  "./settings.js",
+  "./version.js",
+  "./manifest.webmanifest",
+  "./favicon.ico",
+  "./icons/icon-app-192.png",
+  "./icons/icon-app-512.png",
+  "./icons/icon-app-maskable-192.png",
+  "./icons/icon-app-maskable-512.png",
+  "./fonts/GenSekiGothic2TC-H.woff2",
+  "./fonts/GenSekiGothic2TC-R.woff2",
+  "./key-visuals/background-neon-cyber.png",
+  "./key-visuals/background-daylight-cyber.png",
+  "./key-visuals/background-vibrant-oasis.png",
+  "./key-visuals/background-midnight-oasis.png"
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL_FILES))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") {
+    return;
+  }
+
+  const url = new URL(request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isCoreAsset = isSameOrigin && (
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".webmanifest")
+  );
+
+  if (isCoreAsset) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) {
+            return cached;
+          }
+          return caches.match("./inventory-management-app.html");
+        })
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(request).then((cached) =>
+      cached ||
+      fetch(request).then((response) => {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        return response;
+      })
+    )
+  );
+});

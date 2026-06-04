@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p pages-dist/icons pages-dist/fonts pages-dist/key-visuals
+          cp inventory-management-app.html settings.html privacy-policy.html index.html pages-dist/
+          cp styles_washi.css app.js settings.js i18n.js version.js sw.js manifest.webmanifest favicon.ico pages-dist/
+          cp icons/icon-app-192.png icons/icon-app-512.png icons/icon-app-maskable-192.png icons/icon-app-maskable-512.png pages-dist/icons/
+          cp fonts/GenSekiGothic2TC-H.woff2 fonts/GenSekiGothic2TC-R.woff2 pages-dist/fonts/
+          cp key-visuals/background-neon-cyber.png key-visuals/background-daylight-cyber.png key-visuals/background-vibrant-oasis.png key-visuals/background-midnight-oasis.png pages-dist/key-visuals/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "pages-dist"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

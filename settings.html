@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="app-booting">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f6feb">
+  <title>設定 | 商品終期電馭監管裝置</title>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeKeys = new Set(["dark-1", "light-1", "light-2", "dark-2"]);
+      const defaultThemeKey = "dark-1";
+      const themeAliases = {
+        "dark-7": "dark-1",
+        "light-7": "light-1",
+        "light-8": "light-2",
+        "dark-8": "dark-2"
+      };
+      const savedTheme = localStorage.getItem("uiTheme") || defaultThemeKey;
+      const normalizedTheme = themeAliases[savedTheme] || savedTheme;
+      const themeKey = themeKeys.has(normalizedTheme) ? normalizedTheme : defaultThemeKey;
+      if (themeKey !== savedTheme) {
+        localStorage.setItem("uiTheme", themeKey);
+      }
+      const bootBackgrounds = {
+        "dark-1": "./key-visuals/background-neon-cyber.png",
+        "light-1": "./key-visuals/background-daylight-cyber.png",
+        "light-2": "./key-visuals/background-vibrant-oasis.png",
+        "dark-2": "./key-visuals/background-midnight-oasis.png"
+      };
+      const statusBarColors = {
+        "dark-1": "#050505",
+        "light-1": "#fafafa",
+        "light-2": "#f4f7f5",
+        "dark-2": "#101814"
+      };
+      const languageKeys = new Set(["zh-Hant", "en", "ja"]);
+      const inferSystemLanguage = () => {
+        const candidates = [];
+        if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+        candidates.push(navigator.language || navigator.userLanguage || "");
+        const normalized = candidates.map((item) => String(item || "").toLowerCase()).filter(Boolean);
+        if (normalized.some((item) => item.startsWith("zh"))) return "zh-Hant";
+        if (normalized.some((item) => item.startsWith("ja"))) return "ja";
+        return "en";
+      };
+      const savedLanguage = localStorage.getItem("appLanguage");
+      const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
+      const bootStartedAt = Date.now();
+      const minBootDurationMs = 1000;
+      let ready = false;
+      let bootVisualReady = false;
+      root.setAttribute("data-theme", themeKey);
+      root.setAttribute("lang", language);
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.setStatusBarColor === "function") {
+          window.AndroidBridge.setStatusBarColor(statusBarColors[themeKey] || statusBarColors[defaultThemeKey]);
+        }
+      } catch (_error) {
+      }
+      const markBootVisualReady = () => {
+        if (bootVisualReady) return;
+        bootVisualReady = true;
+        root.classList.add("app-boot-visual-ready");
+      };
+      const bootImage = new Image();
+      bootImage.onload = markBootVisualReady;
+      bootImage.onerror = markBootVisualReady;
+      bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
+      setTimeout(markBootVisualReady, 900);
+      window.AppBoot = {
+        ready() {
+          if (ready) return;
+          ready = true;
+          const finish = () => {
+            root.classList.remove("app-booting");
+            root.classList.add("app-ready");
+            setTimeout(() => document.querySelector(".app-boot-screen")?.remove(), 240);
+          };
+          const elapsed = Date.now() - bootStartedAt;
+          setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));
+        }
+      };
+      setTimeout(() => window.AppBoot.ready(), 1600);
+    })();
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-app-192.png">
+  <link rel="stylesheet" href="./styles_washi.css">
+</head>
+<body>
+  <div class="app-boot-screen" aria-hidden="true">
+    <div class="app-boot-spinner"></div>
+  </div>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>系統設定</h1>
+        <p class="subtitle">管理分類標籤、匯入匯出與介面主題</p>
+      </div>
+      <nav class="actions settings-nav-actions">
+        <a class="btn secondary nav-link" href="./inventory-management-app.html">返 回</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container layout settings-main">
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">新增分類</h2>
+      <div class="form-actions">
+        <div class="text-input-shell new-category-input-shell">
+          <span class="text-input-mirror" aria-hidden="true"></span>
+          <input id="newCategoryInput" class="search-input text-input-overlay-control" placeholder="輸入新分類名稱">
+        </div>
+        <button id="addCategoryBtn" class="btn primary" type="button">新增分類</button>
+      </div>
+      <div id="categoryList" class="category-list"></div>
+    </section>
+
+    <section class="panel settings-section storage-section">
+      <h2 class="section-title-bar">資料儲存</h2>
+      <p id="storageModeLabel" class="help-text">目前模式：讀取中</p>
+      <p class="help-text">切換到本機檔案位置時會先把目前資料寫入該檔案。</p>
+      <p class="help-text">iPhone / iPad Safari 只能使用IndexedDB將資料儲存在本機瀏覽器資料中；若清除 Safari 網站資料，商品資料會被刪除。建議定期匯出 JSON 備份到「檔案 App」或 iCloud Drive。</p>
+      <div class="form-actions">
+        <button id="useIndexedDbStorageBtn" class="btn secondary" type="button">改用 IndexedDB</button>
+        <button id="chooseStorageFileBtn" class="btn secondary" type="button">選擇本機檔案位置</button>
+      </div>
+    </section>
+
+    <section class="panel settings-section io-section">
+      <h2 class="section-title-bar">檔案功能</h2>
+      <p class="help-text">此裝置資料為獨立儲存。</p>
+      <div class="form-actions">
+        <button id="exportCsvBtn" class="btn secondary" type="button">匯出 CSV</button>
+        <button id="exportJsonBtn" class="btn secondary" type="button">備份資料 JSON</button>
+      </div>
+      <input id="importCsvFileInput" class="hidden" type="file" accept=".csv,.scv,text/csv">
+      <input id="importJsonFileInput" class="hidden" type="file" accept=".json,application/json">
+      <div class="form-actions">
+        <button id="importCsvFileBtn" class="btn secondary" type="button">匯入試算表資料</button>
+        <button id="importJsonFileBtn" class="btn secondary" type="button">還原資料 JSON</button>
+      </div>
+      <p class="help-text">匯入會保留原有商品，並合併上傳檔案中的資料。</p>
+    </section>
+
+    <section class="panel settings-section theme-section">
+      <h2 class="section-title-bar">介面模式</h2>
+      <div class="storage-mode theme-mode-actions">
+        <button id="chooseLightThemeBtn" class="btn secondary" type="button">明亮模式</button>
+        <button id="chooseDarkThemeBtn" class="btn secondary" type="button">黑暗模式</button>
+      </div>
+      <p id="themeCurrentLabel" class="help-text">目前主題：霓虹電馭</p>
+      <label class="language-select-row">
+        語言
+        <select id="languageSelect" class="search-input">
+          <option value="zh-Hant" selected>中文</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="panel settings-section release-history-section">
+      <h2 class="section-title-bar">更新紀錄</h2>
+      <p id="currentReleaseLabel" class="help-text">目前版本：讀取中</p>
+      <div id="releaseHistoryList" class="release-history-list"></div>
+    </section>
+
+    <section class="panel settings-section about-section">
+      <h2 class="section-title-bar">關於</h2>
+	  <p class="help-text about-credit-line">構想：GURESUTA</p>
+	  <p class="help-text about-credit-line">策劃：GURESUTA</p>
+	  <p class="help-text about-credit-line">執行：Codex(GPT-5.3-Codex、GPT-5.5)</p>
+      <p class="help-text about-credit-line">代碼：Codex(GPT-5.3-Codex、GPT-5.5)</p>
+	  <p class="help-text about-credit-line">排版：Codex(GPT-5.3-Codex、GPT-5.5)</p>
+	  <p class="help-text about-credit-line">色彩：Gemini Web、Codex(GPT-5.5)</p>
+	  <p class="help-text about-credit-line">字型：GenSekiGothic2TC</p>
+	  <p class="help-text about-credit-line">翻譯：Codex(GPT-5.5)</p>
+	  <p class="help-text about-credit-line">測試：Codex(GPT-5.3-Codex、GPT-5.5)</p>
+	  <p class="help-text about-credit-line">指示：GURESUTA</p>
+	  <p class="help-text about-credit-line">發布：GURESUTA</p>
+     
+      <p class="help-text">
+        <a class="about-link" href="./privacy-policy.html">隱私權與資料安全說明</a>
+      </p>
+      <p class="help-text disclaimer-text">
+        免責聲明<br>
+        一.「本專案為開源工具，僅供個人管理商品效期使用。<br>
+        二.使用者自行上傳之商品資訊（包含但不限於菸酒、藥品），應遵守相關法令規範。<br>
+        三.本程式僅提供管理功能，不具備廣告或促銷意圖。」
+      </p>
+      <p id="appVersionLabel" class="help-text app-version-label">版本</p>
+    </section>
+  </main>
+
+  <div id="themePickerModal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="themePickerTitle">選擇主題</h3>
+      <div id="themeOptions" class="theme-options-grid"></div>
+      <div class="form-actions">
+        <button id="closeThemePickerBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deleteCategoryModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>刪除標籤</h3>
+      <p id="deleteCategoryMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="confirmDeleteCategoryBtn" class="btn danger-btn" type="button">確定刪除</button>
+        <button id="cancelDeleteCategoryBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="errorModal" class="modal error-modal hidden">
+    <div class="modal-content">
+      <h3>發生錯誤</h3>
+      <p id="errorModalMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="./i18n.js" defer></script>
+  <script src="./version.js" defer></script>
+  <script src="./settings.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Build / cache folders (if introduced later)
+dist/
+build/
+coverage/
+.cache/
+
+# Local data and backup exports
+expiry-manager-data.json
+expiry-backup-*.json

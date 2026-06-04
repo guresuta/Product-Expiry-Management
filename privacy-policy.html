@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="app-booting">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f6feb">
+  <title>隱私權與資料安全 | 商品終期電馭監管裝置</title>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeKeys = new Set(["dark-1", "light-1", "light-2", "dark-2"]);
+      const defaultThemeKey = "dark-1";
+      const themeAliases = {
+        "dark-7": "dark-1",
+        "light-7": "light-1",
+        "light-8": "light-2",
+        "dark-8": "dark-2"
+      };
+      const savedTheme = localStorage.getItem("uiTheme") || defaultThemeKey;
+      const normalizedTheme = themeAliases[savedTheme] || savedTheme;
+      const themeKey = themeKeys.has(normalizedTheme) ? normalizedTheme : defaultThemeKey;
+      if (themeKey !== savedTheme) {
+        localStorage.setItem("uiTheme", themeKey);
+      }
+      const bootBackgrounds = {
+        "dark-1": "./key-visuals/background-neon-cyber.png",
+        "light-1": "./key-visuals/background-daylight-cyber.png",
+        "light-2": "./key-visuals/background-vibrant-oasis.png",
+        "dark-2": "./key-visuals/background-midnight-oasis.png"
+      };
+      const statusBarColors = {
+        "dark-1": "#050505",
+        "light-1": "#fafafa",
+        "light-2": "#f4f7f5",
+        "dark-2": "#101814"
+      };
+      const languageKeys = new Set(["zh-Hant", "en", "ja"]);
+      const inferSystemLanguage = () => {
+        const candidates = [];
+        if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+        candidates.push(navigator.language || navigator.userLanguage || "");
+        const normalized = candidates.map((item) => String(item || "").toLowerCase()).filter(Boolean);
+        if (normalized.some((item) => item.startsWith("zh"))) return "zh-Hant";
+        if (normalized.some((item) => item.startsWith("ja"))) return "ja";
+        return "en";
+      };
+      const savedLanguage = localStorage.getItem("appLanguage");
+      const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
+      const bootStartedAt = Date.now();
+      const minBootDurationMs = 1000;
+      let ready = false;
+      let bootVisualReady = false;
+      root.setAttribute("data-theme", themeKey);
+      root.setAttribute("lang", language);
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.setStatusBarColor === "function") {
+          window.AndroidBridge.setStatusBarColor(statusBarColors[themeKey] || statusBarColors[defaultThemeKey]);
+        }
+      } catch (_error) {
+      }
+      const markBootVisualReady = () => {
+        if (bootVisualReady) return;
+        bootVisualReady = true;
+        root.classList.add("app-boot-visual-ready");
+      };
+      const bootImage = new Image();
+      bootImage.onload = markBootVisualReady;
+      bootImage.onerror = markBootVisualReady;
+      bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
+      setTimeout(markBootVisualReady, 900);
+      window.AppBoot = {
+        ready() {
+          if (ready) return;
+          ready = true;
+          const finish = () => {
+            root.classList.remove("app-booting");
+            root.classList.add("app-ready");
+            setTimeout(() => document.querySelector(".app-boot-screen")?.remove(), 240);
+          };
+          const elapsed = Date.now() - bootStartedAt;
+          setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));
+        }
+      };
+      setTimeout(() => window.AppBoot.ready(), 1600);
+    })();
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-app-192.png">
+  <link rel="stylesheet" href="./styles_washi.css">
+</head>
+<body>
+  <div class="app-boot-screen" aria-hidden="true">
+    <div class="app-boot-spinner"></div>
+  </div>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>隱私權與資料安全</h1>
+        <p class="subtitle">說明資料儲存、相機權限與備份行為</p>
+      </div>
+      <nav class="actions settings-nav-actions">
+        <a class="btn secondary nav-link" href="./settings.html">返 回</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container layout settings-main">
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">政策資訊</h2>
+      <p class="help-text">本隱私權與資料安全說明適用於「商品終期電馭監管裝置」。</p>
+      <p class="help-text">開發者：GURESUTA。</p>
+      <p class="help-text">
+        聯絡方式：
+        <a class="about-link" href="https://github.com/guresuta/" target="_blank" rel="noopener noreferrer">https://github.com/guresuta/</a>
+      </p>
+      <p class="help-text">
+        E-MAIL：
+        <a class="about-link" href="mailto:guresuta@gmail.com">guresuta@gmail.com</a>
+      </p>
+      <p class="help-text">生效日期：2026-05-20。</p>
+    </section>
+
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">資料儲存</h2>
+      <p class="help-text">本 App 可能由使用者自行建立商品分類、商品名稱、條碼、有效日期、主題設定與備份資料。</p>
+      <p class="help-text">上述資料預設儲存在裝置本機 IndexedDB，不會由本 App 主動上傳到 GitHub Pages 或其他伺服器。</p>
+      <p class="help-text">若使用「本機檔案位置」，資料會寫入使用者選擇的本機 JSON 檔案；使用者可自行保管、備份或刪除該檔案。</p>
+    </section>
+
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">相機權限</h2>
+      <p class="help-text">相機只用於條碼掃描。掃描時影像會在裝置本機交給瀏覽器或 WebView 的條碼辨識能力處理。</p>
+      <p class="help-text">本專案不會儲存相機影像，不會錄音，也不會把影像傳送到遠端服務。</p>
+      <p class="help-text">若使用者拒絕相機權限，仍可手動輸入條碼與管理商品資料。</p>
+    </section>
+
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">資料使用與分享</h2>
+      <p class="help-text">本 App 使用商品資料是為了在本機提供新增、編輯、刪除、搜尋、排序、月曆提醒、CSV 匯出、JSON 備份與還原功能。</p>
+      <p class="help-text">本 App 不會販售、分享或轉移使用者建立的商品資料給第三方。</p>
+      <p class="help-text">若使用者自行匯出 CSV 或 JSON 檔案，該檔案由使用者自行保存、傳送或刪除。</p>
+    </section>
+
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">匯入、匯出與備份</h2>
+      <p class="help-text">CSV 匯出、JSON 備份與 JSON 還原都由使用者手動觸發。</p>
+      <p class="help-text">JSON 備份檔包含商品資料與分類設定，請視為個人資料自行保存。</p>
+      <p class="help-text">匯入檔案只會在本機讀取並合併到目前資料庫，不會上傳。</p>
+    </section>
+
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">資料保存與刪除</h2>
+      <p class="help-text">本機資料會保留在使用者裝置中，直到使用者刪除商品、清除網站資料、移除 App，或刪除自行保存的備份檔。</p>
+      <p class="help-text">使用者可在商品清單刪除個別商品，也可清除瀏覽器網站資料或移除 App 來刪除本機資料。</p>
+      <p class="help-text">若曾匯出 JSON 或指定本機檔案位置，請另外刪除使用者自行保存的檔案。</p>
+    </section>
+
+    <section class="panel settings-section">
+      <h2 class="section-title-bar">資訊安全</h2>
+      <p class="help-text">本 App 以本機儲存為主要設計，開發者不會主動接收使用者建立的商品資料。</p>
+      <p class="help-text">請使用者自行保管裝置、瀏覽器資料與匯出的備份檔，避免未授權的人取得資料。</p>
+    </section>
+  </main>
+  <script src="./i18n.js" defer></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      window.AppNativeBack = {
+        handleBack() {
+          location.href = "./inventory-management-app.html";
+          return true;
+        }
+      };
+      try {
+        if (!history.state || history.state.privacyPage !== true) {
+          history.replaceState({ privacyPage: true }, "", location.href);
+          history.pushState({ privacyGuard: true }, "", location.href);
+        }
+      } catch (_error) {
+      }
+      window.addEventListener("popstate", () => {
+        location.href = "./inventory-management-app.html";
+      });
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        const normalizeThemeColorValue = (colorValue) => {
+          const value = String(colorValue || "").trim();
+          const rgba = value.match(/^rgba?\(([^)]+)\)$/i);
+          if (!rgba) return value;
+          const parts = rgba[1].split(",").map((p) => p.trim());
+          return parts.length >= 3 ? `rgb(${parts[0]}, ${parts[1]}, ${parts[2]})` : value;
+        };
+        const themeColorToHex = (colorValue) => {
+          const value = normalizeThemeColorValue(colorValue);
+          const hex = value.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+          if (hex) {
+            const raw = hex[1];
+            return raw.length === 3
+              ? `#${raw[0]}${raw[0]}${raw[1]}${raw[1]}${raw[2]}${raw[2]}`.toLowerCase()
+              : `#${raw}`.toLowerCase();
+          }
+          const rgb = value.match(/^rgb\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\)$/i);
+          if (!rgb) return "";
+          const toHex = (part) => Math.max(0, Math.min(255, Math.round(Number(part) || 0))).toString(16).padStart(2, "0");
+          return `#${toHex(rgb[1])}${toHex(rgb[2])}${toHex(rgb[3])}`;
+        };
+        const styles = getComputedStyle(document.documentElement);
+        const color = normalizeThemeColorValue(styles.getPropertyValue("--topbar")) ||
+          normalizeThemeColorValue(styles.getPropertyValue("--bg")) ||
+          "#1f6feb";
+        meta.setAttribute("content", color);
+        if (window.AndroidBridge && typeof window.AndroidBridge.setStatusBarColor === "function") {
+          const statusBarColor = themeColorToHex(color);
+          if (statusBarColor) {
+            try {
+              window.AndroidBridge.setStatusBarColor(statusBarColor);
+            } catch (_error) {
+            }
+          }
+        }
+      }
+      const finish = () => window.AppBoot?.ready();
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(finish, finish);
+      } else {
+        finish();
+      }
+    });
+  </script>
+</body>
+</html>

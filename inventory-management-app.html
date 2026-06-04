@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="app-booting">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1f6feb">
+  <title>商品終期電馭監管裝置</title>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeKeys = new Set(["dark-1", "light-1", "light-2", "dark-2"]);
+      const defaultThemeKey = "dark-1";
+      const themeAliases = {
+        "dark-7": "dark-1",
+        "light-7": "light-1",
+        "light-8": "light-2",
+        "dark-8": "dark-2"
+      };
+      const savedTheme = localStorage.getItem("uiTheme") || defaultThemeKey;
+      const normalizedTheme = themeAliases[savedTheme] || savedTheme;
+      const themeKey = themeKeys.has(normalizedTheme) ? normalizedTheme : defaultThemeKey;
+      if (themeKey !== savedTheme) {
+        localStorage.setItem("uiTheme", themeKey);
+      }
+      const bootBackgrounds = {
+        "dark-1": "./key-visuals/background-neon-cyber.png",
+        "light-1": "./key-visuals/background-daylight-cyber.png",
+        "light-2": "./key-visuals/background-vibrant-oasis.png",
+        "dark-2": "./key-visuals/background-midnight-oasis.png"
+      };
+      const statusBarColors = {
+        "dark-1": "#050505",
+        "light-1": "#fafafa",
+        "light-2": "#f4f7f5",
+        "dark-2": "#101814"
+      };
+      const languageKeys = new Set(["zh-Hant", "en", "ja"]);
+      const inferSystemLanguage = () => {
+        const candidates = [];
+        if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+        candidates.push(navigator.language || navigator.userLanguage || "");
+        const normalized = candidates.map((item) => String(item || "").toLowerCase()).filter(Boolean);
+        if (normalized.some((item) => item.startsWith("zh"))) return "zh-Hant";
+        if (normalized.some((item) => item.startsWith("ja"))) return "ja";
+        return "en";
+      };
+      const savedLanguage = localStorage.getItem("appLanguage");
+      const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
+      const bootStartedAt = Date.now();
+      const minBootDurationMs = 1000;
+      let ready = false;
+      let bootVisualReady = false;
+      root.setAttribute("data-theme", themeKey);
+      root.setAttribute("lang", language);
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.setStatusBarColor === "function") {
+          window.AndroidBridge.setStatusBarColor(statusBarColors[themeKey] || statusBarColors[defaultThemeKey]);
+        }
+      } catch (_error) {
+      }
+      const markBootVisualReady = () => {
+        if (bootVisualReady) return;
+        bootVisualReady = true;
+        root.classList.add("app-boot-visual-ready");
+      };
+      const bootImage = new Image();
+      bootImage.onload = markBootVisualReady;
+      bootImage.onerror = markBootVisualReady;
+      bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
+      setTimeout(markBootVisualReady, 900);
+      window.AppBoot = {
+        ready() {
+          if (ready) return;
+          ready = true;
+          const finish = () => {
+            root.classList.remove("app-booting");
+            root.classList.add("app-ready");
+            setTimeout(() => document.querySelector(".app-boot-screen")?.remove(), 240);
+          };
+          const elapsed = Date.now() - bootStartedAt;
+          setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));
+        }
+      };
+      setTimeout(() => window.AppBoot.ready(), 1600);
+    })();
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-app-192.png">
+  <link rel="stylesheet" href="./styles_washi.css">
+</head>
+<body>
+  <div class="app-boot-screen" aria-hidden="true">
+    <div class="app-boot-spinner"></div>
+  </div>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>商品終期電馭監管裝置</h1>
+        <p class="subtitle">離線可用，支援手動輸入與鏡頭條碼掃描</p>
+      </div>
+      <nav class="actions">
+        <button id="openAddProductBtn" class="btn secondary nav-link transient-nav-btn" type="button">新 增 商 品</button>
+        <a class="btn secondary nav-link" href="./settings.html">設 定</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container layout split-layout">
+    <section class="panel calendar-panel" aria-label="商品效期月曆區塊">
+      <div class="calendar-toolbar">
+        <h2 class="section-title-bar">商品效期月曆</h2>
+      </div>
+      <section id="calendarContent" class="calendar-block" aria-label="商品效期月曆">
+        <div class="calendar-head">
+          <div class="calendar-nav">
+            <button id="calendarPrevBtn" class="btn ghost" type="button" aria-label="上個月">‹</button>
+            <span id="calendarMonthLabel" class="calendar-month-label"></span>
+            <button id="calendarNextBtn" class="btn ghost" type="button" aria-label="下個月">›</button>
+          </div>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+        </div>
+        <div id="expiryCalendarGrid" class="calendar-grid"></div>
+        <p class="help-text calendar-help">點擊有顏色標記的日期可直接篩選該日商品<br><br>(再點一次取消)</p>
+      </section>
+    </section>
+
+    <section class="panel list-panel">
+      <div class="list-header">
+        <div class="list-header-top">
+          <h2 class="section-title-bar">商品清單 <span id="selectedCountBadge" class="selected-count-badge">已勾選 0 筆</span></h2>
+          <div id="healthCheckBar" class="health-check-bar" aria-label="資料健康檢查">
+            <div class="health-check-group">
+              <button class="health-check-btn" type="button" data-health-filter="missing-date"><span class="health-check-label">無日期</span> <span id="missingDateCount" class="health-check-count">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="missing-barcode"><span class="health-check-label">無條碼</span> <span id="missingBarcodeCount" class="health-check-count">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="duplicate-barcode"><span class="health-check-label">重複條碼</span> <span id="duplicateBarcodeCount" class="health-check-count">0</span></button>
+            </div>
+            <div class="health-check-group">
+              <button class="health-check-btn" type="button" data-health-filter="expired"><span class="health-check-label">已過期</span> <span id="expiredCount" class="health-check-count">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="expiring-60"><span class="health-check-label">60天內即期</span> <span id="expiring60Count" class="health-check-count">0</span></button>
+              <button class="health-check-btn" type="button" data-health-filter="expiring-30"><span class="health-check-label">30天內即期</span> <span id="expiring30Count" class="health-check-count">0</span></button>
+            </div>
+          </div>
+          <label class="mobile-select-all" for="selectAllProductsMobile" aria-label="全選商品">
+            全選
+            <input id="selectAllProductsMobile" class="row-select-product" type="checkbox">
+          </label>
+        </div>
+        <div class="list-tools">
+          <div class="filter-row">
+            <select id="categoryFilter" class="search-input"></select>
+            <select id="sortSelect" class="search-input">
+              <option value="expiry" selected>排序: 有效日期</option>
+              <option value="category">排序: 分類</option>
+              <option value="status">排序: 狀態</option>
+            </select>
+          </div>
+          <div class="search-row">
+            <div class="text-input-shell search-input-shell">
+              <span class="text-input-mirror" aria-hidden="true"></span>
+              <input id="searchInput" class="search-input text-input-overlay-control" placeholder="搜尋分類、商品名稱、條碼">
+            </div>
+            <button id="scanSearchBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>掃碼</span><span>搜尋</span></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>分類</th>
+              <th>商品名稱</th>
+              <th>條碼</th>
+              <th>有效日期</th>
+              <th class="note-col">備註</th>
+              <th>狀態</th>
+              <th>操作</th>
+              <th class="select-col">
+                <label class="checkbox-touch-target" aria-label="全選商品">
+                  <input id="selectAllProducts" type="checkbox">
+                </label>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyHint" class="empty-hint">尚無資料，請先新增商品。</p>
+    </section>
+  </main>
+
+  <div id="scannerModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>條碼掃描</h3>
+      <div id="scannerFrameWrap">
+        <video id="scannerVideo" playsinline muted></video>
+      </div>
+      <p id="scannerHint" class="help-text">請把條碼對準鏡頭中央。相機影像只在本機辨識，不會上傳。</p>
+      <div class="form-actions">
+        <button id="stopScanBtn" class="btn ghost" type="button">關閉掃描</button>
+        <button id="toggleTorchBtn" class="btn secondary" type="button" disabled>打開手電筒</button>
+      </div>
+    </div>
+  </div>
+  <div id="barcodeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>商品條碼</h3>
+      <div class="barcode-meta-row">
+        <span id="barcodeProductName"></span>
+        <span id="barcodeFormatTag" class="barcode-format-tag"></span>
+      </div>
+      <div class="barcode-modal-wrap">
+        <svg id="barcodeSvg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg>
+      </div>
+      <p id="barcodeModalText" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeBarcodeModalBtn" class="btn ghost" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="addProductModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>新增商品</h3>
+      <form id="productForm" class="form-stack">
+        <label>
+          商品分類
+          <select id="categoryInput" name="category"></select>
+        </label>
+        <label>
+          商品名稱
+          <input id="nameInput" name="name" placeholder="輸入商品名稱">
+        </label>
+        <label>
+          商品條碼
+          <div class="barcode-input-row">
+            <input id="barcodeInput" name="barcode" inputmode="numeric" placeholder="手動輸入條碼">
+            <button id="scanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span class="scan-camera-label">鏡頭</span><span>掃描</span></span></button>
+          </div>
+        </label>
+        <label>
+          有效日期
+          <div class="barcode-input-row">
+            <input id="expiryInput" name="expiry" inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+            <button id="pickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
+          </div>
+          <input id="hiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
+        </label>
+        <label>
+          備註
+          <textarea id="noteInput" name="note" class="note-input" rows="3" placeholder="可輸入商品備註"></textarea>
+        </label>
+        <div class="form-actions">
+          <button class="btn primary" type="submit">新增商品</button>
+          <button id="clearFormBtn" class="btn ghost" type="button">清空</button>
+          <button id="cancelAddProductBtn" class="btn ghost" type="button">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="storageSetupModal" class="modal hidden">
+    <div class="modal-content storage-setup-modal">
+      <h3>選擇資料儲存方式</h3>
+      <p class="help-text">
+        iPhone / iPad Safari 只能使用IndexedDB將資料儲存在本機瀏覽器資料中；若清除 Safari 網站資料，商品資料會被刪除。建議定期匯出 JSON 備份到「檔案 App」或 iCloud Drive。
+      </p>
+      <div class="storage-choice-list">
+        <button id="chooseIndexedDbStorageBtn" class="btn secondary storage-choice-btn" type="button">
+          <span class="storage-choice-title">使用 IndexedDB</span>
+          <span>資料儲存在此瀏覽器與裝置中；清除瀏覽器資料會一併清除本專案資料。</span>
+        </button>
+        <button id="chooseFileStorageBtn" class="btn secondary storage-choice-btn" type="button">
+          <span class="storage-choice-title">使用本機檔案位置</span>
+          <span>可自行指定本機檔案位置；若瀏覽器支援，之後會從同一個資料檔讀寫。瀏覽器可能會在重新開啟後要求確認檔案編輯權限。</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div id="updateNoticeModal" class="modal hidden">
+    <div class="modal-content update-notice-modal">
+      <h3 id="updateNoticeTitle">更新內容</h3>
+      <ul id="updateNoticeList" class="update-notice-list"></ul>
+      <div class="form-actions">
+        <button id="closeUpdateNoticeBtn" class="btn primary" type="button">知道了</button>
+      </div>
+    </div>
+  </div>
+  <div id="datePickerModal" class="modal custom-date-modal hidden">
+    <div class="modal-content custom-date-modal-content">
+      <div class="custom-date-head">
+        <button id="datePickerPrevBtn" class="btn ghost custom-date-nav" type="button" aria-label="上個月">‹</button>
+        <h3 id="datePickerMonthLabel" class="custom-date-title"></h3>
+        <button id="datePickerNextBtn" class="btn ghost custom-date-nav" type="button" aria-label="下個月">›</button>
+      </div>
+      <div class="custom-date-weekdays" aria-hidden="true">
+        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+      </div>
+      <div id="datePickerGrid" class="custom-date-grid"></div>
+      <div class="form-actions custom-date-actions">
+        <button id="datePickerClearBtn" class="btn ghost" type="button">清除</button>
+        <button id="datePickerCloseBtn" class="btn ghost" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="editProductModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>編輯商品</h3>
+      <form id="editProductForm" class="form-stack">
+        <label>
+          商品分類
+          <select id="editCategorySelect" required></select>
+        </label>
+        <label>
+          商品名稱
+          <input id="editNameInput" required>
+        </label>
+        <label>
+          商品條碼
+          <div class="barcode-input-row">
+            <input id="editBarcodeInput" required inputmode="numeric">
+            <button id="editScanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span class="scan-camera-label">鏡頭</span><span>掃描</span></span></button>
+          </div>
+        </label>
+        <label>
+          有效日期
+          <div class="barcode-input-row">
+            <input id="editExpiryInput" required inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+            <button id="editPickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
+          </div>
+          <input id="editHiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
+        </label>
+        <label>
+          備註
+          <textarea id="editNoteInput" class="note-input" rows="3" placeholder="可輸入商品備註"></textarea>
+        </label>
+        <div class="form-actions">
+          <button id="saveEditProductBtn" class="btn primary" type="submit">儲存</button>
+          <button id="cancelEditProductBtn" class="btn ghost" type="button">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="deleteConfirmModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>確定要刪除這些資料嗎?</h3>
+      <div class="form-actions">
+        <button id="confirmDeleteBtn" class="btn danger-btn" type="button">確定</button>
+        <button id="cancelDeleteBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div id="backupReminderModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>建議備份資料</h3>
+      <p class="help-text">已新增 100 筆商品。建議立即備份 JSON 檔，避免瀏覽器資料被清除時遺失商品資料。</p>
+      <div class="form-actions">
+        <button id="backupNowBtn" class="btn primary" type="button">備份 JSON</button>
+        <button id="backupLaterBtn" class="btn ghost" type="button">稍後</button>
+      </div>
+    </div>
+  </div>
+  <div id="duplicateBarcodeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>條碼已存在</h3>
+      <p id="duplicateBarcodeMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="overwriteDuplicateBtn" class="btn primary" type="button">覆蓋既有商品</button>
+        <button id="keepDuplicateBtn" class="btn secondary" type="button">仍然新增</button>
+        <button id="cancelDuplicateBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div id="errorModal" class="modal error-modal hidden">
+    <div class="modal-content">
+      <h3>發生錯誤</h3>
+      <p id="errorModalMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <button id="backToTopBtn" class="back-to-top-btn hidden" type="button" aria-label="返回頁面頂端">返回頂端</button>
+  <div id="toast" class="toast hidden"></div>
+  <script src="./i18n.js" defer></script>
+  <script src="./version.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>

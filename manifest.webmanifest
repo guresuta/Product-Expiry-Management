@@ -1,0 +1,38 @@
+{
+  "name": "商品終期電馭監管裝置",
+  "short_name": "終期監管",
+  "description": "商品終期電馭監管裝置，支援離線使用與 IndexedDB 本機資料儲存。",
+  "lang": "zh-Hant",
+  "start_url": "./inventory-management-app.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f2e8",
+  "theme_color": "#8f82c7",
+  "icons": [
+    {
+      "src": "./icons/icon-app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-app-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icons/icon-app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-app-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
