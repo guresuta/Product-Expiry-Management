@@ -17,7 +17,7 @@
 
 ## 資料儲存方式
 
-- 預設使用裝置本機 `IndexedDB`。
+- 選擇使用裝置本機 `IndexedDB`或是裝置本機檔案位置。
 - 資料不會自動上傳到 GitHub Pages。
 - 不同裝置資料彼此獨立。
 
@@ -42,7 +42,7 @@ KEITAIHAN/
 │  ├─ icon-app-512.png
 │  ├─ icon-app-maskable-192.png
 │  └─ icon-app-maskable-512.png
-├─ fonts/                                 # 介面使用的本機中文字型
+├─ fonts/                                 # 介面使用的本機字型
 │  ├─ GenSekiGothic2TC-H.woff2
 │  └─ GenSekiGothic2TC-R.woff2
 ├─ key-visuals/                           # 四種主題背景與視覺參考圖
