@@ -43,7 +43,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.5.2`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v285`。
+- 目前 `version.js` 版本為 `v1.5.2`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v286`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -65,3 +65,95 @@
 - 主題切換（含月曆標示色）
 - CSV/JSON 匯入匯出
 - 重新整理後資料保留與 PWA 快取更新
+
+## 9. Android Studio 正式整合接續紀錄（2026-06-05）
+
+### 9.1 Android Studio 專案與 assets
+- 使用者已在 Android Studio 建立 `ProductExpiryCyberControl2` 專案，正式 package / namespace / applicationId 已改為：
+  - `com.guresuta.productexpirycybercontrol`
+- Android Studio 專案位於：
+  - `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2`
+- `KEITAIHAN` 是前端原始來源；測試發現前端問題時，先修改本資料夾，再把必要前端資產複製到 Android Studio 的：
+  - `app/src/main/assets/`
+- Android 原生檔案（例如 `MainActivity.kt`、`AndroidBridge.kt`、`AndroidManifest.xml`、Gradle、`res/`）只在 Android Studio 專案維護。
+- assets 必須包含目前實際執行資產：
+  - `inventory-management-app.html`
+  - `settings.html`
+  - `privacy-policy.html`
+  - `index.html`
+  - `styles_washi.css`
+  - `i18n.js`
+  - `app.js`
+  - `settings.js`
+  - `version.js`
+  - `sw.js`
+  - `manifest.webmanifest`
+  - `favicon.ico`
+  - `fonts/`
+  - `icons/`
+  - `key-visuals/background-neon-cyber.png`
+  - `key-visuals/background-daylight-cyber.png`
+  - `key-visuals/background-vibrant-oasis.png`
+  - `key-visuals/background-midnight-oasis.png`
+- `background.png` 與 `key-visuals/key-visual-hybrid-*.jpg` 是來源 / 預覽素材，不是目前執行必要資產。
+
+### 9.2 已完成的 Android 原生整合
+- `app/build.gradle.kts` 已加入 AndroidX WebKit；專案目前使用 `compileSdk = 36`、`targetSdk = 36`、`minSdk = 26`。
+- 若 AndroidX Core 解析到 `1.19.0` 並要求 API 37，應在 version catalog 將 Core / Core KTX 固定為與 `compileSdk 36` 相容的版本；不要為了此依賴直接改用 API 37 preview。
+- `MainActivity.kt` 已使用 `WebViewAssetLoader`，入口網址為：
+  - `https://appassets.androidplatform.net/assets/inventory-management-app.html`
+- WebView 安全設定需維持：
+  - `javaScriptEnabled = true`
+  - `domStorageEnabled = true`
+  - `allowFileAccess = false`
+  - `allowContentAccess = false`
+  - `mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW`
+- 已加入相機 runtime permission 與 `WebChromeClient.onPermissionRequest()`；只允許 `appassets.androidplatform.net` 的 `RESOURCE_VIDEO_CAPTURE`。
+- 已加入 `WebChromeClient.onShowFileChooser()`；JSON 還原可選擇，CSV 若在 Android 檔案選擇器反灰，需要以 `ACTION_OPEN_DOCUMENT` + `type = "*/*"` + CSV / JSON MIME 清單處理。
+- 已建立完整 `AndroidBridge`，前端目前會使用以下方法：
+  - `hasSelectedDbFile`
+  - `readDatabaseFile`
+  - `writeDatabaseFile`
+  - `requestSelectDbFile`
+  - `requestExportCsvFile`
+  - `requestExportJsonFile`
+  - `setStatusBarColor`
+  - `setScreenBrightnessMax`
+  - `resetScreenBrightness`
+- 原生檔案建立 / 匯出完成後，需通知前端以下事件：
+  - `android-db-file-selected`
+  - `android-csv-exported`
+  - `android-json-exported`
+- `AndroidBridge` 使用 Storage Access Framework；禁止加入 `READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE`、`MANAGE_EXTERNAL_STORAGE`。
+- 加入 `addJavascriptInterface` 後，WebView 導航必須限制為 `appassets.androidplatform.net`；外部 HTTP / HTTPS 連結用系統瀏覽器開啟。
+- `window.statusBarColor` 在新版 Android 顯示 deprecated 警告，但不是建置錯誤；目前可保留功能。
+- Android 返回鍵已改為主頁二次確認；第一次透過網頁既有 `showToast()` 顯示主題化「再按一次返回鍵關閉app」，2 秒內第二次才關閉 App，不使用 Android 原生 Toast。
+
+### 9.3 已完成的裝置測試
+- Pixel 7：可成功執行。
+- Pixel 10 Pro XL：可成功執行。
+- Android 8 / API 26 預設智慧型手機模擬器：只能看到藍色畫面。
+- API 26 Logcat 已確認沒有 Android `FATAL EXCEPTION`；問題是舊 Chromium / WebView 無法解析目前前端 JavaScript：
+  - `Uncaught SyntaxError: Unexpected token '.'`
+  - `Uncaught SyntaxError: Unexpected token '...'`
+- 已確認的舊 WebView 不相容語法包含：
+  - `i18n.js` optional chaining，例如 `element?.closest?.(...)`
+  - `settings.js` optional chaining，例如 `entry?.version`
+  - `app.js` / `settings.js` object spread、array spread，例如 `{ ...item }`、`[...products]`
+  - `app.js` / `settings.js` 的 `String.prototype.replaceAll()`
+- 因此 API 26 藍畫面不是 MainActivity / AndroidBridge 原生崩潰，而是舊 WebView JavaScript 相容性問題。
+
+### 9.4 下一步
+- 先決定 Android 8 / API 26 支援策略：
+  1. 僅支援已更新 Android System WebView 的 Android 8 裝置；使用 Google Play API 26 映像更新 WebView 後重新測試。
+  2. 若必須支援 Android 8 預設舊 WebView，需完整進行前端相容性修改 / transpile，不可只修 Logcat 當下顯示的三行。
+  3. 若不支援 Android 8，可提高 `minSdk`，但仍應測試目標最低版本的 WebView。
+- 若執行舊 WebView 相容性修改，必須至少處理：
+  - 所有 optional chaining `?.`
+  - 所有 object / array spread `...`
+  - 所有 `replaceAll()`
+  - 再掃描其他現代 JavaScript 語法
+  - 更新 `sw.js` 快取版本與 `CHANGELOG.md`
+  - 重新複製修改後資產到 Android Studio `assets`
+  - 清除 API 26 模擬器 App 資料並重新安裝測試
+- 完整裝置測試仍需涵蓋：主頁 / 設定 / 隱私頁、CRUD、分類排序、日期、月曆、所有主題、相機允許 / 拒絕、CSV / JSON、原生檔案位置、modal / dropdown / 掃描返回鍵、IndexedDB 關閉重開後保留。

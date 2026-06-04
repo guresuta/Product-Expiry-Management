@@ -2630,6 +2630,10 @@
   }
 
   function wireEvents() {
+    window.addEventListener("android-exit-hint", () => {
+      showToast("再按一次返回鍵關閉 App");
+    });
+
     setupCustomSelects();
     ui.syncSearchInputMirror = setupTextInputMirror(ui.searchInput);
     window.addEventListener("app-language-change", () => {
