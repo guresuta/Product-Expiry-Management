@@ -24,25 +24,48 @@
 ## 專案結構
 
 ```text
-WebHAN/
-├─ index.html                         # 入口頁（導向主頁）
-├─ inventory-management-app.html      # 主功能頁（商品清單 / 新增 / 編輯 / 掃碼）
-├─ settings.html                      # 設定頁（主題、分類管理、匯入匯出）
-├─ app.js                             # 主頁邏輯（資料操作、掃碼、清單渲染）
-├─ settings.js                        # 設定頁邏輯（主題、分類拖曳、CSV/JSON 匯入匯出）
-├─ styles_washi.css                   # 全站樣式與主題色票
-├─ sw.js                              # Service Worker（快取與離線支援）
-├─ manifest.webmanifest               # PWA 安裝設定
-├─ favicon.ico                        # 瀏覽器分頁圖示
-├─ icons/                             # PWA / App 圖示資源
-│  ├─ icon-192.png
-│  └─ icon-512.png
-├─ start-webhan.ps1                   # Windows 一鍵啟動本機伺服器
-├─ start-webhan-android.sh            # Android（Termux）啟動腳本
-├─ start-webhan-ios.sh                # iOS（iSH/類 Unix 環境）啟動腳本
-├─ DEPLOY_GITHUB_PAGES.md             # GitHub Pages 部署說明
-├─ DEPLOY_CROSS_DEVICE.md             # 跨裝置使用與部署說明
-└─ .github/workflows/deploy-pages.yml # GitHub Pages 自動部署工作流
+KEITAIHAN/
+├─ index.html                             # 入口頁（導向主頁）
+├─ inventory-management-app.html          # 主功能頁（商品清單 / 新增 / 編輯 / 掃碼）
+├─ settings.html                          # 設定頁（主題、分類管理、匯入匯出）
+├─ privacy-policy.html                    # 隱私權與資料安全說明頁
+├─ app.js                                 # 主頁邏輯（資料操作、掃碼、清單渲染）
+├─ settings.js                            # 設定頁邏輯（主題、分類拖曳、匯入匯出）
+├─ i18n.js                                # 中文、英文與日文介面翻譯
+├─ version.js                             # App 版本與更新紀錄資料
+├─ styles_washi.css                       # 全站版面、主題色票與背景樣式
+├─ sw.js                                  # Service Worker（快取與離線支援）
+├─ manifest.webmanifest                   # PWA 安裝、圖示與直式顯示設定
+├─ favicon.ico                            # 瀏覽器分頁圖示
+├─ icons/                                 # PWA / App 一般與 maskable 圖示
+│  ├─ icon-app-192.png
+│  ├─ icon-app-512.png
+│  ├─ icon-app-maskable-192.png
+│  └─ icon-app-maskable-512.png
+├─ fonts/                                 # 介面使用的本機中文字型
+│  ├─ GenSekiGothic2TC-H.woff2
+│  └─ GenSekiGothic2TC-R.woff2
+├─ key-visuals/                           # 四種主題背景與視覺參考圖
+│  ├─ background-neon-cyber.png
+│  ├─ background-daylight-cyber.png
+│  ├─ background-vibrant-oasis.png
+│  ├─ background-midnight-oasis.png
+│  ├─ key-visual-hybrid-neon-dashboard-a.jpg
+│  └─ key-visual-hybrid-neon-dashboard-c.jpg
+├─ background.png                         # 主題背景來源／預覽圖
+├─ build-keitaihan-debug-apk.ps1          # 同步前端資產並建置 Android debug APK
+├─ start-webhan.ps1                       # Windows 一鍵啟動本機伺服器
+├─ start-webhan-android.sh                # Android（Termux）啟動腳本
+├─ start-webhan-ios.sh                    # iOS（iSH／類 Unix 環境）啟動腳本
+├─ AGENTS.md                              # 專案操作規則與重要防回歸說明
+├─ CHANGELOG.md                           # 專案變更紀錄
+├─ CONTRIBUTING.md                        # 專案修改與貢獻說明
+├─ README.md                              # 專案介紹與使用說明
+├─ DEPLOY_GITHUB_PAGES.md                 # GitHub Pages 部署說明
+├─ DEPLOY_CROSS_DEVICE.md                 # 跨裝置使用與部署說明
+├─ .editorconfig                          # 編輯器格式設定
+├─ .gitignore                             # Git 忽略規則
+└─ .github/workflows/deploy-pages.yml     # GitHub Pages 自動部署工作流
 ```
 
 ## 本機執行
