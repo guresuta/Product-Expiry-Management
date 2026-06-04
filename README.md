@@ -32,6 +32,7 @@ KEITAIHAN/
 ├─ app.js                                 # 主頁邏輯（資料操作、掃碼、清單渲染）
 ├─ settings.js                            # 設定頁邏輯（主題、分類拖曳、匯入匯出）
 ├─ i18n.js                                # 中文、英文與日文介面翻譯
+├─ legacy-webview.js                      # 舊版 WebView 偵測與 JavaScript API 相容層
 ├─ version.js                             # App 版本與更新紀錄資料
 ├─ styles_washi.css                       # 全站版面、主題色票與背景樣式
 ├─ sw.js                                  # Service Worker（快取與離線支援）

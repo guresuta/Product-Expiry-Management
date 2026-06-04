@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#1f6feb">
   <title>商品終期電馭監管裝置</title>
+  <script src="./legacy-webview.js"></script>
   <script>
     (() => {
       const root = document.documentElement;
@@ -37,7 +38,7 @@
       const languageKeys = new Set(["zh-Hant", "en", "ja"]);
       const inferSystemLanguage = () => {
         const candidates = [];
-        if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+        if (Array.isArray(navigator.languages)) candidates.push.apply(candidates, navigator.languages);
         candidates.push(navigator.language || navigator.userLanguage || "");
         const normalized = candidates.map((item) => String(item || "").toLowerCase()).filter(Boolean);
         if (normalized.some((item) => item.startsWith("zh"))) return "zh-Hant";
@@ -75,7 +76,10 @@
           const finish = () => {
             root.classList.remove("app-booting");
             root.classList.add("app-ready");
-            setTimeout(() => document.querySelector(".app-boot-screen")?.remove(), 240);
+            setTimeout(() => {
+              const bootScreen = document.querySelector(".app-boot-screen");
+              if (bootScreen) bootScreen.remove();
+            }, 240);
           };
           const elapsed = Date.now() - bootStartedAt;
           setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));

@@ -731,7 +731,7 @@
       suggestedName: "expiry-manager-data.json",
       types: [
         {
-          description: "商品效期資料 JSON",
+          description: t("商品效期資料 JSON"),
           accept: { "application/json": [".json"] }
         }
       ]
@@ -893,7 +893,7 @@
     ui.categoryInput.innerHTML = "";
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "請選擇分類";
+    placeholder.textContent = t("請選擇分類");
     placeholder.disabled = true;
     placeholder.selected = true;
     ui.categoryInput.appendChild(placeholder);
@@ -934,11 +934,11 @@
     if (!ui.editCategorySelect) {
       return;
     }
-    const merged = Array.from(new Set([...(categories || []), ...state.products.map((p) => p.category).filter(Boolean)]));
+    const merged = Array.from(new Set((categories || []).concat(state.products.map((p) => p.category).filter(Boolean))));
     ui.editCategorySelect.innerHTML = "";
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "請選擇分類";
+    placeholder.textContent = t("請選擇分類");
     placeholder.disabled = true;
     ui.editCategorySelect.appendChild(placeholder);
     merged.forEach((category) => {
@@ -957,13 +957,13 @@
     const fromSettings = state.categories || [];
     const hasUncategorized = state.products.some((item) => !String(item.category || "").trim());
     const fromProducts = state.products.map((item) => item.category).filter(Boolean);
-    const all = Array.from(new Set([...fromSettings, ...fromProducts]));
+    const all = Array.from(new Set(fromSettings.concat(fromProducts)));
     const current = ui.categoryFilter.value || "";
 
     ui.categoryFilter.innerHTML = "";
     const allOption = document.createElement("option");
     allOption.value = "";
-    allOption.textContent = "全部分類";
+    allOption.textContent = t("全部分類");
     ui.categoryFilter.appendChild(allOption);
 
     all.forEach((category) => {
@@ -976,7 +976,7 @@
     if (hasUncategorized || !all.includes("未分類")) {
       const option = document.createElement("option");
       option.value = "__uncategorized__";
-      option.textContent = "未分類";
+      option.textContent = t("未分類");
       ui.categoryFilter.appendChild(option);
     }
 
@@ -1243,7 +1243,7 @@
 
   function sortForView(products) {
     const by = ui.sortSelect ? ui.sortSelect.value : "default";
-    const cloned = [...products];
+    const cloned = products.slice();
     if (by === "category") {
       return cloned.sort((a, b) => a.category.localeCompare(b.category, "zh-Hant"));
     }
@@ -1389,13 +1389,11 @@
       if (context) {
         context.font = style.font;
       }
-      const textWidth = Math.max(
-        0,
-        ...Array.from(button.querySelectorAll(".health-check-label, .health-check-count")).map((item) => {
+      const textWidths = Array.from(button.querySelectorAll(".health-check-label, .health-check-count")).map((item) => {
           const text = item.textContent || "";
           return context ? Math.ceil(context.measureText(text).width) : item.scrollWidth;
-        })
-      );
+        });
+      const textWidth = Math.max.apply(Math, [0].concat(textWidths));
       if (!availableWidth || !textWidth || textWidth <= availableWidth) {
         return;
       }
@@ -1560,7 +1558,7 @@
       cell.dataset.date = dateStr;
       if (productExpiryDates.has(dateStr)) {
         cell.classList.add("has-expiring");
-        cell.title = "有商品有效日期";
+        cell.title = t("有商品有效日期");
         cell.addEventListener("click", () => {
           if (state.calendarSelectedDate === dateStr) {
             state.calendarSelectedDate = "";
@@ -1743,11 +1741,11 @@
 
   function escapeHtml(str) {
     return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&#39;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   async function persistCurrentProducts() {
@@ -2003,10 +2001,10 @@
     }
     if (ui.duplicateBarcodeMessage) {
       const action = mode === "edit" ? "儲存" : "新增";
-      ui.duplicateBarcodeMessage.textContent = `條碼 ${barcode} 已存在於「${productName || "未命名商品"}」。請選擇要覆蓋既有商品、仍然${action}，或取消。`;
+      ui.duplicateBarcodeMessage.textContent = t(`條碼 ${barcode} 已存在於「${productName || "未命名商品"}」。請選擇要覆蓋既有商品、仍然${action}，或取消。`);
     }
     if (ui.keepDuplicateBtn) {
-      ui.keepDuplicateBtn.textContent = mode === "edit" ? "仍然儲存" : "仍然新增";
+      ui.keepDuplicateBtn.textContent = t(mode === "edit" ? "仍然儲存" : "仍然新增");
     }
     openManagedModal("duplicate", ui.duplicateBarcodeModal);
     return new Promise((resolve) => {
@@ -2049,7 +2047,7 @@
       createdAt: new Date().toISOString()
     };
 
-    const prevProducts = state.products.map((item) => ({ ...item }));
+    const prevProducts = state.products.map((item) => Object.assign({}, item));
     try {
       const duplicate = findDuplicateBarcodeProduct(barcode);
       let addedCount = 1;
@@ -2099,7 +2097,7 @@
     if (idSet.size === 0) {
       return;
     }
-    const prevProducts = [...state.products];
+    const prevProducts = state.products.slice();
     const prevSelected = new Set(state.selectedProductIds);
     try {
       state.products = state.products.filter((item) => !idSet.has(item.id));
@@ -2173,7 +2171,7 @@
     if (expiryRaw && !expiryDate) {
       throw new Error("有效日期格式錯誤，請使用 YYYY-MM-DD");
     }
-    const prevProducts = state.products.map((item) => ({ ...item }));
+    const prevProducts = state.products.map((item) => Object.assign({}, item));
     try {
       const duplicate = findDuplicateBarcodeProduct(barcode, id);
       let overwriteDuplicateId = "";
@@ -2364,7 +2362,7 @@
     const format = String(product.barcodeFormat || inferBarcodeFormat(barcodeValue)).toLowerCase();
     renderBarcodeByFormat(ui.barcodeSvg, barcodeValue, format);
     if (ui.barcodeProductName) {
-      ui.barcodeProductName.textContent = product.name || "商品";
+      ui.barcodeProductName.textContent = product.name || t("商品");
     }
     if (ui.barcodeFormatTag) {
       ui.barcodeFormatTag.textContent = format ? format.toUpperCase() : "UNKNOWN";
@@ -2424,11 +2422,11 @@
     }
     ui.toggleTorchBtn.disabled = !state.scanner.torchSupported;
     if (!state.scanner.torchOn) {
-      ui.toggleTorchBtn.textContent = "打開手電筒";
+      ui.toggleTorchBtn.textContent = t("打開手電筒");
     } else if (!state.scanner.torchPersistent) {
-      ui.toggleTorchBtn.textContent = "長亮手電筒";
+      ui.toggleTorchBtn.textContent = t("長亮手電筒");
     } else {
-      ui.toggleTorchBtn.textContent = "關閉手電筒";
+      ui.toggleTorchBtn.textContent = t("關閉手電筒");
     }
   }
 
@@ -2483,7 +2481,7 @@
     }
 
     if (ui.scannerHint) {
-      ui.scannerHint.textContent = "需要相機權限才能掃描條碼；影像只在本機辨識，不會上傳。";
+      ui.scannerHint.textContent = t("需要相機權限才能掃描條碼；影像只在本機辨識，不會上傳。");
     }
     state.scanner.mode = mode;
     state.scanner.barcodeTarget = barcodeTarget;
@@ -3006,7 +3004,7 @@
     }
     if (ui.confirmDeleteBtn) {
       ui.confirmDeleteBtn.addEventListener("click", async () => {
-        const ids = [...pendingDeleteIds];
+        const ids = pendingDeleteIds.slice();
         closeDeleteConfirm();
         if (ids.length === 0) {
           return;

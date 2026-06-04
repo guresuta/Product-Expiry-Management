@@ -215,7 +215,7 @@
       suggestedName: "expiry-manager-data.json",
       types: [
         {
-          description: "商品效期資料 JSON",
+          description: t("商品效期資料 JSON"),
           accept: { "application/json": [".json"] }
         }
       ]
@@ -225,7 +225,7 @@
   function renderStorageMode() {
     if (ui.storageModeLabel) {
       const label = state.storageMode === "file" ? "本機檔案位置" : "IndexedDB";
-      ui.storageModeLabel.textContent = `目前模式：${label}`;
+      ui.storageModeLabel.textContent = t(`目前模式：${label}`);
     }
     if (ui.chooseStorageFileBtn) {
       ui.chooseStorageFileBtn.disabled = !supportsExternalFileStorage();
@@ -238,7 +238,7 @@
     }
     const release = window.APP_RELEASE || {};
     const version = String(release.version || "").trim();
-    ui.appVersionLabel.textContent = version || "版本";
+    ui.appVersionLabel.textContent = version || t("版本");
   }
 
   function renderReleaseHistory() {
@@ -251,7 +251,7 @@
       return;
     }
     const history = Array.isArray(release.history) ? release.history : [];
-    const latestEntry = history.find((entry) => String(entry?.version || "").trim() === version)
+    const latestEntry = history.find((entry) => String(entry && entry.version || "").trim() === version)
       || history[0]
       || release;
     ui.releaseHistoryList.innerHTML = "";
@@ -277,7 +277,7 @@
       showErrorModal(message);
       return;
     }
-    ui.toast.textContent = message;
+    ui.toast.textContent = t(message);
     ui.toast.classList.remove("hidden");
     clearTimeout(showToast.timer);
     showToast.timer = setTimeout(() => ui.toast.classList.add("hidden"), 2600);
@@ -291,7 +291,7 @@
   }
 
   function showErrorModal(message) {
-    const text = String(message || "發生未知錯誤");
+    const text = t(String(message || "發生未知錯誤"));
     if (!ui.errorModal || !ui.errorModalMessage) {
       alert(text);
       return;
@@ -452,7 +452,7 @@
       return;
     }
     const preset = findThemePreset(themeKey);
-    ui.themeCurrentLabel.textContent = `目前主題：${preset.label}`;
+    ui.themeCurrentLabel.textContent = t(`目前主題：${preset.label}`);
   }
 
   function applyTheme(themeKey) {
@@ -495,7 +495,7 @@
   function openThemePicker(mode) {
     themePickerMode = mode === "dark" ? "dark" : "light";
     if (ui.themePickerTitle) {
-      ui.themePickerTitle.textContent = themePickerMode === "dark" ? "選擇黑暗主題" : "選擇明亮主題";
+      ui.themePickerTitle.textContent = t(themePickerMode === "dark" ? "選擇黑暗主題" : "選擇明亮主題");
     }
     renderThemeOptions(themePickerMode);
     if (ui.themePickerModal) {
@@ -749,11 +749,11 @@
 
   function escapeHtml(str) {
     return String(str)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll("\"", "&quot;")
-      .replaceAll("'", "&#39;");
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function cancelCategoryPressTimer() {
@@ -1116,7 +1116,7 @@
   }
 
   function mergeProductsKeepExisting(existingProducts, importedProducts) {
-    const merged = Array.isArray(existingProducts) ? [...existingProducts] : [];
+    const merged = Array.isArray(existingProducts) ? existingProducts.slice() : [];
     const seen = new Set(merged.map((item) => productIdentityKey(item)));
     (Array.isArray(importedProducts) ? importedProducts : []).forEach((item) => {
       const key = productIdentityKey(item);
@@ -1132,7 +1132,7 @@
   function mergeProductsForRestore(existingProducts, importedProducts) {
     const existing = Array.isArray(existingProducts) ? existingProducts : [];
     const imported = Array.isArray(importedProducts) ? importedProducts : [];
-    const merged = existing.map((item) => ({ ...item }));
+    const merged = existing.map((item) => Object.assign({}, item));
     const idMap = new Map();
     const identityMap = new Map();
 
@@ -1146,7 +1146,7 @@
     let addedCount = 0;
     let updatedCount = 0;
     imported.forEach((item) => {
-      const incoming = { ...item };
+      const incoming = Object.assign({}, item);
       const incomingId = incoming && incoming.id ? String(incoming.id) : "";
       let targetIndex = -1;
 
@@ -1161,11 +1161,9 @@
 
       if (targetIndex >= 0) {
         const current = merged[targetIndex] || {};
-        merged[targetIndex] = {
-          ...current,
-          ...incoming,
+        merged[targetIndex] = Object.assign({}, current, incoming, {
           id: current.id || incoming.id
-        };
+        });
         updatedCount += 1;
       } else {
         merged.push(incoming);
@@ -1211,7 +1209,7 @@
   }
 
   function toCsv(products) {
-    const escapeCsvCell = (value) => `"${String(value || "").replaceAll("\"", "\"\"")}"`;
+    const escapeCsvCell = (value) => `"${String(value || "").replace(/"/g, "\"\"")}"`;
     const header = ["分類", "商品名稱", "條碼", "有效日期", "備註", "狀態"];
     const lines = [header.map(escapeCsvCell).join(",")];
     products.forEach((item) => {
@@ -1378,7 +1376,7 @@
     const addedCount = mergedResult.addedCount;
     const updatedCount = mergedResult.updatedCount;
 
-    const ok = window.confirm(`將新增 ${addedCount} 筆、更新 ${updatedCount} 筆商品資料，是否繼續還原？`);
+    const ok = window.confirm(t(`將新增 ${addedCount} 筆、更新 ${updatedCount} 筆商品資料，是否繼續還原？`));
     if (!ok) {
       return { addedCount: 0, totalCount: existingProducts.length, cancelled: true };
     }
@@ -1390,7 +1388,7 @@
       ? parsed.settings.categories.map((c) => String(c || "").trim()).filter(Boolean)
       : [];
     const derivedCategories = Array.from(new Set(mergedProducts.map((p) => p.category)));
-    const categories = Array.from(new Set([...existingCategories, ...backupCategories, ...derivedCategories]));
+    const categories = Array.from(new Set(existingCategories.concat(backupCategories, derivedCategories)));
     if (categories.length > 0) {
       state.categories = categories;
       await setCategories(state.categories);
@@ -1601,7 +1599,7 @@
         await replaceAllProductsIndexedDb(products);
 
         const importedCategories = Array.from(new Set(products.map((p) => p.category)));
-        state.categories = Array.from(new Set([...state.categories, ...importedCategories]));
+        state.categories = Array.from(new Set(state.categories.concat(importedCategories)));
         await setCategories(state.categories);
         renderCategories();
 

@@ -9,6 +9,17 @@
   - 主頁、設定頁與隱私權頁的 inline boot script 會在 loading 畫面前段先同步 Android 狀態列顏色，避免進入讀取畫面時短暫顯示舊色。
   - 主頁新增 Android 二次返回提示事件，第一次按下返回鍵時使用既有主題化 toast 顯示關閉 App 提示。
   - 擴充 CSV 檔案選擇器接受的 MIME 類型，提高 Android 系統檔案選擇器辨識 CSV 檔案的相容性。
+  - 完整改寫舊版 Android WebView 無法解析的 optional chaining、object / array spread 與 `String.prototype.replaceAll()` 語法。
+  - 掃描其餘現代 JavaScript 語法，確認目前執行資產未使用空值合併、邏輯賦值、`Array.prototype.flat()` 等舊 WebView 不相容語法。
+  - 修正 API 26 舊 WebView 不支援 `inset`，造成新增商品與主題選擇 modal 可操作但畫面不可見的問題。
+  - 修正 API 26 舊 WebView 對 `display: contents` 支援不完整，造成商品檢查按鈕排版錯亂的問題。
+  - 新增舊 WebView 專用偵測與 CSS fallback，補強 Flex / Grid 元素間距、loading 圓環置中與背景圖比例。
+  - 建立共用 `legacy-webview.js`，集中提供舊 WebView 缺少的字串、陣列、DOM 與事件 API fallback。
+  - 完成全專案舊 WebView 相容性掃描，補強 `min()` / `max()` 尺寸、安全區定位、`place-items` 與主要 Flex 間距 fallback。
+- 多語系介面：
+  - 修正設定頁底部提示與錯誤視窗直接顯示中文、未經英日翻譯的問題。
+  - 補齊商品操作、分類操作、CSV / JSON、檔案權限、資料庫與未預期錯誤等執行期間訊息的英文與日文翻譯。
+  - 重新掃描主頁、設定頁、隱私權頁與更新紀錄，補強動態確認視窗、檔案選擇器描述與程式產生文字的翻譯處理。
 - 商品清單觸控：
   - 商品列長按條碼視窗延後觸發，並在手指移動、捲動、取消或離開時立即取消長按。
   - 觸控滑動商品清單後會短暫抑制商品列 click，減少滑動時誤觸「編輯」或「刪除」按鈕。
@@ -36,7 +47,7 @@
   - 依手動調整後的 `version.js`，同步補上目前 `v1.5.2` 更新內容的英文與日文翻譯。
   - 依手動調整後的 `version.js`，同步補上 `v1.5.2` 更新內容「自動記憶新增商品時的分類選擇」與「最佳化匯出CSV格式」的英文與日文翻譯。
   - 移除 `i18n.js` 中目前執行檔未使用的英日翻譯 key，保留現有畫面、toast、modal 與版本 history 仍使用的翻譯。
-  - `sw.js` 快取版本升級為 `expiry-manager-cache-v286`，並持續快取四張主題背景圖。
+  - `sw.js` 快取版本升級為 `expiry-manager-cache-v290`，並持續快取四張主題背景圖與舊 WebView 相容層。
 
 ## [v1.5.1] - 歷史紀錄
 - Android 測試打包：

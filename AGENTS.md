@@ -4,7 +4,7 @@
 
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
-- 主要檔案：`inventory-management-app.html`、`app.js`、`styles_washi.css`、`settings.html`、`settings.js`、`sw.js`。
+- 主要檔案：`inventory-management-app.html`、`app.js`、`styles_washi.css`、`legacy-webview.js`、`settings.html`、`settings.js`、`sw.js`。
 
 ## 2. 資料與儲存
 - 預設資料儲存在裝置本機 `IndexedDB`。
@@ -43,7 +43,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.5.2`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v286`。
+- 目前 `version.js` 版本為 `v1.5.2`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v290`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -82,6 +82,7 @@
   - `privacy-policy.html`
   - `index.html`
   - `styles_washi.css`
+  - `legacy-webview.js`
   - `i18n.js`
   - `app.js`
   - `settings.js`
@@ -144,16 +145,62 @@
 - 因此 API 26 藍畫面不是 MainActivity / AndroidBridge 原生崩潰，而是舊 WebView JavaScript 相容性問題。
 
 ### 9.4 下一步
-- 先決定 Android 8 / API 26 支援策略：
-  1. 僅支援已更新 Android System WebView 的 Android 8 裝置；使用 Google Play API 26 映像更新 WebView 後重新測試。
-  2. 若必須支援 Android 8 預設舊 WebView，需完整進行前端相容性修改 / transpile，不可只修 Logcat 當下顯示的三行。
-  3. 若不支援 Android 8，可提高 `minSdk`，但仍應測試目標最低版本的 WebView。
-- 若執行舊 WebView 相容性修改，必須至少處理：
-  - 所有 optional chaining `?.`
-  - 所有 object / array spread `...`
-  - 所有 `replaceAll()`
-  - 再掃描其他現代 JavaScript 語法
-  - 更新 `sw.js` 快取版本與 `CHANGELOG.md`
-  - 重新複製修改後資產到 Android Studio `assets`
-  - 清除 API 26 模擬器 App 資料並重新安裝測試
+- 已選擇支援 Android 8 預設舊 WebView，並完成第一輪前端相容性修改：
+  - 已移除所有 optional chaining `?.`。
+  - 已改寫所有 object / array spread `...`。
+  - 已改寫所有 `String.prototype.replaceAll()`。
+  - 已掃描空值合併、邏輯賦值、optional catch binding、`Array.prototype.flat()` 等其他現代 JavaScript 語法。
+  - 已同步更新 `sw.js` 與 `CHANGELOG.md`；目前快取版本為 `expiry-manager-cache-v290`。
+  - 已將修改後的 `app.js`、`i18n.js`、三個頁面 HTML、`settings.js`、`sw.js` 覆蓋到 Android Studio `assets`，並以 SHA-256 確認來源與目標一致。
+- 已修正設定頁底部提示與錯誤視窗未套用英日翻譯的問題，並重新掃描主頁、設定頁、隱私權頁、更新紀錄與動態執行訊息。
+- API 26 模擬器已可開啟程式；已針對舊 WebView 不支援 `inset` 與 `display: contents` 的問題，補上 modal、輸入框覆蓋層及商品檢查按鈕的 CSS 相容性修正。
+- 已加入 `legacy-webview` 舊引擎偵測，針對 Flex / Grid `gap`、loading 圓環置中、fixed 背景異常放大加入專用 fallback，不影響新版 WebView 樣式。
+- 已建立共用 `legacy-webview.js`，集中提供 `includes`、`startsWith`、`endsWith`、`padStart`、`NodeList.forEach`、`Element.closest` 與 `CustomEvent` 等舊 WebView API fallback。
+- 已完成全專案 CSS 相容性掃描，針對 `min()` / `max()` 尺寸、安全區定位、`place-items` 與主要 Flex 間距加入 `legacy-webview` 專用覆蓋；純裝飾效果允許舊 WebView 自然降級。
+- 下一步需清除 API 26 模擬器 App 資料、重新安裝並確認月曆間距、loading 圓環、背景比例與其餘元素間距。
 - 完整裝置測試仍需涵蓋：主頁 / 設定 / 隱私頁、CRUD、分類排序、日期、月曆、所有主題、相機允許 / 拒絕、CSV / JSON、原生檔案位置、modal / dropdown / 掃描返回鍵、IndexedDB 關閉重開後保留。
+
+### 9.5 條碼掃描分析與原生 ML Kit 接續方向
+- API 26 開啟鏡頭掃描時出現不支援提示，需依實際提示文字判斷原因：
+  - 顯示不支援 `BarcodeDetector`：屬於舊 WebView 缺少 Web Barcode Detection API，不是模擬器相機本身故障。
+  - 顯示不支援 `mediaDevices.getUserMedia`：屬於舊 WebView 缺少相機 Web API。
+  - 顯示找不到鏡頭或無法開啟鏡頭：才優先檢查模擬器 Camera 設定。
+- Android 原生相機權限、`WebChromeClient.onPermissionRequest()` 與 Manifest 設定目前方向正確；尚未透過 ADB 驗證 API 26 模擬器的實際 WebView 版本與 Camera 狀態。
+- 建議 Android App 改用 CameraX + bundled ML Kit Barcode Scanning：
+  - bundled 模型可離線立即使用，較符合本專案離線需求，但會增加 APK 體積。
+  - Web / PWA 環境繼續保留目前 HTML + `BarcodeDetector` 掃描流程作為非 Android fallback。
+  - Android 前端透過新增的 `AndroidBridge.requestBarcodeScan(target)` 呼叫原生掃描，掃描成功後由原生事件把條碼與目標欄位資訊傳回網頁。
+- CameraX 的 `PreviewView` 是 Android 原生 View，無法直接放入目前 HTML 掃描 modal；若採用原生 ML Kit，需建立新的原生全螢幕掃描 Activity 或等效原生畫面。
+- 原生掃描畫面應維持目前視覺風格，但不要求與 HTML modal 像素完全相同：
+  - 左上角放關閉按鈕，並支援 Android 返回鍵關閉。
+  - 右上角放手電筒按鈕；CameraX / ML Kit 不會自動建立可見按鈕，需自行實作，且只在 `cameraInfo.hasFlashUnit()` 為 true 時顯示。
+  - 中央顯示掃描框，掃描框下方顯示「將條碼置於掃描框內」等已翻譯提示。
+  - 掃描成功後自動關閉原生畫面，並將結果傳回新增、編輯、搜尋等原本 HTML 欄位。
+  - 需處理重複辨識抑制、權限拒絕、生命週期、返回鍵、低階裝置效能及無相機模擬器。
+- 尚未開始實作 CameraX / ML Kit；下一個視窗若要執行，應先檢查 Android Studio 專案目前 Gradle、`MainActivity.kt`、`AndroidBridge.kt` 與資源結構，再新增原生掃描流程。
+
+### 9.6 目前未提交工作狀態
+- 最後一次提交為：
+  - `16adcfe Document Android integration and fix CSV picker`
+- 舊 WebView 相容性、翻譯修正、CSS fallback、`legacy-webview.js`、部署資產清單與文件更新目前仍是未提交修改。
+- 目前修改 / 新增檔案：
+  - `.github/workflows/deploy-pages.yml`
+  - `AGENTS.md`
+  - `CHANGELOG.md`
+  - `README.md`
+  - `app.js`
+  - `i18n.js`
+  - `inventory-management-app.html`
+  - `privacy-policy.html`
+  - `settings.html`
+  - `settings.js`
+  - `styles_washi.css`
+  - `sw.js`
+  - `legacy-webview.js`
+- 已完成的驗證：
+  - 所有 JavaScript 已通過 `node --check`。
+  - 三個 HTML inline script 已完成語法解析檢查。
+  - 已掃描已知舊 WebView 不相容 JavaScript 語法。
+  - `git diff --check` 已通過。
+  - 最新 runtime 前端資產已複製到 Android Studio `app/src/main/assets/`，並以 SHA-256 確認來源與目標一致。
+- 開啟新視窗後應先重新讀取本文件與 `git status`；不要遺失或覆蓋目前未提交修改。
