@@ -134,7 +134,7 @@
 
     <section class="panel settings-section">
       <h2 class="section-title-bar">相機權限</h2>
-      <p class="help-text">相機只用於條碼掃描。掃描時影像會在裝置本機交給瀏覽器或 WebView 的條碼辨識能力處理。</p>
+      <p class="help-text">相機只用於條碼掃描。Android App 使用裝置內的 ML Kit 辨識條碼；網頁版則使用瀏覽器支援的條碼辨識能力。</p>
       <p class="help-text">本專案不會儲存相機影像，不會錄音，也不會把影像傳送到遠端服務。</p>
       <p class="help-text">若使用者拒絕相機權限，仍可手動輸入條碼與管理商品資料。</p>
     </section>
@@ -171,8 +171,7 @@
     window.addEventListener("DOMContentLoaded", () => {
       window.AppNativeBack = {
         handleBack() {
-          location.href = "./inventory-management-app.html";
-          return true;
+          return "home";
         }
       };
       try {

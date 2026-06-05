@@ -84,6 +84,8 @@
   let categoryDragOffsetX = 0;
   let categoryDragOffsetY = 0;
   let categoryDragGhost = null;
+  let categoryScrollLocked = false;
+  let categoryLockedScrollY = 0;
   let pendingDeleteCategory = "";
   const modalHistory = {
     stack: [],
@@ -364,8 +366,7 @@
       if (closeTopModalFromHistory()) {
         return true;
       }
-      location.href = "./inventory-management-app.html";
-      return true;
+      return "home";
     }
   };
 
@@ -761,6 +762,41 @@
     categoryPressTimer = null;
   }
 
+  function preventCategoryDragScroll(event) {
+    if (categoryDragActive && event && typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+  }
+
+  function lockCategoryPageScroll() {
+    if (categoryScrollLocked) {
+      return;
+    }
+    categoryScrollLocked = true;
+    categoryLockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    document.addEventListener("touchmove", preventCategoryDragScroll, { passive: false });
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${categoryLockedScrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+  }
+
+  function unlockCategoryPageScroll() {
+    if (!categoryScrollLocked) {
+      return;
+    }
+    categoryScrollLocked = false;
+    document.removeEventListener("touchmove", preventCategoryDragScroll);
+    document.body.style.removeProperty("position");
+    document.body.style.removeProperty("top");
+    document.body.style.removeProperty("left");
+    document.body.style.removeProperty("right");
+    document.body.style.removeProperty("width");
+    window.scrollTo(0, categoryLockedScrollY);
+    categoryLockedScrollY = 0;
+  }
+
   function resetCategoryDragState() {
     if (categoryDraggingChip) {
       categoryDraggingChip.classList.remove("is-dragging");
@@ -794,6 +830,7 @@
     categoryOriginTop = 0;
     categoryDragOffsetX = 0;
     categoryDragOffsetY = 0;
+    unlockCategoryPageScroll();
     cancelCategoryPressTimer();
   }
 
@@ -1700,7 +1737,6 @@
       if (!chip || chip.parentElement !== ui.categoryList) {
         return;
       }
-      event.preventDefault();
       categoryPressChip = chip;
       categoryPointerId = event.pointerId;
       categoryPressX = Number(event.clientX) || 0;
@@ -1709,7 +1745,9 @@
       categoryDragOffsetY = 0;
       cancelCategoryPressTimer();
       categoryPressTimer = setTimeout(() => {
+        event.preventDefault();
         categoryDragActive = true;
+        lockCategoryPageScroll();
         categoryDraggingChip = categoryPressChip;
         if (categoryDraggingChip) {
           categoryDraggingChip.classList.add("is-dragging");

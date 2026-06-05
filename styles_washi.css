@@ -1786,7 +1786,7 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .chip-delete {
@@ -2428,13 +2428,13 @@ html[data-theme="dark-2"] .filter-row .custom-select-button:focus {
   touch-action: manipulation;
   background: #111;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 #scannerFrameWrap {
   position: relative;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 0;
 }
 
 .io-section .help-text {
@@ -2878,7 +2878,65 @@ html.legacy-webview .modal-content {
 }
 
 html.legacy-webview #scannerVideo {
+  width: 100%;
+  height: 56vh;
+  min-height: 260px;
   max-height: 430px;
+  border-width: 2px;
+}
+
+html.legacy-webview #scannerFrameWrap {
+  background: var(--bg-accent);
+  border: 1px solid var(--line);
+  border-radius: 0;
+}
+
+html.legacy-webview #scannerModal .modal-content {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+html.legacy-webview #scannerHint {
+  margin-top: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid var(--calendar-mark-border);
+  border-radius: 10px;
+  background: var(--calendar-block-bg-soft);
+  color: var(--text);
+}
+
+html.legacy-webview[data-theme="light-1"] #scannerHint,
+html.legacy-webview[data-theme="light-2"] #scannerHint {
+  color: #050505;
+}
+
+html.legacy-webview #scannerModal .form-actions {
+  margin-top: 0.85rem;
+}
+
+html.legacy-webview[data-theme="dark-1"] #scannerVideo,
+html.legacy-webview[data-theme="dark-1"] #scannerFrameWrap {
+  border-color: #00f0ff;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.3);
+}
+
+html.legacy-webview[data-theme="light-1"] #scannerVideo,
+html.legacy-webview[data-theme="light-1"] #scannerFrameWrap {
+  border-color: #ffb000;
+  box-shadow: 0 0 14px rgba(255, 176, 0, 0.24);
+}
+
+html.legacy-webview[data-theme="light-2"] #scannerVideo,
+html.legacy-webview[data-theme="light-2"] #scannerFrameWrap {
+  border-color: #168a4a;
+  box-shadow: 0 8px 20px rgba(22, 138, 74, 0.14);
+}
+
+html.legacy-webview[data-theme="dark-2"] #scannerVideo,
+html.legacy-webview[data-theme="dark-2"] #scannerFrameWrap {
+  border-color: #2fc274;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
 }
 
 html.legacy-webview .barcode-modal-wrap {

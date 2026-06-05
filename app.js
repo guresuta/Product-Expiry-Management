@@ -353,6 +353,40 @@
           }
         });
       },
+      supportsBarcodeScan() {
+        return typeof bridge.requestBarcodeScan === "function";
+      },
+      requestBarcodeScan(target) {
+        return new Promise((resolve, reject) => {
+          if (typeof bridge.requestBarcodeScan !== "function") {
+            reject(new Error("此 Android App 不支援原生條碼掃描"));
+            return;
+          }
+          const handler = (event) => {
+            window.removeEventListener("android-barcode-scanned", handler);
+            const detail = event.detail || {};
+            if (detail.ok && detail.value) {
+              resolve({
+                value: String(detail.value),
+                format: String(detail.format || "")
+              });
+            } else if (detail.cancelled) {
+              resolve(null);
+            } else {
+              reject(new Error(detail.error || "原生條碼掃描失敗"));
+            }
+          };
+          window.addEventListener("android-barcode-scanned", handler, { once: true });
+          try {
+            const language = document.documentElement.lang || "zh-Hant";
+            const theme = document.documentElement.dataset.theme || DEFAULT_THEME_KEY;
+            bridge.requestBarcodeScan(String(target || "input"), String(language), String(theme));
+          } catch (error) {
+            window.removeEventListener("android-barcode-scanned", handler);
+            reject(error);
+          }
+        });
+      },
       setScreenBrightnessMax() {
         return new Promise((resolve, reject) => {
           if (typeof bridge.setScreenBrightnessMax !== "function") {
@@ -2476,6 +2510,15 @@
   }
 
   async function startScanner(mode, barcodeTarget = "input") {
+    if (nativeBridge && typeof nativeBridge.supportsBarcodeScan === "function" && nativeBridge.supportsBarcodeScan()) {
+      const result = await nativeBridge.requestBarcodeScan(barcodeTarget);
+      if (!result) {
+        return;
+      }
+      applyScannedBarcode(result.value, result.format, barcodeTarget);
+      return;
+    }
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("此裝置或 WebView 不支援鏡頭掃描，請改用手動輸入條碼");
     }
@@ -2502,6 +2545,26 @@
     scanLoop();
   }
 
+  function applyScannedBarcode(value, format, barcodeTarget) {
+    const scannedValue = String(value || "");
+    const detectedFormat = String(format || inferBarcodeFormat(scannedValue)).toLowerCase();
+    playTone("barcode");
+    if (barcodeTarget === "search") {
+      ui.searchInput.value = scannedValue;
+      ui.syncSearchInputMirror();
+      renderProducts();
+    } else if (barcodeTarget === "edit") {
+      if (ui.editBarcodeInput) {
+        ui.editBarcodeInput.value = scannedValue;
+        ui.editBarcodeInput.dataset.barcodeFormat = detectedFormat;
+      }
+    } else {
+      ui.barcodeInput.value = scannedValue;
+      ui.barcodeInput.dataset.barcodeFormat = detectedFormat;
+    }
+    showToast(`掃描成功: ${scannedValue}`);
+  }
+
   async function scanLoop() {
     if (!state.scanner.running) {
       return;
@@ -2516,22 +2579,11 @@
       if (state.scanner.mode === "barcode") {
         const barcodes = await state.scanner.detector.detect(ui.scannerVideo);
         if (barcodes.length > 0 && barcodes[0].rawValue) {
-          const detectedFormat = String(barcodes[0].format || inferBarcodeFormat(barcodes[0].rawValue)).toLowerCase();
-          playTone("barcode");
-          if (state.scanner.barcodeTarget === "search") {
-            ui.searchInput.value = String(barcodes[0].rawValue);
-            ui.syncSearchInputMirror();
-            renderProducts();
-          } else if (state.scanner.barcodeTarget === "edit") {
-            if (ui.editBarcodeInput) {
-              ui.editBarcodeInput.value = String(barcodes[0].rawValue);
-              ui.editBarcodeInput.dataset.barcodeFormat = detectedFormat;
-            }
-          } else {
-            ui.barcodeInput.value = String(barcodes[0].rawValue);
-            ui.barcodeInput.dataset.barcodeFormat = detectedFormat;
-          }
-          showToast(`掃描成功: ${barcodes[0].rawValue}`);
+          applyScannedBarcode(
+            barcodes[0].rawValue,
+            barcodes[0].format,
+            state.scanner.barcodeTarget
+          );
           stopScanner();
           return;
         }
