@@ -2,7 +2,7 @@
 <html lang="zh-Hant" class="app-booting">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#1f6feb">
   <title>隱私權與資料安全 | 商品終期電馭監管裝置</title>
   <script src="./legacy-webview.js"></script>
@@ -53,6 +53,9 @@
       let bootVisualReady = false;
       root.setAttribute("data-theme", themeKey);
       root.setAttribute("lang", language);
+      if (window.AndroidBridge) {
+        root.classList.add("android-webview");
+      }
       try {
         if (window.AndroidBridge && typeof window.AndroidBridge.setStatusBarColor === "function") {
           window.AndroidBridge.setStatusBarColor(statusBarColors[themeKey] || statusBarColors[defaultThemeKey]);
