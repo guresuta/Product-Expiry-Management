@@ -225,3 +225,39 @@
   - assets 同步檢查：最近修改的 `settings.js`、`sw.js` 已以 SHA-256 確認來源與 Android Studio assets 一致；前面也已針對 runtime assets 做過全量 SHA-256 比對。
   - 已掃描已知舊 WebView 不相容 JavaScript 語法。
 - 開啟新視窗後應先重新讀取本文件與 `git status`，並檢查 Android Studio 專案檔案；不要遺失或覆蓋目前未提交修改。若要實機驗證最新原生掃描或返回鍵修正，需另行打包 / 安裝 APK。
+
+### 9.7 目前工作階段交接紀錄（2026-06-27）
+- 使用者準備另開視窗；新視窗應先閱讀本段與 `git status --short`，再決定是否提交 / 打包 / 簽署。
+- `D:\AI Code\KEITAIHAN` 目前最後一次已推送提交為：
+  - `3337017 Move sponsor settings section`
+- GitHub Pages 已部署並驗證：
+  - `settings.html` 中贊助區塊順序為 `theme-section` → `sponsor-section` → `release-history-section`。
+  - 網頁版 / 一般瀏覽器仍以 `.sponsor-section { display: none; }` 隱藏贊助區塊，不保留空白；Android WebView 以 `html.android-webview .sponsor-section { display: block; }` 顯示。
+  - 可填入 Play Console 的隱私權頁 URL：
+    - `https://guresuta.github.io/Product-Expiry-Management/privacy-policy.html`
+- `version.js` 目前為 `v1.8.0`；`sw.js` 快取版本為 `expiry-manager-cache-v303`；Android Studio `app/build.gradle.kts` 已同步 `versionName = "1.8.0"`、`versionCode = 10800`。
+- Android Studio 專案 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2` 已完成但不在本 Git repo 追蹤的原生變更包含：
+  - Google Play Billing 一次性非消耗型商品 `supporter_title_unlock` 整合。
+  - `SponsorBillingManager.kt`、`AndroidBridge` 贊助相關受限 API、`MainActivity` 贊助狀態事件。
+  - WebView 安全強化、導航限制、狀態列與 Android WebView topbar 同色顯示。
+  - Launcher icon 已由 Android Studio 預設機器人改為本專案 `icons/icon-app-maskable-512.png` 產生的各密度 `ic_launcher*.png`，並移除預設 `drawable/ic_launcher_foreground.xml`。
+  - 新增 Android 原生 App 名稱多語系資源：
+    - `app/src/main/res/values-zh/strings.xml`
+    - `app/src/main/res/values-zh-rTW/strings.xml`
+    - `app/src/main/res/values-ja/strings.xml`
+  - APK badging 已驗證包含：
+    - `application-label-ja:'商品期限サイバー管理装置'`
+    - `application-label-zh:'商品終期電馭監管裝置'`
+    - `application-label-zh-TW:'商品終期電馭監管裝置'`
+- 最近產物：
+  - Debug APK 已成功產生：
+    - `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\debug\app-debug.apk`
+    - package `com.guresuta.productexpirycybercontrol`，`versionName 1.8.0`，`versionCode 10800`。
+  - Release AAB 曾以 `:app:bundleRelease` 產生：
+    - `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\bundle\release\app-release.aab`
+    - 但 `jarsigner` 檢查結果為 `jar is unsigned`，尚不可上傳 Google Play Console。
+    - 需由使用者在 Android Studio `Build → Generate Signed App Bundle or APK...` 選擇 / 建立 release keystore 後產生 signed AAB；keystore 與密碼不可提交到 Git。
+- Android Studio 開啟時曾出現 IDE internal error：JVM native memory allocation failed；原因偏向 Android Studio / Gradle / 模擬器記憶體不足，不是專案程式錯誤。建議重啟、一次只開一台模擬器、必要時調整 Windows 虛擬記憶體與 Android Studio heap。
+- 下一步建議：
+  - 若要上架，先用 Android Studio 產生 signed AAB，並確認 Play Console one-time product `supporter_title_unlock` 已建立、價格 NT$50、狀態 Active。
+  - 若繼續開發，先檢查 Android Studio 專案與本 repo 的差異，避免覆蓋未納入 Git 的原生檔案 / 資源。
