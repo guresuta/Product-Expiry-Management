@@ -31,6 +31,7 @@
 - 四種主題背景紋路使用 `key-visuals/background-*.png` 的 3840x2160 高解析資產與 CSS `background-attachment: fixed`；主頁、設定頁、隱私權頁與讀取頁面都需套用對應主題背景，讀取頁面需等背景圖 ready 後再與 spinner 同步顯示，商品清單/卡片透明度需跟商品效期月曆一致。
 - 新增商品視窗的分類選單需記憶上一次成功新增或覆蓋商品時使用的分類；手機卡片模式商品卡片需比商品效期月曆再提高 15% 透明度。
 - 主頁、設定頁與隱私權頁的 inline boot script 需在 loading 畫面前段先呼叫 `AndroidBridge.setStatusBarColor()`，避免 Android 狀態列先顯示舊色再切換。
+- Android WebView 內的頂部標題列需使用 `--android-statusbar` 作為不透明背景，並與 Android 原生狀態列顏色保持一致；一般瀏覽器 / PWA 可保留 `--topbar` 半透明效果。
 
 ## 4. 版面佈局（桌面）
 - 新增商品區塊已改為彈出式 modal，由頂部導覽列「新增商品」按鈕開啟。
@@ -44,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.7.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v300`。
+- 目前 `version.js` 版本為 `v1.8.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v303`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -137,6 +138,8 @@
 - `AndroidBridge` 應維持輸入限制：檔名清理、內容長度上限、掃描 target / language / theme 白名單、狀態列顏色只接受 `#RRGGBB`。
 - Android manifest 需維持移除 `INTERNET` 權限；WebView 只載入 `WebViewAssetLoader` 的本機 appassets，外部連結交給系統瀏覽器。
 - `backup_rules.xml` 與 `data_extraction_rules.xml` 應明確排除所有資料；同時 manifest 維持 `android:allowBackup="false"`。
+- Google Play 贊助功能使用一次性非消耗型商品 `supporter_title_unlock`，商品 ID 固定在 Android 原生層；前端只能透過受限 bridge 查詢解鎖狀態、發起購買與恢復購買。
+- 贊助解鎖後只允許自訂主頁標題；自訂標題存在本機 `localStorage.customAppTitle`，不影響商品資料、IndexedDB schema 或備份格式。
 - `window.statusBarColor` 在新版 Android 顯示 deprecated 警告，但不是建置錯誤；目前可保留功能。
 - Android 返回鍵已改為主頁二次確認；第一次透過網頁既有 `showToast()` 顯示主題化「再按一次返回鍵關閉app」，2 秒內第二次才關閉 App，不使用 Android 原生 Toast。
 - 主頁返回鍵固定由 `AppNativeBack.handleBack()` 觸發二次關閉流程；從設定頁或隱私權頁回主頁時，原生層需清除 WebView history，避免主頁返回鍵又回到設定頁或隱私權頁。
@@ -161,7 +164,7 @@
   - 已改寫所有 object / array spread `...`。
   - 已改寫所有 `String.prototype.replaceAll()`。
   - 已掃描空值合併、邏輯賦值、optional catch binding、`Array.prototype.flat()` 等其他現代 JavaScript 語法。
-  - 已同步更新 `sw.js` 與 `CHANGELOG.md`；目前快取版本為 `expiry-manager-cache-v300`。
+  - 已同步更新 `sw.js` 與 `CHANGELOG.md`；目前快取版本為 `expiry-manager-cache-v303`。
   - 已將修改後的 `app.js`、`i18n.js`、三個頁面 HTML、`settings.js`、`sw.js` 覆蓋到 Android Studio `assets`，並以 SHA-256 確認來源與目標一致。
 - 已修正設定頁底部提示與錯誤視窗未套用英日翻譯的問題，並重新掃描主頁、設定頁、隱私權頁、更新紀錄與動態執行訊息。
 - API 26 模擬器已可開啟程式；已針對舊 WebView 不支援 `inset` 與 `display: contents` 的問題，補上 modal、輸入框覆蓋層及商品檢查按鈕的 CSS 相容性修正。

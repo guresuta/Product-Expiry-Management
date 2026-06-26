@@ -200,6 +200,24 @@
       </p>
       <p id="appVersionLabel" class="help-text app-version-label">版本</p>
     </section>
+
+    <section class="panel settings-section sponsor-section">
+      <h2 class="section-title-bar">贊助與自訂標題</h2>
+      <p id="sponsorStatusLabel" class="help-text">贊助狀態：讀取中</p>
+      <p class="help-text">贊助新台幣 50 元可解鎖主頁標題自訂。此功能僅支援 Google Play 安裝的 Android 版。</p>
+      <div class="form-actions sponsor-actions">
+        <button id="sponsorPurchaseBtn" class="btn primary" type="button">贊助 NT$50</button>
+        <button id="sponsorRestoreBtn" class="btn secondary" type="button">恢復購買</button>
+      </div>
+      <label class="title-customize-row">
+        自訂主頁標題
+        <input id="customAppTitleInput" class="search-input" maxlength="24" placeholder="輸入自訂標題">
+      </label>
+      <div class="form-actions sponsor-title-actions">
+        <button id="saveCustomAppTitleBtn" class="btn secondary" type="button">儲存標題</button>
+        <button id="resetCustomAppTitleBtn" class="btn ghost" type="button">恢復預設標題</button>
+      </div>
+    </section>
   </main>
 
   <div id="themePickerModal" class="modal hidden">

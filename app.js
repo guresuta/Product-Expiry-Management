@@ -17,6 +17,8 @@
   const SCANNER_CENTER_HINT = "請把條碼對準鏡頭中央。";
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
+  const CUSTOM_APP_TITLE_KEY = "customAppTitle";
+  const DEFAULT_APP_TITLE = "商品終期電馭監管裝置";
   const DEFAULT_CATEGORIES = ["飲料", "零食", "泡麵", "糖果"];
   const DEFAULT_THEME_KEY = "dark-1";
   const THEME_ALIASES = {
@@ -146,6 +148,7 @@
     scanSearchBtn: document.getElementById("scanSearchBtn"),
     toast: document.getElementById("toast")
   };
+  ui.appMainTitle = document.getElementById("appMainTitle");
 
   let longPressTimer = null;
   let longPressProductId = null;
@@ -268,9 +271,13 @@
       return;
     }
     const styles = getComputedStyle(document.documentElement);
+    const androidStatusbar = styles.getPropertyValue("--android-statusbar");
     const topbar = styles.getPropertyValue("--topbar");
     const bg = styles.getPropertyValue("--bg");
-    const color = normalizeThemeColorValue(topbar) || normalizeThemeColorValue(bg) || "#1f6feb";
+    const color = normalizeThemeColorValue(androidStatusbar) ||
+      normalizeThemeColorValue(topbar) ||
+      normalizeThemeColorValue(bg) ||
+      "#1f6feb";
     meta.setAttribute("content", color);
     syncNativeStatusBarColor(color);
   }
@@ -353,6 +360,22 @@
           }
         });
       },
+      isTitleCustomizationUnlocked() {
+        try {
+          return typeof bridge.isTitleCustomizationUnlocked === "function" && !!bridge.isTitleCustomizationUnlocked();
+        } catch (_error) {
+          return false;
+        }
+      },
+      refreshSponsorState() {
+        if (typeof bridge.restoreSponsorPurchase !== "function") {
+          return;
+        }
+        try {
+          bridge.restoreSponsorPurchase();
+        } catch (_error) {
+        }
+      },
       supportsBarcodeScan() {
         return typeof bridge.requestBarcodeScan === "function";
       },
@@ -416,6 +439,41 @@
         });
       }
     };
+  }
+
+  function normalizeCustomAppTitle(value) {
+    return String(value || "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 24);
+  }
+
+  function getStoredCustomAppTitle() {
+    return normalizeCustomAppTitle(localStorage.getItem(CUSTOM_APP_TITLE_KEY) || "");
+  }
+
+  function getEffectiveAppTitle(unlocked) {
+    if (!unlocked) {
+      return DEFAULT_APP_TITLE;
+    }
+    return getStoredCustomAppTitle() || DEFAULT_APP_TITLE;
+  }
+
+  function applyAppTitle(unlocked) {
+    const title = getEffectiveAppTitle(unlocked);
+    if (ui.appMainTitle) {
+      ui.appMainTitle.textContent = title;
+    }
+    document.title = title;
+  }
+
+  function refreshSponsorTitleState() {
+    const unlocked = !!(
+      nativeBridge &&
+      typeof nativeBridge.isTitleCustomizationUnlocked === "function" &&
+      nativeBridge.isTitleCustomizationUnlocked()
+    );
+    applyAppTitle(unlocked);
+    if (nativeBridge && typeof nativeBridge.refreshSponsorState === "function") {
+      nativeBridge.refreshSponsorState();
+    }
   }
 
   function isNativeFileMode() {
@@ -3292,6 +3350,16 @@
 
   async function init() {
     applySavedTheme();
+    refreshSponsorTitleState();
+    window.addEventListener("android-sponsor-state-changed", (event) => {
+      const detail = event.detail || {};
+      applyAppTitle(detail.unlocked === true);
+    });
+    window.addEventListener("storage", (event) => {
+      if (event.key === CUSTOM_APP_TITLE_KEY) {
+        refreshSponsorTitleState();
+      }
+    });
     window.addEventListener("error", (event) => {
       const msg = event && event.error && event.error.message
         ? event.error.message
