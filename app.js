@@ -1716,33 +1716,87 @@
     ui.productTableBody.innerHTML = "";
     sorted.forEach((product) => {
       const status = getStatus(product.expiryDate);
-      const checked = state.selectedProductIds.has(product.id) ? "checked" : "";
       const note = String(product.note || "").trim();
       const noteClass = note ? "note-cell" : "note-cell is-empty";
-      const editLabel = escapeHtml(t("編輯"));
-      const deleteLabel = escapeHtml(t("刪除"));
       const tr = document.createElement("tr");
       tr.setAttribute("data-product-id", product.id);
       tr.setAttribute("data-barcode", product.barcode || "");
-      tr.innerHTML = `
-        <td data-label="分類">${escapeHtml(product.category)}</td>
-        <td data-label="商品名稱"><span class="product-text-wrap">${escapeHtml(product.name)}</span></td>
-        <td data-label="條碼">${escapeHtml(product.barcode)}</td>
-        <td data-label="有效日期">${escapeHtml(product.expiryDate)}</td>
-        <td class="${noteClass}" data-label="備註"><span class="product-text-wrap">${escapeHtml(note)}</span></td>
-        <td data-label="狀態"><span class="badge ${status.badgeClass}">${status.label}</span></td>
-        <td class="action-cell" data-label="操作">
-          <div class="action-stack">
-            <button class="btn secondary" data-edit-id="${product.id}" type="button">${editLabel}</button>
-            <button class="btn secondary" data-delete-id="${product.id}" type="button">${deleteLabel}</button>
-          </div>
-        </td>
-        <td class="select-col" data-label="選取">
-          <label class="checkbox-touch-target" aria-label="選取商品">
-            <input class="row-select-product" type="checkbox" data-select-id="${product.id}" ${checked}>
-          </label>
-        </td>
-      `;
+
+      const categoryCell = document.createElement("td");
+      categoryCell.setAttribute("data-label", "分類");
+      categoryCell.textContent = product.category || "";
+
+      const nameCell = document.createElement("td");
+      nameCell.setAttribute("data-label", "商品名稱");
+      const nameWrap = document.createElement("span");
+      nameWrap.className = "product-text-wrap";
+      nameWrap.textContent = product.name || "";
+      nameCell.appendChild(nameWrap);
+
+      const barcodeCell = document.createElement("td");
+      barcodeCell.setAttribute("data-label", "條碼");
+      barcodeCell.textContent = product.barcode || "";
+
+      const expiryCell = document.createElement("td");
+      expiryCell.setAttribute("data-label", "有效日期");
+      expiryCell.textContent = product.expiryDate || "";
+
+      const noteCell = document.createElement("td");
+      noteCell.className = noteClass;
+      noteCell.setAttribute("data-label", "備註");
+      const noteWrap = document.createElement("span");
+      noteWrap.className = "product-text-wrap";
+      noteWrap.textContent = note;
+      noteCell.appendChild(noteWrap);
+
+      const statusCell = document.createElement("td");
+      statusCell.setAttribute("data-label", "狀態");
+      const statusBadge = document.createElement("span");
+      statusBadge.className = `badge ${status.badgeClass}`;
+      statusBadge.textContent = status.label;
+      statusCell.appendChild(statusBadge);
+
+      const actionCell = document.createElement("td");
+      actionCell.className = "action-cell";
+      actionCell.setAttribute("data-label", "操作");
+      const actionStack = document.createElement("div");
+      actionStack.className = "action-stack";
+      const editButton = document.createElement("button");
+      editButton.className = "btn secondary";
+      editButton.type = "button";
+      editButton.setAttribute("data-edit-id", product.id);
+      editButton.textContent = t("編輯");
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "btn secondary";
+      deleteButton.type = "button";
+      deleteButton.setAttribute("data-delete-id", product.id);
+      deleteButton.textContent = t("刪除");
+      actionStack.appendChild(editButton);
+      actionStack.appendChild(deleteButton);
+      actionCell.appendChild(actionStack);
+
+      const selectCell = document.createElement("td");
+      selectCell.className = "select-col";
+      selectCell.setAttribute("data-label", "選取");
+      const selectLabel = document.createElement("label");
+      selectLabel.className = "checkbox-touch-target";
+      selectLabel.setAttribute("aria-label", "選取商品");
+      const selectInput = document.createElement("input");
+      selectInput.className = "row-select-product";
+      selectInput.type = "checkbox";
+      selectInput.setAttribute("data-select-id", product.id);
+      selectInput.checked = state.selectedProductIds.has(product.id);
+      selectLabel.appendChild(selectInput);
+      selectCell.appendChild(selectLabel);
+
+      tr.appendChild(categoryCell);
+      tr.appendChild(nameCell);
+      tr.appendChild(barcodeCell);
+      tr.appendChild(expiryCell);
+      tr.appendChild(noteCell);
+      tr.appendChild(statusCell);
+      tr.appendChild(actionCell);
+      tr.appendChild(selectCell);
       ui.productTableBody.appendChild(tr);
     });
     const syncSelectAllState = (checkboxEl) => {

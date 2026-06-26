@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" role="img" aria-labelledby="title desc">
+  <title id="title">Cyber Flashlight Icon Preview</title>
+  <desc id="desc">A browser preview sheet showing four minimal flat futuristic flashlight icon drafts.</desc>
+  <rect width="960" height="360" fill="#050a0f"/>
+  <text x="48" y="48" fill="#e7fbff" font-family="Arial, sans-serif" font-size="28" font-weight="700">Cyber Flashlight Vector Drafts</text>
+  <text x="48" y="76" fill="#8dd8df" font-family="Arial, sans-serif" font-size="14">Flat Android vector drawable candidates for the native scanner flashlight button</text>
+
+  <g transform="translate(60 116)">
+    <rect width="160" height="160" rx="24" fill="#081017" stroke="#1a5660"/>
+    <g transform="translate(32 32)">
+      <path d="M28 16h40l-7 18H35z" fill="#00f0ff"/>
+      <path d="M35 34h26v42c0 5-4 9-9 9h-8c-5 0-9-4-9-9z" fill="#e7fbff"/>
+      <path d="M40 42h16v29H40z" fill="#07131a"/>
+      <path d="M44 22h8v6h-8z" fill="#07131a"/>
+      <path d="M31 16h34l-3 7H34z" fill="#ff2bd6"/>
+    </g>
+    <text x="0" y="198" fill="#e7fbff" font-family="Arial, sans-serif" font-size="18" font-weight="700">A. Sentinel</text>
+    <text x="0" y="222" fill="#8dd8df" font-family="Arial, sans-serif" font-size="13">Most readable at 24dp</text>
+  </g>
+
+  <g transform="translate(290 116)">
+    <rect width="160" height="160" rx="24" fill="#081017" stroke="#1a5660"/>
+    <g transform="translate(32 32)">
+      <path d="M58 11l24 12-23 18-13-6z" fill="#00f0ff" opacity=".28"/>
+      <path d="M31 58l27-27 14 14-27 27c-4 4-10 4-14 0s-4-10 0-14z" fill="#e7fbff"/>
+      <path d="M55 27l20 20-8 8-20-20z" fill="#00f0ff"/>
+      <path d="M36 59l10-10 12 12-10 10z" fill="#07131a"/>
+      <path d="M61 33l8 8-4 4-8-8z" fill="#ff2bd6"/>
+    </g>
+    <text x="0" y="198" fill="#e7fbff" font-family="Arial, sans-serif" font-size="18" font-weight="700">B. Beam</text>
+    <text x="0" y="222" fill="#8dd8df" font-family="Arial, sans-serif" font-size="13">More active and directional</text>
+  </g>
+
+  <g transform="translate(520 116)">
+    <rect width="160" height="160" rx="24" fill="#081017" stroke="#1a5660"/>
+    <g transform="translate(32 32)">
+      <path d="M25 24c0-6 5-11 11-11h24c6 0 11 5 11 11v8H25z" fill="#00f0ff"/>
+      <path d="M31 32h34v39c0 7-5 12-12 12H43c-7 0-12-5-12-12z" fill="#e7fbff"/>
+      <path d="M38 42h20v26H38z" fill="#07131a"/>
+      <path d="M43 47h10v16H43z" fill="#00f0ff"/>
+      <path d="M34 20h28v5H34z" fill="#ff2bd6"/>
+    </g>
+    <text x="0" y="198" fill="#e7fbff" font-family="Arial, sans-serif" font-size="18" font-weight="700">C. Core</text>
+    <text x="0" y="222" fill="#8dd8df" font-family="Arial, sans-serif" font-size="13">Strong cyber device feel</text>
+  </g>
+
+  <g transform="translate(750 116)">
+    <rect width="160" height="160" rx="24" fill="#081017" stroke="#1a5660"/>
+    <g transform="translate(32 32)">
+      <path d="M27 18h38l-6 17H34z" fill="#00f0ff"/>
+      <path d="M34 35h25v40c0 5-4 9-9 9h-7c-5 0-9-4-9-9z" fill="#e7fbff"/>
+      <path d="M40 43h13v28H40z" fill="#07131a"/>
+      <path d="M22 24l8-8 44 56-8 8z" fill="#ff2bd6"/>
+      <path d="M26 22l3-3 44 56-3 3z" fill="#050a0f" opacity=".7"/>
+    </g>
+    <text x="0" y="198" fill="#e7fbff" font-family="Arial, sans-serif" font-size="18" font-weight="700">D. Offline</text>
+    <text x="0" y="222" fill="#8dd8df" font-family="Arial, sans-serif" font-size="13">Clear off/disabled state</text>
+  </g>
+</svg>

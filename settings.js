@@ -486,9 +486,10 @@
         btn.classList.add("active");
       }
       btn.setAttribute("data-theme-key", option.key);
-      btn.innerHTML = `
-        <span class="theme-option-label">${escapeHtml(option.label)}</span>
-      `;
+      const label = document.createElement("span");
+      label.className = "theme-option-label";
+      label.textContent = option.label;
+      btn.appendChild(label);
       ui.themeOptions.appendChild(btn);
     });
   }
@@ -686,10 +687,16 @@
       const chip = document.createElement("div");
       chip.className = "category-chip";
       chip.setAttribute("data-category", category);
-      chip.innerHTML = `
-        <span>${escapeHtml(category)}</span>
-        <button class="chip-delete" type="button" data-delete-category="${escapeHtml(category)}" aria-label="${escapeHtml(t("刪除分類"))}">×</button>
-      `;
+      const label = document.createElement("span");
+      label.textContent = category;
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "chip-delete";
+      deleteButton.type = "button";
+      deleteButton.setAttribute("data-delete-category", category);
+      deleteButton.setAttribute("aria-label", t("刪除分類"));
+      deleteButton.textContent = "×";
+      chip.appendChild(label);
+      chip.appendChild(deleteButton);
       ui.categoryList.appendChild(chip);
     });
   }

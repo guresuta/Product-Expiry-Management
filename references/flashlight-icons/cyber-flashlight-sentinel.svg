@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Cyber Flashlight Sentinel</title>
+  <desc id="desc">A minimal flat futuristic flashlight icon with a straight cyber control silhouette.</desc>
+  <rect width="96" height="96" rx="18" fill="#050a0f"/>
+  <path d="M28 16h40l-7 18H35z" fill="#00f0ff"/>
+  <path d="M35 34h26v42c0 5-4 9-9 9h-8c-5 0-9-4-9-9z" fill="#e7fbff"/>
+  <path d="M40 42h16v29H40z" fill="#07131a"/>
+  <path d="M44 22h8v6h-8z" fill="#07131a"/>
+  <path d="M31 16h34l-3 7H34z" fill="#ff2bd6"/>
+</svg>

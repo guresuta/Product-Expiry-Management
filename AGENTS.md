@@ -44,7 +44,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.7.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v299`。
+- 目前 `version.js` 版本為 `v1.7.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v300`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -109,7 +109,13 @@
   - `domStorageEnabled = true`
   - `allowFileAccess = false`
   - `allowContentAccess = false`
+  - `allowFileAccessFromFileURLs = false`
+  - `allowUniversalAccessFromFileURLs = false`
+  - `blockNetworkLoads = true`
+  - `safeBrowsingEnabled = true`
+  - `setGeolocationEnabled(false)`
   - `mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW`
+  - `setSupportMultipleWindows(false)`
 - 已加入相機 runtime permission 與 `WebChromeClient.onPermissionRequest()`；只允許 `appassets.androidplatform.net` 的 `RESOURCE_VIDEO_CAPTURE`。
 - 已加入 `WebChromeClient.onShowFileChooser()`；JSON 還原可選擇，CSV 若在 Android 檔案選擇器反灰，需要以 `ACTION_OPEN_DOCUMENT` + `type = "*/*"` + CSV / JSON MIME 清單處理。
 - 已建立完整 `AndroidBridge`，前端目前會使用以下方法：
@@ -128,6 +134,9 @@
   - `android-json-exported`
 - `AndroidBridge` 使用 Storage Access Framework；禁止加入 `READ_EXTERNAL_STORAGE`、`WRITE_EXTERNAL_STORAGE`、`MANAGE_EXTERNAL_STORAGE`。
 - 加入 `addJavascriptInterface` 後，WebView 導航必須限制為 `appassets.androidplatform.net`；外部 HTTP / HTTPS 連結用系統瀏覽器開啟。
+- `AndroidBridge` 應維持輸入限制：檔名清理、內容長度上限、掃描 target / language / theme 白名單、狀態列顏色只接受 `#RRGGBB`。
+- Android manifest 需維持移除 `INTERNET` 權限；WebView 只載入 `WebViewAssetLoader` 的本機 appassets，外部連結交給系統瀏覽器。
+- `backup_rules.xml` 與 `data_extraction_rules.xml` 應明確排除所有資料；同時 manifest 維持 `android:allowBackup="false"`。
 - `window.statusBarColor` 在新版 Android 顯示 deprecated 警告，但不是建置錯誤；目前可保留功能。
 - Android 返回鍵已改為主頁二次確認；第一次透過網頁既有 `showToast()` 顯示主題化「再按一次返回鍵關閉app」，2 秒內第二次才關閉 App，不使用 Android 原生 Toast。
 - 主頁返回鍵固定由 `AppNativeBack.handleBack()` 觸發二次關閉流程；從設定頁或隱私權頁回主頁時，原生層需清除 WebView history，避免主頁返回鍵又回到設定頁或隱私權頁。
@@ -152,7 +161,7 @@
   - 已改寫所有 object / array spread `...`。
   - 已改寫所有 `String.prototype.replaceAll()`。
   - 已掃描空值合併、邏輯賦值、optional catch binding、`Array.prototype.flat()` 等其他現代 JavaScript 語法。
-  - 已同步更新 `sw.js` 與 `CHANGELOG.md`；目前快取版本為 `expiry-manager-cache-v299`。
+  - 已同步更新 `sw.js` 與 `CHANGELOG.md`；目前快取版本為 `expiry-manager-cache-v300`。
   - 已將修改後的 `app.js`、`i18n.js`、三個頁面 HTML、`settings.js`、`sw.js` 覆蓋到 Android Studio `assets`，並以 SHA-256 確認來源與目標一致。
 - 已修正設定頁底部提示與錯誤視窗未套用英日翻譯的問題，並重新掃描主頁、設定頁、隱私權頁、更新紀錄與動態執行訊息。
 - API 26 模擬器已可開啟程式；已針對舊 WebView 不支援 `inset` 與 `display: contents` 的問題，補上 modal、輸入框覆蓋層及商品檢查按鈕的 CSS 相容性修正。
