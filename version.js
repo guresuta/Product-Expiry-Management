@@ -1,10 +1,17 @@
 window.APP_RELEASE = {
-  version: "v1.8.1",
-  title: "v1.8.1更新內容",
+  version: "v1.8.3",
+  title: "v1.8.3更新內容",
   items: [
     "版面最佳化",
   ],
   history: [
+    {
+      version: "v1.8.3",
+      title: "v1.8.3更新內容",
+      items: [
+        "版面最佳化",
+      ]
+    },
     {
       version: "v1.8.1",
       title: "v1.8.1更新內容",
