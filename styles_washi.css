@@ -1746,6 +1746,10 @@ html.android-webview .sponsor-section {
   display: block;
 }
 
+html.android-webview .android-release-hidden {
+  display: none !important;
+}
+
 .sponsor-section .help-text {
   line-height: 1.6;
 }

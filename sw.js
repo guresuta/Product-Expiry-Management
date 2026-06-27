@@ -1,4 +1,4 @@
-const CACHE_NAME = "expiry-manager-cache-v303";
+const CACHE_NAME = "expiry-manager-cache-v304";
 const APP_SHELL_FILES = [
   "./",
   "./inventory-management-app.html",

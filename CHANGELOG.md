@@ -4,6 +4,7 @@
 
 ## [v1.8.0] - 目前工作進度
 - Android / WebView 互動：
+  - 調整設定頁 Android WebView 顯示內容，Google Play 版本隱藏 iOS Safari 備份提示與 Google Play Android 限定說明，GitHub Pages 版本保留原有說明。
   - 調整設定頁贊助區塊位置至介面模式與更新紀錄之間，網頁版隱藏時不保留空白間距。
   - 新增 Android 原生中文與日文 App 名稱資源，讓系統語言為中文或日文時 launcher 顯示對應名稱。
   - `version.js` 升級為 `v1.8.0`，更新內容包含提升資訊安全相關項目與版面最佳化。
