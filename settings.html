@@ -159,6 +159,14 @@
         <button id="chooseDarkThemeBtn" class="btn secondary" type="button">黑暗模式</button>
       </div>
       <p id="themeCurrentLabel" class="help-text">目前主題：霓虹電馭</p>
+      <label class="title-customize-row">
+        自訂主頁標題
+        <input id="customAppTitleInput" class="search-input" maxlength="24" placeholder="輸入自訂標題">
+      </label>
+      <div class="form-actions title-customize-actions">
+        <button id="saveCustomAppTitleBtn" class="btn secondary" type="button">儲存標題</button>
+        <button id="resetCustomAppTitleBtn" class="btn ghost" type="button">恢復預設標題</button>
+      </div>
       <label class="language-select-row">
         語言
         <select id="languageSelect" class="search-input">
@@ -167,24 +175,6 @@
           <option value="ja">日本語</option>
         </select>
       </label>
-    </section>
-
-    <section class="panel settings-section sponsor-section">
-      <h2 class="section-title-bar">贊助與自訂標題</h2>
-      <p id="sponsorStatusLabel" class="help-text">贊助狀態：讀取中</p>
-      <p class="help-text"><span>贊助新台幣 50 元可解鎖主頁標題自訂。</span> <span class="android-release-hidden">此功能僅支援 Google Play 安裝的 Android 版。</span></p>
-      <div class="form-actions sponsor-actions">
-        <button id="sponsorPurchaseBtn" class="btn primary" type="button">贊助 NT$50</button>
-        <button id="sponsorRestoreBtn" class="btn secondary" type="button">恢復購買</button>
-      </div>
-      <label class="title-customize-row">
-        自訂主頁標題
-        <input id="customAppTitleInput" class="search-input" maxlength="24" placeholder="輸入自訂標題">
-      </label>
-      <div class="form-actions sponsor-title-actions">
-        <button id="saveCustomAppTitleBtn" class="btn secondary" type="button">儲存標題</button>
-        <button id="resetCustomAppTitleBtn" class="btn ghost" type="button">恢復預設標題</button>
-      </div>
     </section>
 
     <section class="panel settings-section release-history-section">

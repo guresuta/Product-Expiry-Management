@@ -138,8 +138,8 @@
 - `AndroidBridge` 應維持輸入限制：檔名清理、內容長度上限、掃描 target / language / theme 白名單、狀態列顏色只接受 `#RRGGBB`。
 - Android manifest 需維持移除 `INTERNET` 權限；WebView 只載入 `WebViewAssetLoader` 的本機 appassets，外部連結交給系統瀏覽器。
 - `backup_rules.xml` 與 `data_extraction_rules.xml` 應明確排除所有資料；同時 manifest 維持 `android:allowBackup="false"`。
-- Google Play 贊助功能使用一次性非消耗型商品 `supporter_title_unlock`，商品 ID 固定在 Android 原生層；前端只能透過受限 bridge 查詢解鎖狀態、發起購買與恢復購買。
-- 贊助解鎖後只允許自訂主頁標題；自訂標題存在本機 `localStorage.customAppTitle`，不影響商品資料、IndexedDB schema 或備份格式。
+- 已移除 Google Play 贊助 / Billing 解鎖流程；不要再依賴 `supporter_title_unlock`。
+- 自訂主頁標題為免費本機功能，設定頁「介面模式」中語言選擇上方可設定；自訂標題存在本機 `localStorage.customAppTitle`，不影響商品資料、IndexedDB schema 或備份格式。
 - `window.statusBarColor` 在新版 Android 顯示 deprecated 警告，但不是建置錯誤；目前可保留功能。
 - Android 返回鍵已改為主頁二次確認；第一次透過網頁既有 `showToast()` 顯示主題化「再按一次返回鍵關閉app」，2 秒內第二次才關閉 App，不使用 Android 原生 Toast。
 - 主頁返回鍵固定由 `AppNativeBack.handleBack()` 觸發二次關閉流程；從設定頁或隱私權頁回主頁時，原生層需清除 WebView history，避免主頁返回鍵又回到設定頁或隱私權頁。
@@ -261,3 +261,41 @@
 - 下一步建議：
   - 若要上架，先用 Android Studio 產生 signed AAB，並確認 Play Console one-time product `supporter_title_unlock` 已建立、價格 NT$50、狀態 Active。
   - 若繼續開發，先檢查 Android Studio 專案與本 repo 的差異，避免覆蓋未納入 Git 的原生檔案 / 資源。
+
+### 9.8 目前工作階段交接紀錄（2026-06-27 版本更新後）
+- 本段為 9.7 之後的最新狀態；若與 9.7 的 `v1.8.0` / `10800` 資訊衝突，以本段為準。
+- `D:\AI Code\KEITAIHAN` 目前最後一次已推送提交為：
+  - `ef6a2b2 Bump version to 1.8.3`
+- 目前工作樹狀態：
+  - 追加本段前 `git status --short` 為乾淨。
+  - 追加本段後只應有 `AGENTS.md` 工作紀錄變更，除非後續另有修改。
+- 版本狀態：
+  - `version.js` 目前為 `v1.8.3`。
+  - `sw.js` 快取版本目前為 `expiry-manager-cache-v307`。
+  - `CHANGELOG.md` 已加入 `v1.8.3`，更新內容為「版面最佳化」。
+  - `i18n.js` 已補齊 `v1.8.3` 更新內容標題翻譯：
+    - English: `v1.8.3 Release Notes`
+    - 日本語: `v1.8.3 更新内容`
+- Android Studio 專案版本已同步：
+  - 路徑：`C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2`
+  - `app/build.gradle.kts` 目前為 `versionName = "1.8.3"`、`versionCode = 10803`。
+  - 已同步到 `app/src/main/assets/` 的前端版本相關檔案包含 `version.js`、`i18n.js`、`sw.js`，並以 SHA-256 確認來源與 Android assets 一致。
+- 已完成的驗證：
+  - `node --check version.js`
+  - `node --check i18n.js`
+  - `node --check sw.js`
+  - `git diff --check`
+  - 以上皆已通過。
+- 依使用者要求，本次 `v1.8.3` 更新沒有打包 debug APK，也沒有重新產生 release AAB。
+- Play Console 狀態提醒：
+  - 使用者回報 `versionCode 10801` 已被 Play Console 判定使用過，因此目前改用 `10803`。
+  - 舊的 signed AAB 不會自動更新到 `10803`；上傳前必須在 Android Studio 重新執行 `Build -> Generate Signed App Bundle or APK...` 產生新的 signed release AAB。
+  - 新 signed AAB 產生後需再驗證其 `versionCode = 10803`、`versionName = 1.8.3`，再上傳 Play Console。
+### 9.9 目前工作階段交接紀錄（2026-06-29 贊助功能移除後）
+- 本段為 9.8 之後的最新狀態；若與 9.7 / 9.8 的贊助功能、`v1.8.3`、`10803` 資訊衝突，以本段為準。
+- 已移除前端 Google Play 贊助 / Billing 解鎖流程，保留自訂主頁標題為免費本機功能。
+- 設定頁自訂主頁標題已移到「介面模式」區塊，位置在語言選擇上方；GitHub Pages / 一般瀏覽器版與 Android WebView 都支援自訂標題。
+- `version.js` 目前升級為 `v1.8.5`，更新內容為「加入標題自訂功能」。
+- `sw.js` 快取版本目前升級為 `expiry-manager-cache-v308`。
+- Android Studio 專案已同步移除原生 Billing 相關檔案 / 依賴，並同步 `versionName = "1.8.5"`、`versionCode = 10805` 與最新 assets。
+- Android 驗證：:app:compileDebugKotlin 已通過；未打包 APK / AAB。

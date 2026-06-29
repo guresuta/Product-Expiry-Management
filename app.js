@@ -360,22 +360,6 @@
           }
         });
       },
-      isTitleCustomizationUnlocked() {
-        try {
-          return typeof bridge.isTitleCustomizationUnlocked === "function" && !!bridge.isTitleCustomizationUnlocked();
-        } catch (_error) {
-          return false;
-        }
-      },
-      refreshSponsorState() {
-        if (typeof bridge.restoreSponsorPurchase !== "function") {
-          return;
-        }
-        try {
-          bridge.restoreSponsorPurchase();
-        } catch (_error) {
-        }
-      },
       supportsBarcodeScan() {
         return typeof bridge.requestBarcodeScan === "function";
       },
@@ -449,31 +433,20 @@
     return normalizeCustomAppTitle(localStorage.getItem(CUSTOM_APP_TITLE_KEY) || "");
   }
 
-  function getEffectiveAppTitle(unlocked) {
-    if (!unlocked) {
-      return DEFAULT_APP_TITLE;
-    }
+  function getEffectiveAppTitle() {
     return getStoredCustomAppTitle() || DEFAULT_APP_TITLE;
   }
 
-  function applyAppTitle(unlocked) {
-    const title = getEffectiveAppTitle(unlocked);
+  function applyAppTitle() {
+    const title = getEffectiveAppTitle();
     if (ui.appMainTitle) {
       ui.appMainTitle.textContent = title;
     }
     document.title = title;
   }
 
-  function refreshSponsorTitleState() {
-    const unlocked = !!(
-      nativeBridge &&
-      typeof nativeBridge.isTitleCustomizationUnlocked === "function" &&
-      nativeBridge.isTitleCustomizationUnlocked()
-    );
-    applyAppTitle(unlocked);
-    if (nativeBridge && typeof nativeBridge.refreshSponsorState === "function") {
-      nativeBridge.refreshSponsorState();
-    }
+  function refreshCustomAppTitle() {
+    applyAppTitle();
   }
 
   function isNativeFileMode() {
@@ -3350,14 +3323,10 @@
 
   async function init() {
     applySavedTheme();
-    refreshSponsorTitleState();
-    window.addEventListener("android-sponsor-state-changed", (event) => {
-      const detail = event.detail || {};
-      applyAppTitle(detail.unlocked === true);
-    });
+    refreshCustomAppTitle();
     window.addEventListener("storage", (event) => {
       if (event.key === CUSTOM_APP_TITLE_KEY) {
-        refreshSponsorTitleState();
+        refreshCustomAppTitle();
       }
     });
     window.addEventListener("error", (event) => {

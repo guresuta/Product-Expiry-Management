@@ -31,10 +31,7 @@
   const state = {
     storageMode: "file",
     fileHandle: null,
-    categories: [],
-    sponsorUnlocked: false,
-    sponsorSupported: false,
-    sponsorBusy: false
+    categories: []
   };
 
   const nativeBridge = createNativeBridge();
@@ -67,9 +64,6 @@
     appVersionLabel: document.getElementById("appVersionLabel"),
     currentReleaseLabel: document.getElementById("currentReleaseLabel"),
     releaseHistoryList: document.getElementById("releaseHistoryList"),
-    sponsorStatusLabel: document.getElementById("sponsorStatusLabel"),
-    sponsorPurchaseBtn: document.getElementById("sponsorPurchaseBtn"),
-    sponsorRestoreBtn: document.getElementById("sponsorRestoreBtn"),
     customAppTitleInput: document.getElementById("customAppTitleInput"),
     saveCustomAppTitleBtn: document.getElementById("saveCustomAppTitleBtn"),
     resetCustomAppTitleBtn: document.getElementById("resetCustomAppTitleBtn"),
@@ -204,66 +198,6 @@
             reject(error);
           }
         });
-      },
-      supportsSponsorPurchase() {
-        return typeof bridge.isTitleCustomizationUnlocked === "function" &&
-          typeof bridge.requestSponsorPurchase === "function" &&
-          typeof bridge.restoreSponsorPurchase === "function";
-      },
-      isTitleCustomizationUnlocked() {
-        try {
-          return typeof bridge.isTitleCustomizationUnlocked === "function" && !!bridge.isTitleCustomizationUnlocked();
-        } catch (_error) {
-          return false;
-        }
-      },
-      requestSponsorPurchase() {
-        return new Promise((resolve, reject) => {
-          if (typeof bridge.requestSponsorPurchase !== "function") {
-            reject(new Error("此版本不支援 Google Play 贊助"));
-            return;
-          }
-          const handler = (event) => {
-            window.removeEventListener("android-sponsor-state-changed", handler);
-            const detail = event.detail || {};
-            if (detail.ok) {
-              resolve(detail);
-            } else {
-              reject(new Error(detail.error || "贊助流程未完成"));
-            }
-          };
-          window.addEventListener("android-sponsor-state-changed", handler, { once: true });
-          try {
-            bridge.requestSponsorPurchase();
-          } catch (error) {
-            window.removeEventListener("android-sponsor-state-changed", handler);
-            reject(error);
-          }
-        });
-      },
-      restoreSponsorPurchase() {
-        return new Promise((resolve, reject) => {
-          if (typeof bridge.restoreSponsorPurchase !== "function") {
-            reject(new Error("此版本不支援恢復 Google Play 購買"));
-            return;
-          }
-          const handler = (event) => {
-            window.removeEventListener("android-sponsor-state-changed", handler);
-            const detail = event.detail || {};
-            if (detail.ok) {
-              resolve(detail);
-            } else {
-              reject(new Error(detail.error || "恢復購買失敗"));
-            }
-          };
-          window.addEventListener("android-sponsor-state-changed", handler, { once: true });
-          try {
-            bridge.restoreSponsorPurchase();
-          } catch (error) {
-            window.removeEventListener("android-sponsor-state-changed", handler);
-            reject(error);
-          }
-        });
       }
     };
   }
@@ -333,9 +267,6 @@
   }
 
   function getEffectiveAppTitle() {
-    if (!state.sponsorUnlocked) {
-      return DEFAULT_APP_TITLE;
-    }
     return getStoredCustomAppTitle() || DEFAULT_APP_TITLE;
   }
 
@@ -343,125 +274,23 @@
     document.title = `${t("設定")} | ${getEffectiveAppTitle()}`;
   }
 
-  function renderSponsorPanel() {
-    if (!ui.sponsorStatusLabel) {
-      return;
-    }
-    const supported = state.sponsorSupported;
-    const unlocked = state.sponsorUnlocked;
-    let status = "贊助狀態：此功能僅支援 Google Play 安裝的 Android 版";
-    if (supported && unlocked) {
-      status = "贊助狀態：已解鎖自訂標題";
-    } else if (supported) {
-      status = "贊助狀態：尚未解鎖";
-    }
-    ui.sponsorStatusLabel.textContent = t(status);
-
-    if (ui.sponsorPurchaseBtn) {
-      ui.sponsorPurchaseBtn.disabled = !supported || unlocked || state.sponsorBusy;
-    }
-    if (ui.sponsorRestoreBtn) {
-      ui.sponsorRestoreBtn.disabled = !supported || state.sponsorBusy;
-    }
+  function renderTitleCustomizePanel() {
     if (ui.customAppTitleInput) {
-      ui.customAppTitleInput.disabled = !unlocked;
       ui.customAppTitleInput.value = getStoredCustomAppTitle();
-    }
-    if (ui.saveCustomAppTitleBtn) {
-      ui.saveCustomAppTitleBtn.disabled = !unlocked;
-    }
-    if (ui.resetCustomAppTitleBtn) {
-      ui.resetCustomAppTitleBtn.disabled = !unlocked;
     }
     syncDocumentTitle();
   }
 
-  function updateSponsorState(detail) {
-    if (detail && typeof detail.unlocked === "boolean") {
-      state.sponsorUnlocked = detail.unlocked;
-    } else if (nativeBridge && typeof nativeBridge.isTitleCustomizationUnlocked === "function") {
-      state.sponsorUnlocked = nativeBridge.isTitleCustomizationUnlocked();
-    }
-    renderSponsorPanel();
-  }
-
-  async function refreshSponsorPurchaseState() {
-    state.sponsorSupported = !!(
-      nativeBridge &&
-      typeof nativeBridge.supportsSponsorPurchase === "function" &&
-      nativeBridge.supportsSponsorPurchase()
-    );
-    state.sponsorUnlocked = !!(
-      state.sponsorSupported &&
-      typeof nativeBridge.isTitleCustomizationUnlocked === "function" &&
-      nativeBridge.isTitleCustomizationUnlocked()
-    );
-    renderSponsorPanel();
-    if (!state.sponsorSupported || typeof nativeBridge.restoreSponsorPurchase !== "function") {
-      return;
-    }
-    try {
-      await nativeBridge.restoreSponsorPurchase();
-    } catch (_error) {
-      renderSponsorPanel();
-    }
-  }
-
-  async function requestSponsorPurchase() {
-    if (!nativeBridge || typeof nativeBridge.requestSponsorPurchase !== "function") {
-      showToast("此功能僅支援 Google Play 安裝的 Android 版", true);
-      return;
-    }
-    state.sponsorBusy = true;
-    renderSponsorPanel();
-    try {
-      const detail = await nativeBridge.requestSponsorPurchase();
-      updateSponsorState(detail);
-      showToast(detail.unlocked ? "感謝贊助，已解鎖自訂標題" : "贊助流程未完成");
-    } catch (error) {
-      showToast(`贊助失敗: ${error.message}`, true);
-    } finally {
-      state.sponsorBusy = false;
-      renderSponsorPanel();
-    }
-  }
-
-  async function restoreSponsorPurchase() {
-    if (!nativeBridge || typeof nativeBridge.restoreSponsorPurchase !== "function") {
-      showToast("此功能僅支援 Google Play 安裝的 Android 版", true);
-      return;
-    }
-    state.sponsorBusy = true;
-    renderSponsorPanel();
-    try {
-      const detail = await nativeBridge.restoreSponsorPurchase();
-      updateSponsorState(detail);
-      showToast(detail.unlocked ? "已恢復購買並解鎖自訂標題" : "尚未找到已購買的贊助項目");
-    } catch (error) {
-      showToast(`恢復購買失敗: ${error.message}`, true);
-    } finally {
-      state.sponsorBusy = false;
-      renderSponsorPanel();
-    }
-  }
 
   function saveCustomAppTitle() {
-    if (!state.sponsorUnlocked) {
-      showToast("贊助後才能自訂主頁標題", true);
-      return;
-    }
     const saved = setStoredCustomAppTitle(ui.customAppTitleInput ? ui.customAppTitleInput.value : "");
-    renderSponsorPanel();
+    renderTitleCustomizePanel();
     showToast(saved ? "自訂標題已儲存" : "已恢復預設標題");
   }
 
   function resetCustomAppTitle() {
-    if (!state.sponsorUnlocked) {
-      showToast("贊助後才能自訂主頁標題", true);
-      return;
-    }
     setStoredCustomAppTitle("");
-    renderSponsorPanel();
+    renderTitleCustomizePanel();
     showToast("已恢復預設標題");
   }
 
@@ -1793,17 +1622,10 @@
       syncCustomSelect(ui.languageSelect);
       renderReleaseHistory();
       renderCategories();
-      renderSponsorPanel();
+      renderTitleCustomizePanel();
       if (isModalVisible(ui.deleteCategoryModal)) {
         renderDeleteCategoryMessage();
       }
-    });
-    window.addEventListener("android-sponsor-state-changed", (event) => {
-      const detail = event.detail || {};
-      if (detail.ok === false && detail.error) {
-        return;
-      }
-      updateSponsorState(detail);
     });
     setTimeout(() => syncCustomSelect(ui.languageSelect), 0);
     document.addEventListener("click", (event) => {
@@ -1832,12 +1654,6 @@
           showToast(`本機檔案位置設定失敗: ${error.message}`, true);
         }
       });
-    }
-    if (ui.sponsorPurchaseBtn) {
-      ui.sponsorPurchaseBtn.addEventListener("click", requestSponsorPurchase);
-    }
-    if (ui.sponsorRestoreBtn) {
-      ui.sponsorRestoreBtn.addEventListener("click", restoreSponsorPurchase);
     }
     if (ui.saveCustomAppTitleBtn) {
       ui.saveCustomAppTitleBtn.addEventListener("click", saveCustomAppTitle);
@@ -2171,7 +1987,7 @@
     });
     wireEvents();
     await loadInitialState();
-    await refreshSponsorPurchaseState();
+    renderTitleCustomizePanel();
     await finishAppBoot();
   }
 
