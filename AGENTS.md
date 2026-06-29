@@ -299,3 +299,21 @@
 - `sw.js` 快取版本目前升級為 `expiry-manager-cache-v308`。
 - Android Studio 專案已同步移除原生 Billing 相關檔案 / 依賴，並同步 `versionName = "1.8.5"`、`versionCode = 10805` 與最新 assets。
 - Android 驗證：:app:compileDebugKotlin 已通過；未打包 APK / AAB。
+### 9.10 Android Studio 警告修復紀錄（2026-06-29）
+- 本段記錄 Android Studio 專案 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2` 的原生檔案警告修復；`D:\AI Code\KEITAIHAN` 前端來源未修改。
+- 已修復 `BarcodeScannerActivity.kt` 的 Kotlin redundant qualifier 警告：
+  - `Activity.RESULT_OK`、`Activity.RESULT_CANCELED`、`Activity.RESULT_FIRST_USER` 改用未限定名稱。
+  - `androidx.camera.core.TorchState.ON` 改為匯入 `TorchState` 後使用 `TorchState.ON`。
+- 已修復 `AndroidManifest.xml` 的 Android 16 / ChromeOS 固定方向警告：
+  - 移除 `BarcodeScannerActivity` 的 `android:screenOrientation="portrait"`。
+- 已掃描並修復 Android lint 其餘可由專案檔案處理的警告：
+  - `AndroidBridge.kt` 的 `Color.parseColor()` 改為 KTX `toColorInt()`。
+  - `build.gradle.kts` 的硬編碼依賴移入 `gradle/libs.versions.toml`，CameraX 更新為 `1.6.1`。
+  - 移除未使用的 `res/values/colors.xml`。
+  - 移除舊版 launcher PNG fallback，只保留 adaptive icon XML 與 foreground，消除 icon shape / duplicate lint 警告。
+  - 本機未安裝 SDK 37，且本專案目前維持 `compileSdk 36.1` / `targetSdk 36`；對 `OldTargetApi` 與 SDK 37 版本提示以 lint 設定排除，避免在未升級 SDK 前反覆出現環境性警告。
+- 驗證結果：
+  - `:app:compileDebugKotlin` 通過。
+  - `:app:lintDebug` 通過，lint 報告顯示 `No issues found.`。
+  - 曾因並行執行 compile/lint 出現 Kotlin daemon incremental cache contention；已執行 `gradlew --stop` 後依序重跑並通過。
+- 本次只修改 Android Studio 原生專案檔，不打包 APK / AAB；若換機或重建 Android Studio 專案，需依本段同步這些原生修正。
