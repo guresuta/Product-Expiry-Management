@@ -1,11 +1,19 @@
 window.APP_RELEASE = {
-  version: "v1.8.9",
-  title: "v1.8.9更新內容",
+  version: "v1.8.10",
+  title: "v1.8.10更新內容",
   items: [
     "版面最佳化",
     "修正鏡頭掃描有機率發生閃退錯誤",
   ],
   history: [
+    {
+      version: "v1.8.10",
+      title: "v1.8.10更新內容",
+      items: [
+        "版面最佳化",
+        "修正鏡頭掃描有機率發生閃退錯誤",
+      ]
+    },
     {
       version: "v1.8.9",
       title: "v1.8.9更新內容",
