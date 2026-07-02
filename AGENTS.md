@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.8.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v303`。
+- 目前 `version.js` 版本為 `v1.8.9`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v314`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -317,3 +317,71 @@
   - `:app:lintDebug` 通過，lint 報告顯示 `No issues found.`。
   - 曾因並行執行 compile/lint 出現 Kotlin daemon incremental cache contention；已執行 `gradlew --stop` 後依序重跑並通過。
 - 本次只修改 Android Studio 原生專案檔，不打包 APK / AAB；若換機或重建 Android Studio 專案，需依本段同步這些原生修正。
+### 9.11 本視窗工作紀錄（2026-06-29）
+- 本視窗主要處理兩條線：
+  - 移除 Google Play 贊助 / Billing 解鎖流程，保留並開放免費本機「自訂主頁標題」功能。
+  - 修復 Android Studio 專案中的 IDE / lint 警告。
+- `D:\AI Code\KEITAIHAN` 已完成並推送的最新提交：
+  - `26a7bf7 Remove sponsor unlock and add title customization`
+  - `62254ae Document Android Studio warning fixes`
+- 前端 / GitHub Pages 狀態：
+  - `version.js` 目前為 `v1.8.7`。
+  - `sw.js` 目前為 `expiry-manager-cache-v310`。
+  - GitHub Pages 線上 `version.js` 已確認回傳 `v1.8.5` 與「加入標題自訂功能」。
+  - 設定頁「介面模式」中、語言選擇上方提供自訂主頁標題；一般瀏覽器 / GitHub Pages 與 Android WebView 都可使用。
+  - 主頁標題只讀取 `localStorage.customAppTitle`，不再依賴 Android Billing bridge 或 `android-sponsor-state-changed` 事件。
+- Android Studio 專案狀態：
+  - 路徑：`C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2`。
+  - `app/build.gradle.kts` 已同步 `versionName = "1.8.7"`、`versionCode = 10807`。
+  - 已移除原生 Billing 相關流程與 `SponsorBillingManager.kt`，並同步最新前端 assets。
+  - 已修復 `BarcodeScannerActivity.kt` redundant qualifier、`AndroidManifest.xml` 固定方向、`AndroidBridge.kt` `toColorInt()`、version catalog、CameraX `1.6.1`、未使用 colors、launcher icon lint 警告。
+  - `:app:compileDebugKotlin` 與 `:app:lintDebug` 已通過，lint 報告顯示 `No issues found.`。
+- 本視窗未打包 debug APK，也未產生 release AAB。
+- 下一個視窗接續時應先檢查：
+  - `git status --short`。
+  - Android Studio 專案是否仍保留上述原生修正，因為這些原生檔案不在 `D:\AI Code\KEITAIHAN` Git repo 追蹤內。
+  - 若要上架新版，需在 Android Studio 重新產生 signed AAB，並確認 `versionCode = 10805`、`versionName = 1.8.5`。
+### 9.12 本視窗六項收尾紀錄（2026-06-29）
+- 已修正第 5 節發版狀態：`version.js` 目前為 `v1.8.7`，`sw.js` 目前為 `expiry-manager-cache-v310`。
+- 已重新檢查 Android Studio 專案 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2` 的原生修正仍保留：
+  - `SponsorBillingManager.kt` 不存在，Google Play Billing / 贊助解鎖原生流程未恢復。
+  - `BarcodeScannerActivity.kt` 已使用未限定 `RESULT_OK` / `RESULT_CANCELED` / `RESULT_FIRST_USER`，並使用 `TorchState.ON`。
+  - `AndroidBridge.kt` 使用 `toColorInt()`，未再出現 `Color.parseColor()`。
+  - `AndroidManifest.xml` 的 `INTERNET` 權限為 `tools:node="remove"`，`BarcodeScannerActivity` 未固定 `screenOrientation`，`allowBackup="false"` 保留。
+  - `res/values/colors.xml` 不存在，CameraX 版本仍由 `gradle/libs.versions.toml` 管理且為 `1.6.1`。
+- 已確認前端 runtime assets 與 Android Studio `app/src/main/assets/` 同步：`version.js`、`i18n.js`、`sw.js`、`app.js`、`settings.js`、`styles_washi.css`、三個 HTML 與 `legacy-webview.js` 的 SHA-256 皆一致。
+- 已執行 Android 建置與檢查：
+  - `:app:compileDebugKotlin` 通過。
+  - `:app:lintDebug` 通過。
+  - `:app:assembleDebug` 通過，產生 debug APK。
+  - debug APK 已以 `aapt dump badging` 確認 `versionCode='10805'`、`versionName='1.8.5'`，並以 `apksigner verify` 確認 Android Debug certificate / v2 scheme 簽章有效。
+- 已執行 API 26 模擬器 `Small_Phone` 清資料、重新安裝與煙霧測試：
+  - `pm clear com.guresuta.productexpirycybercontrol` 成功。
+  - 安裝最新版 debug APK 成功。
+  - 主頁可載入，UI dump 可見 `商品終期電馭監管裝置`、`商品效期月曆`、`新 增 商 品`、`設 定`，不再是舊 WebView JavaScript 藍畫面。
+  - 初次儲存方式選擇 IndexedDB 成功，更新內容 modal 顯示 `v1.8.5更新內容` / `加入標題自訂功能`。
+  - 設定頁可開啟，UI dump 可見 `設定 | 商品終期電馭監管裝置`、`系統設定`、`介面模式`；Android 返回鍵可回到主頁。
+  - 最近 logcat 未見本 App 的 `FATAL EXCEPTION`、`Uncaught SyntaxError` 或 `Unexpected token`。
+- 已產生 release AAB 作為建置驗證：`:app:bundleRelease` 通過，產物位於 `app/build/outputs/bundle/release/app-release.aab`；但 `jarsigner -verify` 仍顯示 `jar is unsigned`，因此尚不可上傳 Play Console。
+- 尚不能由本視窗完全完成的項目：
+  - Play Console 可上傳的 signed AAB 仍需使用者在 Android Studio 以 release keystore 產生；keystore 與密碼不可寫入 repo 或交給 Codex 自動猜測。
+  - 完整人工裝置測試尚需實機覆蓋相機允許 / 拒絕、原生檔案選擇器、CSV / JSON 匯入匯出、真實條碼掃描、CRUD、分類長按排序、所有主題與 IndexedDB 關閉重開保留；本次已完成 API 26 clean install 與主頁 / 設定 / 返回鍵煙霧測試。
+### 9.13 Android 15 edge-to-edge 修正紀錄（2026-07-02）
+- 針對 Google Play Console Android 15 edge-to-edge / deprecated system bar API 警告進行修正。
+- `MainActivity.kt` 維持 `WindowCompat.setDecorFitsSystemWindows(window, false)`，WebView 延伸到狀態列後方；native root 只保留左右與底部 insets，並把頂部 inset 注入 CSS `--safe-area-top`，由 HTML `.topbar` 自行繪製狀態列背景。
+- `AndroidBridge.setStatusBarColor()` 保留前端呼叫入口，但不再呼叫 deprecated `window.statusBarColor`；目前只根據主題色調整狀態列圖示明暗。
+- `BarcodeScannerActivity.kt` 移除 deprecated `window.statusBarColor` / `window.navigationBarColor`，保留沉浸式掃描並用 WindowInsets 調整底部提示框與手電筒按鈕位置。
+- `styles_washi.css` 移除 Android WebView 強制 `--safe-area-top: 0px` 的覆蓋，讓 native 注入值與 CSS safe-area 生效。
+- 版本更新為 `v1.8.7`，更新內容為「版面最佳化」；`sw.js` 快取版本為 `expiry-manager-cache-v310`，Android `versionName = "1.8.7"`、`versionCode = 10807`。
+### 9.14 Android WebView 頂部間距微調（2026-07-02）
+- 依使用者截圖回報，修正 Android WebView 內狀態列與標題文字之間留白過大的問題。
+- `styles_washi.css` 新增 Android WebView 專用 topbar 覆蓋：標題列頂部內距由原本 `safe-area + 0.85rem` 壓縮為 `safe-area + 0.25rem`，並同步調整 Android WebView 的 `--topbar-fixed-offset`，不影響一般瀏覽器 / PWA。後續模擬器檢查確認真正造成留白過大的主因是 native 將 Android 實體像素直接注入 CSS px，已改為依 `displayMetrics.density` 轉成 WebView CSS px。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v312`；版本仍維持 `v1.8.7`。
+- 已重新打包 debug APK 並在 `emulator-5554` 清除資料後安裝檢查；`appMainTitle` UI dump 位置由修正前 `[24,489][1320,567]` 改為 `[24,171][1320,249]`，確認狀態列與標題間距已回到合理範圍。
+
+### 9.15 v1.8.9 發版與掃描修正紀錄（2026-07-02）
+- 版本更新為 `v1.8.9`，更新內容為「版面最佳化、修正鏡頭掃描有機率發生閃退錯誤」。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v314`。
+- Android Studio 專案 `MainActivity.kt` 已修正原生事件 dispatch 字串中的錯誤字面插值，避免關閉掃描 Activity 時 WebView 執行非法 JS 並顯示 `Script error.`。
+- `BarcodeScannerActivity.kt` 保留權限回呼、CameraX listener 與 `onDestroy()` 的 Activity 狀態防呆，降低初次或取消鏡頭掃描時的閃退風險。
+- 設定頁更新紀錄內容項目已移除邊框與陰影，並以最後覆蓋規則壓過各主題樣式。

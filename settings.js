@@ -62,7 +62,6 @@
     confirmDeleteCategoryBtn: document.getElementById("confirmDeleteCategoryBtn"),
     cancelDeleteCategoryBtn: document.getElementById("cancelDeleteCategoryBtn"),
     appVersionLabel: document.getElementById("appVersionLabel"),
-    currentReleaseLabel: document.getElementById("currentReleaseLabel"),
     releaseHistoryList: document.getElementById("releaseHistoryList"),
     customAppTitleInput: document.getElementById("customAppTitleInput"),
     saveCustomAppTitleBtn: document.getElementById("saveCustomAppTitleBtn"),
@@ -297,9 +296,6 @@
   function renderReleaseHistory() {
     const release = window.APP_RELEASE || {};
     const version = String(release.version || "").trim();
-    if (ui.currentReleaseLabel) {
-      ui.currentReleaseLabel.textContent = version ? t(`目前版本：${version}`) : t("目前版本：未設定");
-    }
     if (!ui.releaseHistoryList) {
       return;
     }
