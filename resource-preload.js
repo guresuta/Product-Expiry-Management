@@ -5,7 +5,8 @@
   var pages = [
     "./inventory-management-app.html",
     "./settings.html",
-    "./privacy-policy.html"
+    "./privacy-policy.html",
+    "./analytics.html"
   ];
   var assets = [
     "./styles_washi.css",
@@ -13,6 +14,8 @@
     "./i18n.js",
     "./app.js",
     "./settings.js",
+    "./analytics.js",
+    "./data-store.js",
     "./version.js",
     "./fonts/GenSekiGothic2TC-H.woff2",
     "./fonts/GenSekiGothic2TC-R.woff2",

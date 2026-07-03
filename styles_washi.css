@@ -3157,3 +3157,170 @@ html[data-theme] .release-history-section .release-history-entry {
   background: transparent !important;
   padding: 0 !important;
 }
+
+/* Settings / analytics top navigation */
+.settings-analysis-link {
+  min-width: 14.4rem;
+}
+
+.settings-back-link {
+  min-width: 6.5rem;
+}
+
+@media (min-width: 731px) and (max-width: 900px) {
+  .settings-analysis-link {
+    min-width: 10.5rem;
+  }
+}
+
+@media (max-width: 730px) {
+  .settings-nav-actions .settings-analysis-link {
+    grid-column: 1;
+  }
+
+  .settings-nav-actions .settings-back-link {
+    grid-column: 2;
+  }
+
+  .settings-analysis-link,
+  .settings-back-link {
+    min-width: 0;
+  }
+
+  .settings-analysis-link {
+    white-space: normal;
+    line-height: 1.25;
+  }
+}
+
+/* Analytics page */
+.analytics-main {
+  gap: 1.2rem;
+}
+
+.analytics-section {
+  overflow: hidden;
+}
+
+.analytics-summary {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.analytics-warning {
+  margin-top: 0;
+  color: var(--danger);
+}
+
+.analytics-table-wrap {
+  margin-top: 0.75rem;
+}
+
+.analytics-table th,
+.analytics-table td {
+  text-align: left;
+}
+
+.analytics-heatmap {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.analytics-heat-cell {
+  min-height: 6.5rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--calendar-block-bg-soft);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.85rem;
+  box-shadow: var(--glass-shadow);
+}
+
+.analytics-heat-label,
+.analytics-heat-unit {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.analytics-heat-count {
+  color: var(--text);
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.analytics-heat-cell.heat-level-1 {
+  background: color-mix(in srgb, var(--calendar-mark-bg) 18%, var(--calendar-block-bg-soft));
+}
+
+.analytics-heat-cell.heat-level-2 {
+  background: color-mix(in srgb, var(--calendar-mark-bg) 34%, var(--calendar-block-bg-soft));
+}
+
+.analytics-heat-cell.heat-level-3 {
+  background: color-mix(in srgb, var(--calendar-mark-bg) 52%, var(--calendar-block-bg-soft));
+}
+
+.analytics-heat-cell.heat-level-4 {
+  background: var(--calendar-mark-bg);
+  color: var(--calendar-mark-text);
+}
+
+.analytics-heat-cell.heat-level-4 .analytics-heat-label,
+.analytics-heat-cell.heat-level-4 .analytics-heat-count,
+.analytics-heat-cell.heat-level-4 .analytics-heat-unit {
+  color: var(--calendar-mark-text);
+}
+
+.analytics-risk-high td:last-child {
+  color: var(--danger);
+}
+
+.analytics-risk-medium td:last-child {
+  color: var(--primary);
+}
+
+@media (max-width: 730px) {
+  .analytics-heatmap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-heat-cell {
+    min-height: 5.8rem;
+    padding: 0.72rem;
+  }
+
+  .analytics-heat-count {
+    font-size: 1.55rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .analytics-heatmap {
+    grid-template-columns: 1fr;
+  }
+}
+
+html.legacy-webview .analytics-heatmap {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+html.legacy-webview .analytics-heat-cell {
+  flex: 1 1 10rem;
+  margin: 0.4rem;
+}
+
+html.legacy-webview .analytics-heat-cell.heat-level-1,
+html.legacy-webview .analytics-heat-cell.heat-level-2,
+html.legacy-webview .analytics-heat-cell.heat-level-3 {
+  background: var(--calendar-block-bg-soft);
+  border-color: var(--calendar-mark-border);
+}

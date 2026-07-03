@@ -58,7 +58,7 @@
     lastAddCategory: ""
   };
 
-  const nativeBridge = createNativeBridge();
+  const nativeBridge = window.AppDataStore && window.AppDataStore.nativeBridge ? window.AppDataStore.nativeBridge : createNativeBridge();
 
   const ui = {
     productForm: document.getElementById("productForm"),
@@ -686,143 +686,47 @@
   }
 
   function openDb() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(APP_DB, APP_DB_VERSION);
-      req.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_PRODUCTS)) {
-          db.createObjectStore(STORE_PRODUCTS, { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
-          db.createObjectStore(STORE_SETTINGS, { keyPath: "key" });
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    return window.AppDataStore.openDb();
   }
 
   async function withStore(storeName, mode, workFn) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, mode);
-      const store = tx.objectStore(storeName);
-      const output = workFn(store, tx);
-      tx.oncomplete = () => {
-        db.close();
-        resolve(output);
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
-      tx.onabort = () => {
-        db.close();
-        reject(tx.error || new Error("transaction aborted"));
-      };
-    });
+    return window.AppDataStore.withStore(storeName, mode, workFn);
   }
 
   async function getAllProductsFromIndexedDb() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_PRODUCTS, "readonly");
-      const req = tx.objectStore(STORE_PRODUCTS).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-      tx.onabort = () => db.close();
-    });
+    return window.AppDataStore.getAllProductsFromIndexedDb();
   }
 
   async function getSetting(key) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_SETTINGS, "readonly");
-      const req = tx.objectStore(STORE_SETTINGS).get(key);
-      req.onsuccess = () => resolve(req.result ? req.result.value : null);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-      tx.onabort = () => db.close();
-    });
+    return window.AppDataStore.getSetting(key);
   }
 
   async function setSetting(key, value) {
-    await withStore(STORE_SETTINGS, "readwrite", (store) => {
-      store.put({ key, value });
-    });
+    return window.AppDataStore.setSetting(key, value);
   }
 
   async function replaceAllProductsIndexedDb(products) {
-    await withStore(STORE_PRODUCTS, "readwrite", (store) => {
-      const clearReq = store.clear();
-      clearReq.onsuccess = () => {
-        products.forEach((product) => store.put(product));
-      };
-    });
+    return window.AppDataStore.replaceAllProductsIndexedDb(products);
   }
 
   async function hasReadWritePermission(fileHandle, options = {}) {
-    if (!fileHandle) {
-      return false;
-    }
-    const permissionOptions = { mode: "readwrite" };
-    if ((await fileHandle.queryPermission(permissionOptions)) === "granted") {
-      return true;
-    }
-    if (!options.request) {
-      return false;
-    }
-    if (navigator.userActivation && !navigator.userActivation.isActive) {
-      return false;
-    }
-    return (await fileHandle.requestPermission(permissionOptions)) === "granted";
+    return window.AppDataStore.hasReadWritePermission(fileHandle, options);
   }
 
   async function hasReadWritePermissionGrant(fileHandle) {
-    if (!fileHandle || typeof fileHandle.queryPermission !== "function") {
-      return false;
-    }
-    return (await fileHandle.queryPermission({ mode: "readwrite" })) === "granted";
+    return window.AppDataStore.hasReadWritePermissionGrant(fileHandle);
   }
 
   async function chooseStorageFileHandle() {
-    if (!supportsWebFileStorage()) {
-      throw new Error("此瀏覽器不支援指定本機檔案位置，請使用 IndexedDB 並定期備份 JSON");
-    }
-    return window.showSaveFilePicker({
-      suggestedName: "expiry-manager-data.json",
-      types: [
-        {
-          description: t("商品效期資料 JSON"),
-          accept: { "application/json": [".json"] }
-        }
-      ]
-    });
+    return window.AppDataStore.chooseStorageFileHandle(t);
   }
 
   function parseProductsPayload(text) {
-    if (!text || !String(text).trim()) {
-      return [];
-    }
-    const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) {
-      return parsed;
-    }
-    if (Array.isArray(parsed.products)) {
-      return parsed.products;
-    }
-    return [];
+    return window.AppDataStore.parseProductsPayload(text);
   }
 
   async function getCategories() {
-    const saved = await getSetting(CATEGORY_SETTING_KEY);
-    if (Array.isArray(saved) && saved.length > 0) {
-      return saved;
-    }
-    return DEFAULT_CATEGORIES;
+    return window.AppDataStore.getCategories();
   }
 
   function getSelectLabel(selectEl) {
@@ -1055,35 +959,15 @@
   }
 
   function serializeProductsPayload(products) {
-    return JSON.stringify(
-      {
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        products
-      },
-      null,
-      2
-    );
+    return window.AppDataStore.serializeProductsPayload(products);
   }
 
   async function readProductsFromSelectedFile() {
-    if (isNativeFileMode()) {
-      const text = await nativeBridge.readFileText();
-      return parseProductsPayload(text);
-    }
-    const file = await state.fileHandle.getFile();
-    const text = await file.text();
-    return parseProductsPayload(text);
+    return window.AppDataStore.readProductsFromSelectedFile(state.fileHandle);
   }
 
   async function writeProductsToSelectedFile(products) {
-    if (isNativeFileMode()) {
-      await nativeBridge.writeFileText(serializeProductsPayload(products));
-      return;
-    }
-    const writer = await state.fileHandle.createWritable();
-    await writer.write(serializeProductsPayload(products));
-    await writer.close();
+    return window.AppDataStore.writeProductsToSelectedFile(products, state.fileHandle);
   }
 
   function buildBackupJsonPayload(products) {

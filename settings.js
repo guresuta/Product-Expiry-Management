@@ -34,7 +34,7 @@
     categories: []
   };
 
-  const nativeBridge = createNativeBridge();
+  const nativeBridge = window.AppDataStore && window.AppDataStore.nativeBridge ? window.AppDataStore.nativeBridge : createNativeBridge();
 
   const ui = {
     chooseLightThemeBtn: document.getElementById("chooseLightThemeBtn"),
@@ -202,30 +202,19 @@
   }
 
   function isNativeFileMode() {
-    return !!nativeBridge;
+    return window.AppDataStore.isNativeFileMode();
   }
 
   function supportsWebFileStorage() {
-    return typeof window.showSaveFilePicker === "function";
+    return window.AppDataStore.supportsWebFileStorage();
   }
 
   function supportsExternalFileStorage() {
-    return isNativeFileMode() || supportsWebFileStorage();
+    return window.AppDataStore.supportsExternalFileStorage();
   }
 
   async function chooseStorageFileHandle() {
-    if (!supportsWebFileStorage()) {
-      throw new Error("此瀏覽器不支援指定本機檔案位置，請使用 IndexedDB 並定期備份 JSON");
-    }
-    return window.showSaveFilePicker({
-      suggestedName: "expiry-manager-data.json",
-      types: [
-        {
-          description: t("商品效期資料 JSON"),
-          accept: { "application/json": [".json"] }
-        }
-      ]
-    });
+    return window.AppDataStore.chooseStorageFileHandle(t);
   }
 
   function renderStorageMode() {
@@ -664,72 +653,27 @@
   }
 
   function openDb() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(APP_DB, APP_DB_VERSION);
-      req.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_PRODUCTS)) {
-          db.createObjectStore(STORE_PRODUCTS, { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
-          db.createObjectStore(STORE_SETTINGS, { keyPath: "key" });
-        }
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
+    return window.AppDataStore.openDb();
   }
 
   async function withStore(storeName, mode, workFn) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(storeName, mode);
-      const store = tx.objectStore(storeName);
-      const output = workFn(store, tx);
-      tx.oncomplete = () => {
-        db.close();
-        resolve(output);
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
-      tx.onabort = () => {
-        db.close();
-        reject(tx.error || new Error("transaction aborted"));
-      };
-    });
+    return window.AppDataStore.withStore(storeName, mode, workFn);
   }
 
   async function getSetting(key) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_SETTINGS, "readonly");
-      const req = tx.objectStore(STORE_SETTINGS).get(key);
-      req.onsuccess = () => resolve(req.result ? req.result.value : null);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-      tx.onabort = () => db.close();
-    });
+    return window.AppDataStore.getSetting(key);
   }
 
   async function setSetting(key, value) {
-    await withStore(STORE_SETTINGS, "readwrite", (store) => {
-      store.put({ key, value });
-    });
+    return window.AppDataStore.setSetting(key, value);
   }
 
   async function getCategories() {
-    const saved = await getSetting(CATEGORY_SETTING_KEY);
-    if (Array.isArray(saved) && saved.length > 0) {
-      return saved;
-    }
-    return DEFAULT_CATEGORIES;
+    return window.AppDataStore.getCategories();
   }
 
   async function setCategories(categories) {
-    await setSetting(CATEGORY_SETTING_KEY, categories);
+    return window.AppDataStore.setCategories(categories);
   }
 
   function renderCategories() {
@@ -914,93 +858,31 @@
   }
 
   async function getAllProductsFromIndexedDb() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_PRODUCTS, "readonly");
-      const req = tx.objectStore(STORE_PRODUCTS).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => reject(req.error);
-      tx.oncomplete = () => db.close();
-      tx.onerror = () => db.close();
-      tx.onabort = () => db.close();
-    });
+    return window.AppDataStore.getAllProductsFromIndexedDb();
   }
 
   async function replaceAllProductsIndexedDb(products) {
-    await withStore(STORE_PRODUCTS, "readwrite", (store) => {
-      const clearReq = store.clear();
-      clearReq.onsuccess = () => {
-        products.forEach((product) => store.put(product));
-      };
-    });
+    return window.AppDataStore.replaceAllProductsIndexedDb(products);
   }
 
   function serializeProductsPayload(products) {
-    return JSON.stringify(
-      {
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        products
-      },
-      null,
-      2
-    );
+    return window.AppDataStore.serializeProductsPayload(products);
   }
 
   async function hasSelectedFile() {
-    if (isNativeFileMode()) {
-      return nativeBridge.hasFile();
-    }
-    return !!state.fileHandle;
+    return window.AppDataStore.hasSelectedFile(state.fileHandle);
   }
 
   async function hasReadWritePermission(fileHandle, options = {}) {
-    if (!fileHandle) {
-      return false;
-    }
-    const permissionOptions = { mode: "readwrite" };
-    if ((await fileHandle.queryPermission(permissionOptions)) === "granted") {
-      return true;
-    }
-    if (!options.request) {
-      return false;
-    }
-    if (navigator.userActivation && !navigator.userActivation.isActive) {
-      return false;
-    }
-    return (await fileHandle.requestPermission(permissionOptions)) === "granted";
+    return window.AppDataStore.hasReadWritePermission(fileHandle, options);
   }
 
   async function writeProductsToSelectedFile(products) {
-    const payload = serializeProductsPayload(products);
-    if (isNativeFileMode()) {
-      await nativeBridge.writeFileText(payload);
-      return;
-    }
-    const writer = await state.fileHandle.createWritable();
-    await writer.write(payload);
-    await writer.close();
+    return window.AppDataStore.writeProductsToSelectedFile(products, state.fileHandle);
   }
 
   async function tryWriteProductsToSelectedFile(products) {
-    if (!(await hasSelectedFile())) {
-      return { skipped: false };
-    }
-    if (!isNativeFileMode()) {
-      const ok = await hasReadWritePermission(state.fileHandle, { request: false });
-      if (!ok) {
-        return { skipped: true };
-      }
-    }
-    try {
-      await writeProductsToSelectedFile(products);
-      return { skipped: false };
-    } catch (error) {
-      if (isFilePermissionActivationError(error.message)) {
-        return { skipped: true };
-      }
-      throw error;
-    }
+    return window.AppDataStore.tryWriteProductsToSelectedFile(products, state.fileHandle);
   }
 
   async function switchToIndexedDbStorage() {

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="app-booting">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1f6feb">
+  <title>商品效期趨勢分析 | 商品終期電馭監管裝置</title>
+  <script src="./legacy-webview.js"></script>
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeKeys = new Set(["dark-1", "light-1", "light-2", "dark-2"]);
+      const defaultThemeKey = "dark-1";
+      const themeAliases = {
+        "dark-7": "dark-1",
+        "light-7": "light-1",
+        "light-8": "light-2",
+        "dark-8": "dark-2"
+      };
+      const savedTheme = localStorage.getItem("uiTheme") || defaultThemeKey;
+      const normalizedTheme = themeAliases[savedTheme] || savedTheme;
+      const themeKey = themeKeys.has(normalizedTheme) ? normalizedTheme : defaultThemeKey;
+      if (themeKey !== savedTheme) {
+        localStorage.setItem("uiTheme", themeKey);
+      }
+      const bootBackgrounds = {
+        "dark-1": "./key-visuals/background-neon-cyber.png",
+        "light-1": "./key-visuals/background-daylight-cyber.png",
+        "light-2": "./key-visuals/background-vibrant-oasis.png",
+        "dark-2": "./key-visuals/background-midnight-oasis.png"
+      };
+      const statusBarColors = {
+        "dark-1": "#050505",
+        "light-1": "#fafafa",
+        "light-2": "#f4f7f5",
+        "dark-2": "#101814"
+      };
+      const languageKeys = new Set(["zh-Hant", "en", "ja"]);
+      const inferSystemLanguage = () => {
+        const candidates = [];
+        if (Array.isArray(navigator.languages)) candidates.push.apply(candidates, navigator.languages);
+        candidates.push(navigator.language || navigator.userLanguage || "");
+        const normalized = candidates.map((item) => String(item || "").toLowerCase()).filter(Boolean);
+        if (normalized.some((item) => item.startsWith("zh"))) return "zh-Hant";
+        if (normalized.some((item) => item.startsWith("ja"))) return "ja";
+        return "en";
+      };
+      const savedLanguage = localStorage.getItem("appLanguage");
+      const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
+      const bootStartedAt = Date.now();
+      const minBootDurationMs = 1000;
+      let ready = false;
+      let bootVisualReady = false;
+      root.setAttribute("data-theme", themeKey);
+      root.setAttribute("lang", language);
+      if (window.AndroidBridge) {
+        root.classList.add("android-webview");
+      }
+      try {
+        if (window.AndroidBridge && typeof window.AndroidBridge.setStatusBarColor === "function") {
+          window.AndroidBridge.setStatusBarColor(statusBarColors[themeKey] || statusBarColors[defaultThemeKey]);
+        }
+      } catch (_error) {
+      }
+      const markBootVisualReady = () => {
+        if (bootVisualReady) return;
+        bootVisualReady = true;
+        root.classList.add("app-boot-visual-ready");
+      };
+      const bootImage = new Image();
+      bootImage.onload = markBootVisualReady;
+      bootImage.onerror = markBootVisualReady;
+      bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
+      setTimeout(markBootVisualReady, 900);
+      window.AppBoot = {
+        ready() {
+          if (ready) return;
+          ready = true;
+          const finish = () => {
+            root.classList.remove("app-booting");
+            root.classList.add("app-ready");
+            setTimeout(() => {
+              const bootScreen = document.querySelector(".app-boot-screen");
+              if (bootScreen) bootScreen.remove();
+            }, 240);
+          };
+          const elapsed = Date.now() - bootStartedAt;
+          setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));
+        }
+      };
+      setTimeout(() => window.AppBoot.ready(), 1600);
+    })();
+  </script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-app-192.png">
+  <link rel="stylesheet" href="./styles_washi.css">
+  <script src="./resource-preload.js" defer></script>
+</head>
+<body>
+  <div class="app-boot-screen" aria-hidden="true">
+    <div class="app-boot-spinner"></div>
+  </div>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <h1>商品效期趨勢分析</h1>
+        <p class="subtitle">依照目前商品資料即時計算效期與分類風險</p>
+      </div>
+      <nav class="actions settings-nav-actions">
+        <a class="btn secondary nav-link settings-back-link" href="./settings.html">返 回</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container layout settings-main analytics-main">
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">商品效期概況</h2>
+      <p id="analyticsFallbackNotice" class="help-text analytics-warning hidden">目前無法讀取本機 JSON 檔案，已暫時使用 IndexedDB 備援資料。請回設定頁重新選擇資料檔。</p>
+      <p id="expiryOverview" class="analytics-summary">讀取中</p>
+    </section>
+
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">分類商品數量分布</h2>
+      <div class="table-wrap analytics-table-wrap">
+        <table class="product-table analytics-table">
+          <thead>
+            <tr>
+              <th>商品類別</th>
+              <th>商品筆數</th>
+            </tr>
+          </thead>
+          <tbody id="categoryCountBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">到期日時間分布趨勢</h2>
+      <div id="expiryHeatmap" class="analytics-heatmap" aria-label="到期日時間分布趨勢"></div>
+    </section>
+
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">商品分類健康狀態</h2>
+      <div class="table-wrap analytics-table-wrap">
+        <table class="product-table analytics-table">
+          <thead>
+            <tr>
+              <th>商品類別</th>
+              <th>風險評估</th>
+            </tr>
+          </thead>
+          <tbody id="categoryRiskBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">平均剩餘效期分析</h2>
+      <div class="table-wrap analytics-table-wrap">
+        <table class="product-table analytics-table">
+          <thead>
+            <tr>
+              <th>商品類別</th>
+              <th>平均效期天數</th>
+            </tr>
+          </thead>
+          <tbody id="averageDaysBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="errorModal" class="modal error-modal hidden">
+    <div class="modal-content">
+      <h3>發生錯誤</h3>
+      <p id="errorModalMessage" class="help-text"></p>
+      <div class="form-actions">
+        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+  <script src="./i18n.js" defer></script>
+  <script src="./version.js" defer></script>
+  <script src="./data-store.js" defer></script>
+  <script src="./analytics.js" defer></script>
+</body>
+</html>

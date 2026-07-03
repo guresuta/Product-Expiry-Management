@@ -1,11 +1,21 @@
 window.APP_RELEASE = {
-  version: "v1.9.0",
-  title: "v1.9.0更新內容",
+  version: "v2.0",
+  title: "v2.0更新內容",
   items: [
+    "新增商品效期趨勢分析",
     "版面最佳化",
-    "提高頁面讀取速度",
+    "統一資料讀取邏輯",
   ],
   history: [
+    {
+      version: "v2.0",
+      title: "v2.0更新內容",
+      items: [
+        "新增商品效期趨勢分析",
+        "版面最佳化",
+        "統一資料讀取邏輯",
+      ]
+    },
     {
       version: "v1.9.0",
       title: "v1.9.0更新內容",

@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.9.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v318`。
+- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v319`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -82,9 +82,12 @@
   - `inventory-management-app.html`
   - `settings.html`
   - `privacy-policy.html`
+  - `analytics.html`
   - `index.html`
   - `styles_washi.css`
   - `legacy-webview.js`
+  - `data-store.js`
+  - `analytics.js`
   - `i18n.js`
   - `app.js`
   - `settings.js`
@@ -405,3 +408,10 @@
 - 版本更新為 `v1.9.0`，更新內容為「版面最佳化、提高頁面讀取速度」。
 - `sw.js` 快取版本更新為 `expiry-manager-cache-v318`。
 - 已同步補齊英文與日文更新內容翻譯。
+
+### 9.20 v2.0 商品效期趨勢分析紀錄（2026-07-04）
+- 新增分析頁 nalytics.html / nalytics.js，入口為設定頁頂部「商品效期趨勢分析」按鈕；分析頁返回按鈕與 Android 返回鍵皆回 settings.html。
+- 新增共用資料層 `data-store.js`，主頁、設定頁與分析頁共用 IndexedDB / 本機 JSON 檔案讀取與分類設定讀取邏輯。
+- 分析頁資料即時計算、不寫入 IndexedDB 或本機 JSON；本機檔案模式優先讀目前選定 JSON，失敗時才回退 IndexedDB 並顯示提示。
+- 商品分類健康狀態規則：30 天內到期比例 >= 50% 或過期+30 天內到期數量 >= 10 為高風險；30 天內比例 >= 20% 或 60 天內比例 >= 40% 為中等風險；其餘為低風險。
+- 版本更新為 2.0，sw.js 快取版本更新為 xpiry-manager-cache-v319；需同步 Android Studio assets 並打包 debug APK。
