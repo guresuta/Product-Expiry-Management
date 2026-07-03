@@ -532,7 +532,7 @@ html.android-webview .topbar-inner {
 
 @media (max-width: 730px) {
   html.android-webview {
-    --topbar-fixed-offset: calc(6.7rem + var(--safe-area-top));
+    --topbar-fixed-offset: calc(8.4rem + var(--safe-area-top));
   }
 
   html.android-webview .topbar-inner {
