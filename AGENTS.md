@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v1.8.10`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v315`。
+- 目前 `version.js` 版本為 `v1.8.10`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v316`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -391,3 +391,8 @@
 - `sw.js` 快取版本更新為 `expiry-manager-cache-v315`。
 - Android Studio 專案 `AndroidBridge.setStatusBarColor()` 對 Android 14 以下恢復 `window.statusBarColor` fallback；Android 15+ 仍由 WebView topbar 繪製狀態列背景，避免重新依賴 Android 15 deprecated 行為。
 - 補齊 `v1.8.10更新內容` 與「修正鏡頭掃描有機率發生閃退錯誤」的英日翻譯，避免設定頁更新內容回退顯示中文。
+
+### 9.17 讀取速度優化紀錄（2026-07-03）
+- 採用方案 A 並保留既有讀取畫面；新增 `resource-preload.js`，在頁面 load 後空閒時間背景預熱主頁 / 設定頁 / 隱私頁、共用 JS/CSS、字型與四個主題背景圖。
+- 三個 HTML 頁面皆以 `defer` 載入 `resource-preload.js`；不改頁面結構、loading UI、Android 返回鍵與 WebView history 邏輯。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v316`，並將 `resource-preload.js` 加入 app shell cache。
