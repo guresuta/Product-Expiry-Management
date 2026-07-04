@@ -3226,6 +3226,15 @@ html[data-theme] .release-history-section .release-history-entry {
   border-collapse: collapse;
   table-layout: fixed;
   color: var(--text);
+  background: transparent;
+}
+
+.analytics-list-table thead,
+.analytics-list-table tbody,
+.analytics-list-table tr,
+.analytics-list-table th,
+.analytics-list-table td {
+  background: transparent;
 }
 
 .analytics-list-table th,
