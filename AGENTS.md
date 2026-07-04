@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v321`。
+- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v322`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -427,3 +427,6 @@
 ### 9.23 分析頁表格背景修正紀錄（2026-07-04）
 - 移除分析頁三個清單式表格在黑暗模式下的灰色背景，表格本體、表頭、列與儲存格背景皆維持透明。
 - sw.js 快取版本更新為 expiry-manager-cache-v321，版本仍維持 v2.0。
+### 9.24 分析頁表格欄位間距修正紀錄（2026-07-04）
+- 分析頁三個清單式表格共用欄位間距調整：第一欄保留左側內距，第二欄靠右對齊並保留右側內距。
+- sw.js 快取版本更新為 expiry-manager-cache-v322，版本仍維持 v2.0。

@@ -3240,10 +3240,15 @@ html[data-theme] .release-history-section .release-history-entry {
 .analytics-list-table th,
 .analytics-list-table td {
   width: 50%;
-  padding: 1.05rem 0;
+  padding: 1.05rem 1.25rem;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
   text-align: left;
   vertical-align: middle;
+}
+
+.analytics-list-table th:last-child,
+.analytics-list-table td:last-child {
+  text-align: right;
 }
 
 .analytics-list-table th {
