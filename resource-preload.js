@@ -5,12 +5,11 @@
   var isAndroidWebView = /; wv\)/i.test(navigator.userAgent || "") || !!window.AndroidBridge;
   var isSmallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 730;
   var pages = isAndroidWebView || isSmallViewport
-    ? ["./settings.html", "./analytics.html"]
+    ? ["./settings.html"]
     : [
       "./inventory-management-app.html",
       "./settings.html",
-      "./privacy-policy.html",
-      "./analytics.html"
+      "./privacy-policy.html"
     ];
   var baseAssets = [
     "./styles_washi.css",
@@ -18,7 +17,6 @@
     "./i18n.js",
     "./app.js",
     "./settings.js",
-    "./analytics.js",
     "./data-store.js",
     "./version.js",
     "./fonts/GenSekiGothic2TC-H.woff2",

@@ -260,15 +260,58 @@
     row.appendChild(cell);
   }
 
+
+  function getCategoryStatsRows(data) {
+    return data.categories.map(function (category, index) {
+      var stats = data.statsByCategory[category] || createEmptyStats(category);
+      return { category: category, stats: stats, index: index };
+    });
+  }
+
+  function compareCategoryName(a, b) {
+    return String(a.category || "").localeCompare(String(b.category || ""), "zh-Hant");
+  }
+
+  function compareWithEmptyLast(a, b, getValue, hasData) {
+    var aHasData = hasData(a);
+    var bHasData = hasData(b);
+    if (aHasData !== bHasData) {
+      return aHasData ? -1 : 1;
+    }
+    var delta = getValue(b) - getValue(a);
+    if (delta !== 0) {
+      return delta;
+    }
+    return compareCategoryName(a, b) || (a.index - b.index);
+  }
+
+  function riskRank(risk) {
+    if (risk === "高風險") {
+      return 3;
+    }
+    if (risk === "中等風險") {
+      return 2;
+    }
+    return 1;
+  }
   function renderCategoryCounts(data) {
     clearNode(ui.categoryCountBody);
-    data.categories.forEach(function (category) {
-      var row = document.createElement("tr");
-      var stats = data.statsByCategory[category] || createEmptyStats(category);
-      appendCell(row, category === "未分類" ? t("未分類") : category, "商品類別");
-      appendCell(row, String(stats.total) + t("筆"), "商品筆數");
-      ui.categoryCountBody.appendChild(row);
-    });
+    getCategoryStatsRows(data)
+      .sort(function (a, b) {
+        return compareWithEmptyLast(
+          a,
+          b,
+          function (row) { return row.stats.total; },
+          function (row) { return row.stats.total > 0; }
+        );
+      })
+      .forEach(function (item) {
+        var row = document.createElement("tr");
+        var stats = item.stats;
+        appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
+        appendCell(row, String(stats.total) + t("筆"), "商品筆數");
+        ui.categoryCountBody.appendChild(row);
+      });
   }
 
   function riskForStats(stats) {
@@ -289,27 +332,54 @@
 
   function renderRisk(data) {
     clearNode(ui.categoryRiskBody);
-    data.categories.forEach(function (category) {
-      var row = document.createElement("tr");
-      var stats = data.statsByCategory[category] || createEmptyStats(category);
-      var risk = riskForStats(stats);
-      appendCell(row, category === "未分類" ? t("未分類") : category, "商品類別");
-      appendCell(row, t(risk), "風險評估");
-      row.className = "analytics-risk-row analytics-risk-" + (risk === "高風險" ? "high" : (risk === "中等風險" ? "medium" : "low"));
-      ui.categoryRiskBody.appendChild(row);
-    });
+    getCategoryStatsRows(data)
+      .map(function (item) {
+        item.risk = riskForStats(item.stats);
+        item.urgentCount = item.stats.expired + item.stats.within30;
+        return item;
+      })
+      .sort(function (a, b) {
+        return compareWithEmptyLast(
+          a,
+          b,
+          function (row) {
+            return riskRank(row.risk) * 100000 + row.urgentCount * 100 + row.stats.within60;
+          },
+          function (row) { return row.stats.total > 0; }
+        );
+      })
+      .forEach(function (item) {
+        var row = document.createElement("tr");
+        var risk = item.risk;
+        appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
+        appendCell(row, t(risk), "風險評估");
+        row.className = "analytics-risk-row analytics-risk-" + (risk === "高風險" ? "high" : (risk === "中等風險" ? "medium" : "low"));
+        ui.categoryRiskBody.appendChild(row);
+      });
   }
 
   function renderAverageDays(data) {
     clearNode(ui.averageDaysBody);
-    data.categories.forEach(function (category) {
-      var row = document.createElement("tr");
-      var stats = data.statsByCategory[category] || createEmptyStats(category);
-      var value = stats.dated > 0 ? String(Math.round(stats.remainingSum / stats.dated)) + t("天") : t("無資料");
-      appendCell(row, category === "未分類" ? t("未分類") : category, "商品類別");
-      appendCell(row, value, "平均效期天數");
-      ui.averageDaysBody.appendChild(row);
-    });
+    getCategoryStatsRows(data)
+      .map(function (item) {
+        item.averageDays = item.stats.dated > 0 ? Math.round(item.stats.remainingSum / item.stats.dated) : null;
+        return item;
+      })
+      .sort(function (a, b) {
+        return compareWithEmptyLast(
+          a,
+          b,
+          function (row) { return row.averageDays === null ? -1 : row.averageDays; },
+          function (row) { return row.averageDays !== null; }
+        );
+      })
+      .forEach(function (item) {
+        var row = document.createElement("tr");
+        var value = item.averageDays !== null ? String(item.averageDays) + t("天") : t("無資料");
+        appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
+        appendCell(row, value, "平均效期天數");
+        ui.averageDaysBody.appendChild(row);
+      });
   }
 
   function heatLevel(count, maxCount) {
@@ -389,6 +459,13 @@
     window.AppBoot.ready();
   }
 
+  function clearLoadedAnalyticsData() {
+    state.products = [];
+    state.categories = [];
+    state.fileHandle = null;
+    state.source = "indexeddb";
+    state.backupChangeCount = 0;
+  }
   function goBackToSettings() {
     window.location.href = "./settings.html";
   }
@@ -416,6 +493,8 @@
       var msg = reason && reason.message ? reason.message : String(reason || "程式發生未處理錯誤");
       showErrorModal(msg);
     });
+    window.addEventListener("pagehide", clearLoadedAnalyticsData);
+    window.addEventListener("beforeunload", clearLoadedAnalyticsData);
     await loadData();
     renderAnalytics();
     if (window.AppI18n && typeof window.AppI18n.translateDocument === "function") {
