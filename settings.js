@@ -9,6 +9,7 @@
   const STORAGE_SETUP_KEY = "storageSetupCompleted";
   const FILE_HANDLE_SETTING_KEY = "storageFileHandle";
   const INDEXEDDB_ADD_COUNT_KEY = "indexedDbAddCountSinceBackup";
+  const BACKUP_CHANGE_COUNT_KEY = "productChangeCountSinceBackup";
   const THEME_SETTING_KEY = "uiTheme";
   const CATEGORY_SETTING_KEY = "categories";
   const CUSTOM_APP_TITLE_KEY = "customAppTitle";
@@ -1568,6 +1569,7 @@
           const today = new Date().toISOString().slice(0, 10);
           await downloadJson(`expiry-backup-${today}.json`, payload);
           await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
+          await setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
           showToast("JSON 備份成功");
         } catch (error) {
           showToast(`JSON 備份失敗: ${error.message}`, true);

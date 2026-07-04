@@ -2,13 +2,17 @@
   "use strict";
 
   var started = false;
-  var pages = [
-    "./inventory-management-app.html",
-    "./settings.html",
-    "./privacy-policy.html",
-    "./analytics.html"
-  ];
-  var assets = [
+  var isAndroidWebView = /; wv\)/i.test(navigator.userAgent || "") || !!window.AndroidBridge;
+  var isSmallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 730;
+  var pages = isAndroidWebView || isSmallViewport
+    ? ["./settings.html", "./analytics.html"]
+    : [
+      "./inventory-management-app.html",
+      "./settings.html",
+      "./privacy-policy.html",
+      "./analytics.html"
+    ];
+  var baseAssets = [
     "./styles_washi.css",
     "./legacy-webview.js",
     "./i18n.js",
@@ -18,19 +22,22 @@
     "./data-store.js",
     "./version.js",
     "./fonts/GenSekiGothic2TC-H.woff2",
-    "./fonts/GenSekiGothic2TC-R.woff2",
+    "./fonts/GenSekiGothic2TC-R.woff2"
+  ];
+  var backgroundAssets = [
     "./key-visuals/background-neon-cyber.png",
     "./key-visuals/background-daylight-cyber.png",
     "./key-visuals/background-vibrant-oasis.png",
     "./key-visuals/background-midnight-oasis.png"
   ];
+  var assets = baseAssets.concat(isAndroidWebView || isSmallViewport ? [] : backgroundAssets);
 
   function schedule(task) {
     if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(task, { timeout: 1800 });
+      window.requestIdleCallback(task, { timeout: 2200 });
       return;
     }
-    window.setTimeout(task, 350);
+    window.setTimeout(task, isAndroidWebView || isSmallViewport ? 900 : 350);
   }
 
   function preloadLink(href, asType) {
@@ -47,7 +54,7 @@
   }
 
   function warmFetch(url) {
-    if (typeof window.fetch !== "function") {
+    if (typeof window.fetch !== "function" || document.hidden) {
       return;
     }
     try {
@@ -61,6 +68,9 @@
   }
 
   function warmImage(src) {
+    if (document.hidden) {
+      return;
+    }
     try {
       var image = new Image();
       image.decoding = "async";
@@ -70,7 +80,7 @@
   }
 
   function warmFonts() {
-    if (!document.fonts || typeof document.fonts.load !== "function") {
+    if (!document.fonts || typeof document.fonts.load !== "function" || document.hidden) {
       return;
     }
     try {
@@ -81,7 +91,7 @@
   }
 
   function start() {
-    if (started) {
+    if (started || document.hidden) {
       return;
     }
     started = true;

@@ -10,6 +10,7 @@
   const FILE_HANDLE_SETTING_KEY = "storageFileHandle";
   const LAST_SEEN_VERSION_KEY = "lastSeenAppVersion";
   const INDEXEDDB_ADD_COUNT_KEY = "indexedDbAddCountSinceBackup";
+  const BACKUP_CHANGE_COUNT_KEY = "productChangeCountSinceBackup";
   const LAST_ADD_CATEGORY_KEY = "lastAddProductCategory";
   const INDEXEDDB_BACKUP_REMINDER_THRESHOLD = 100;
   const DEFAULT_MODE = "indexeddb";
@@ -1008,6 +1009,7 @@
     const today = new Date().toISOString().slice(0, 10);
     await downloadJson(`expiry-backup-${today}.json`, buildBackupJsonPayload(state.products));
     await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
+    await setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
     if (ui.backupReminderModal) {
       closeManagedModal("backup", ui.backupReminderModal);
     }
@@ -1027,6 +1029,17 @@
       }
     } catch (_error) {
       // 備份提醒計數失敗不應影響商品新增流程。
+    }
+  }
+
+
+  async function recordProductChangeForBackupStatus(count) {
+    try {
+      const amount = Math.max(1, Number(count) || 1);
+      const current = Number(await getSetting(BACKUP_CHANGE_COUNT_KEY)) || 0;
+      await setSetting(BACKUP_CHANGE_COUNT_KEY, current + amount);
+    } catch (_error) {
+      // 備份狀態顯示失敗不應影響商品儲存流程。
     }
   }
 
@@ -2085,6 +2098,7 @@
       renderProducts();
       clearForm();
       closeAddProductModal();
+      await recordProductChangeForBackupStatus(1);
       if (addedCount > 0) {
         await recordIndexedDbAddForBackupReminder();
       }
@@ -2220,6 +2234,7 @@
       await persistCurrentProducts();
       renderProducts();
       closeEditProductModal();
+      await recordProductChangeForBackupStatus(selectedIdSet.size > 1 ? selectedIdSet.size : 1);
       if (selectedIdSet.size > 1) {
         showToast(`已同步更新 ${selectedIdSet.size} 筆商品分類`);
       } else {

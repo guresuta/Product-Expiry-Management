@@ -6,18 +6,21 @@
   var DEFAULT_MODE = "indexeddb";
   var ONE_DAY_MS = 24 * 60 * 60 * 1000;
   var MONTH_WINDOW = 12;
+  var BACKUP_CHANGE_COUNT_KEY = "productChangeCountSinceBackup";
 
   var state = {
     products: [],
     categories: [],
     storageMode: DEFAULT_MODE,
     fileHandle: null,
-    source: "indexeddb"
+    source: "indexeddb",
+    backupChangeCount: 0
   };
 
   var ui = {
     fallbackNotice: document.getElementById("analyticsFallbackNotice"),
     expiryOverview: document.getElementById("expiryOverview"),
+    backupOverview: document.getElementById("backupOverview"),
     categoryCountBody: document.getElementById("categoryCountBody"),
     expiryHeatmap: document.getElementById("expiryHeatmap"),
     categoryRiskBody: document.getElementById("categoryRiskBody"),
@@ -338,9 +341,18 @@
     });
   }
 
+  function formatBackupOverview() {
+    var count = Math.max(0, Number(state.backupChangeCount) || 0);
+    var status = count > 0 ? "尚未備份" : "已備份";
+    return "已新增或編輯" + count + "筆商品，" + status;
+  }
+
   function renderAnalytics() {
     var data = buildAnalytics(state.products, state.categories);
     ui.expiryOverview.textContent = formatOverview(data.overview);
+    if (ui.backupOverview) {
+      ui.backupOverview.textContent = formatBackupOverview();
+    }
     renderCategoryCounts(data);
     renderHeatmap(data);
     renderRisk(data);
@@ -352,6 +364,7 @@
     state.storageMode = storageState.storageMode;
     state.fileHandle = storageState.fileHandle;
     state.categories = await window.AppDataStore.getCategories();
+    state.backupChangeCount = Number(await window.AppDataStore.getSetting(BACKUP_CHANGE_COUNT_KEY)) || 0;
     var result = await window.AppDataStore.loadProductsForCurrentStorage({
       storageMode: state.storageMode,
       fileHandle: state.fileHandle

@@ -752,6 +752,8 @@
 
   const patterns = [
     [/^已勾選 (\d+) 筆$/, { en: "$1 selected", ja: "$1件選択中" }],
+    [/^已新增或編輯(\d+)筆商品，已備份$/, { en: "Added or edited $1 products; backed up", ja: "$1件の商品を追加または編集済み、バックアップ済み" }],
+    [/^已新增或編輯(\d+)筆商品，尚未備份$/, { en: "Added or edited $1 products; not backed up", ja: "$1件の商品を追加または編集済み、未バックアップ" }],
     [/^目前主題：(.+)$/, { en: "Current theme: $1", ja: "現在のテーマ: $1" }],
     [/^目前模式：(.+)$/, { en: "Current mode: $1", ja: "現在のモード: $1" }],
     [/^目前版本：(.+)$/, { en: "Current version: $1", ja: "現在のバージョン: $1" }],

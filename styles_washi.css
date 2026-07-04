@@ -419,6 +419,17 @@ html.legacy-webview body {
   background-size: 100% auto;
   background-repeat: repeat-y;
 }
+html.android-webview body {
+  background-attachment: scroll;
+  background-size: 100% auto;
+  background-repeat: repeat-y;
+  background-color: var(--bg);
+}
+
+html.android-webview .topbar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 
 html.legacy-webview .layout > * + * {
   margin-top: 2rem;
@@ -3212,6 +3223,12 @@ html[data-theme] .release-history-section .release-history-entry {
 .analytics-warning {
   margin-top: 0;
   color: var(--danger);
+}
+
+.analytics-backup-summary {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.98rem;
 }
 
 .analytics-list-table-wrap {

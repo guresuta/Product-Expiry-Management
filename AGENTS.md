@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v325`。
+- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v326`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -439,3 +439,9 @@
 ### 9.27 分析頁表格邊線修正紀錄（2026-07-04）
 - 分析頁三個清單式表格補上最後一列底線，並明確移除表格與儲存格左右邊線。
 - sw.js 快取版本更新為 expiry-manager-cache-v325，版本仍維持 v2.0。
+### 9.28 手機前景恢復閃爍與分析備份狀態修正紀錄（2026-07-04）
+- 調查結果：分析頁不會在首頁背景執行資料讀取；首頁閃爍較可能來自手機/Android WebView 在前景恢復時重建 fixed 高解析背景、topbar backdrop blur，以及 resource-preload 預抓分析頁與多張背景圖造成的資源競爭。
+- resource-preload.js 已針對手機與 Android WebView 降低預抓強度，不再預熱四張高解析背景圖，且 document.hidden 時不執行暖機 fetch/image/font。
+- Android WebView body 背景改用 scroll/repeat-y 並停用 topbar backdrop blur，降低多工返回時黑畫面或白畫面閃爍機率。
+- 商品效期概況新增備份狀態：主頁新增、覆蓋或編輯商品後累加 productChangeCountSinceBackup；主頁或設定頁 JSON 備份成功後歸零；分析頁顯示已備份/尚未備份。
+- sw.js 快取版本更新為 expiry-manager-cache-v326，版本仍維持 v2.0。
