@@ -3214,13 +3214,41 @@ html[data-theme] .release-history-section .release-history-entry {
   color: var(--danger);
 }
 
-.analytics-table-wrap {
+.analytics-list-table-wrap {
+  position: relative;
   margin-top: 0.75rem;
+  overflow-x: auto;
 }
 
-.analytics-table th,
-.analytics-table td {
+.analytics-list-table {
+  width: 100%;
+  min-width: 30rem;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: var(--text);
+}
+
+.analytics-list-table th,
+.analytics-list-table td {
+  width: 50%;
+  padding: 1.05rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
   text-align: left;
+  vertical-align: middle;
+}
+
+.analytics-list-table th {
+  padding-top: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.analytics-list-table td {
+  font-size: 1.02rem;
+}
+
+.analytics-list-table tr:last-child td {
+  border-bottom-color: transparent;
 }
 
 .analytics-heatmap {

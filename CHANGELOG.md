@@ -11,10 +11,11 @@
   - 分析頁在本機檔案模式會優先讀取目前選定 JSON 檔，無權限或讀取失敗時才回退 IndexedDB 並顯示提示。
 - 版面與多語系：
   - 設定頁頂部新增「商品效期趨勢分析」按鈕，手機版按鈕佈局比照主頁大按鈕 + 小按鈕。
+  - 分析頁的分類商品數量分布、商品分類健康狀態與平均剩餘效期分析表格改為兩欄清單式呈現。
   - 補齊分析頁英文與日文介面翻譯。
 - 發版資訊：
   - 將專案版本更新為 `v2.0`。
-  - `sw.js` 快取版本升級為 `expiry-manager-cache-v319`。
+  - `sw.js` 快取版本升級為 `expiry-manager-cache-v320`。
 - 部署修正：
   - 修正 GitHub Pages 部署清單，補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`，避免線上版初始化失敗與分析頁 404。
 

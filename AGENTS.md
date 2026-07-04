@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v319`。
+- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v320`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -420,3 +420,7 @@
 - GitHub Pages 部署清單 `.github/workflows/deploy-pages.yml` 已補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`。
 
 - 修正原因：v2.0 首次部署 artifact 漏掉新增頁面與共用資料層，導致線上版 window.AppDataStore 不存在並顯示初始化錯誤，分析頁 URL 顯示 404。
+
+### 9.22 分析頁表格版面修正紀錄（2026-07-04）
+- 分析頁的分類商品數量分布、商品分類健康狀態與平均剩餘效期分析表格改為兩欄清單式呈現，不顯示複製圖示。
+- sw.js 快取版本更新為 expiry-manager-cache-v320，版本仍維持 v2.0。
