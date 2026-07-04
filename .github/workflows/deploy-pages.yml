@@ -18,7 +18,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: https://guresuta.github.io/Product-Expiry-Management/
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -44,3 +44,23 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Verify GitHub Pages deployment
+        run: |
+          expected_cache="$(sed -n 's/^const CACHE_NAME = "\(.*\)";/\1/p' pages-dist/sw.js)"
+          if [ -z "$expected_cache" ]; then
+            echo "Unable to read expected cache name from pages-dist/sw.js"
+            exit 1
+          fi
+          for attempt in $(seq 1 12); do
+            body="$(curl -fsSL "https://guresuta.github.io/Product-Expiry-Management/sw.js?verify=${GITHUB_SHA}-${attempt}" || true)"
+            if echo "$body" | grep -Fq "$expected_cache"; then
+              echo "Verified GitHub Pages cache: $expected_cache"
+              exit 0
+            fi
+            echo "Waiting for GitHub Pages to serve $expected_cache (attempt $attempt/12)"
+            sleep 10
+          done
+          echo "GitHub Pages did not serve expected cache: $expected_cache"
+          exit 1

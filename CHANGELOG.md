@@ -26,6 +26,7 @@
   - `sw.js` 快取版本升級為 `expiry-manager-cache-v327`。
 - 部署修正：
   - 修正 GitHub Pages 部署清單，補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`，避免線上版初始化失敗與分析頁 404。
+  - GitHub Pages workflow 對 `actions/deploy-pages` 暫時性 failure 加入容錯，並以線上 `sw.js` 快取版本驗證實際部署結果，避免已部署成功但 workflow 顯示紅燈。
 
 ## [v1.9.0] - 目前工作進度
 - 版面最佳化：

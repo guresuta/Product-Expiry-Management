@@ -449,3 +449,7 @@
 - privacy-policy.html 補充商品效期趨勢分析與備份狀態只使用本機商品資料與本機設定即時計算；分析結果不會上傳或另存到遠端伺服器。
 - 資料使用段落加入商品效期趨勢分析用途，資料保存段落補充 productChangeCountSinceBackup 只記錄上次 JSON 備份後新增/編輯筆數，會隨本機設定保留或刪除。
 - i18n.js 已同步英文與日文翻譯；sw.js 快取版本更新為 expiry-manager-cache-v327，版本仍維持 v2.0。
+### 9.30 GitHub Pages workflow 假陰性部署修正紀錄（2026-07-04）
+- 觀察到 GitHub 內建 pages build and deployment 成功、線上 sw.js 已更新，但自訂 Deploy to GitHub Pages workflow 的 actions/deploy-pages step 仍回報 Deployment failed, try again later。
+- .github/workflows/deploy-pages.yml 已將 deploy-pages step 設為 continue-on-error，並新增 Verify GitHub Pages deployment step，會讀取 pages-dist/sw.js 的 CACHE_NAME 並輪詢線上 sw.js；只有線上未提供預期快取版本時才讓 workflow 失敗。
+- 本次只修改 workflow 與文件，不更新 sw.js，也不更動 version.js。
