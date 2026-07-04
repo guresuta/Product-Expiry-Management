@@ -530,6 +530,15 @@
     if (ui.closeErrorModalBtn) {
       ui.closeErrorModalBtn.addEventListener("click", closeErrorModal);
     }
+    if (ui.exportJsonBtn) {
+      ui.exportJsonBtn.addEventListener("click", function () {
+        backupJsonFromAnalytics().then(function () {
+          showToast("JSON 備份成功");
+        }).catch(function (error) {
+          showToast("JSON 備份失敗: " + (error && error.message ? error.message : String(error)), true);
+        });
+      });
+    }
     window.addEventListener("error", function (event) {
       var msg = event && event.error && event.error.message
         ? event.error.message
