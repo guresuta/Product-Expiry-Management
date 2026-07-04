@@ -453,3 +453,18 @@
 - 觀察到 GitHub 內建 pages build and deployment 成功、線上 sw.js 已更新，但自訂 Deploy to GitHub Pages workflow 的 actions/deploy-pages step 仍回報 Deployment failed, try again later。
 - .github/workflows/deploy-pages.yml 已將 deploy-pages step 設為 continue-on-error，並新增 Verify GitHub Pages deployment step，會讀取 pages-dist/sw.js 的 CACHE_NAME 並輪詢線上 sw.js；只有線上未提供預期快取版本時才讓 workflow 失敗。
 - 本次只修改 workflow 與文件，不更新 sw.js，也不更動 version.js。
+
+### 9.31 分析頁排序與延後載入修正紀錄（2026-07-05）
+- 分析頁三個清單式表格已改為有資料優先並由高到低排序：
+  - 分類商品數量分布依商品筆數高到低，0 筆分類排在後面。
+  - 分類商品即期風險依高風險、中等風險、低風險排序，同風險時依過期+30 天內到期數量與 60 天內到期數量排序，無商品資料分類排在後面。
+  - 平均剩餘效期分析依平均剩餘天數高到低排序，無日期資料分類排在後面。
+- 為降低手機與 Android WebView 首頁從多工頁面返回時的閃爍風險，`resource-preload.js` 已移除首頁背景預載 `analytics.html` 與 `analytics.js`；分析資料只在使用者進入 `analytics.html` 後讀取。
+- `analytics.js` 在 `pagehide` / `beforeunload` 時清空分析頁記憶體中的 products、categories、fileHandle 與備份狀態；資料本身仍只保留在 IndexedDB 或使用者選定的本機 JSON 檔，不會另存分析結果。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v329`，版本仍維持 `v2.0`，`version.js` 更新內容不變。
+- 已同步 `analytics.js`、`resource-preload.js`、`sw.js` 到 Android Studio 專案 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\src\main\assets`，並以 SHA-256 確認一致。
+- 已重新打包 debug APK：`C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\debug\app-debug.apk`；`aapt dump badging` 確認 `versionName='2.0'`、`versionCode='20000'`。
+- GitHub 已推送提交：
+  - `d855e87 Defer analytics loading and sort analytics tables`
+  - `4dc1a72 Retry GitHub Pages deployment`
+- GitHub Pages 最終確認：`Deploy to GitHub Pages` 與 `pages build and deployment` 皆為 success，線上 `sw.js` 已回傳 `expiry-manager-cache-v329`。
