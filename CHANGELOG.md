@@ -16,10 +16,11 @@
   - 調整分析頁三個清單式表格欄位內距，第一欄保留左側間距，第二欄靠右對齊並保留右側間距。
   - 修正分析頁三個清單式表格底部內容被區塊 overflow 裁切的問題。
   - 將分析頁三個清單式表格改為專用 block/grid 排版，避免受到全站商品表格間距與列樣式影響。
+  - 分析頁三個清單式表格補上最後一列底線，並移除表格左右邊線。
   - 補齊分析頁英文與日文介面翻譯。
 - 發版資訊：
   - 將專案版本更新為 `v2.0`。
-  - `sw.js` 快取版本升級為 `expiry-manager-cache-v324`。
+  - `sw.js` 快取版本升級為 `expiry-manager-cache-v325`。
 - 部署修正：
   - 修正 GitHub Pages 部署清單，補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`，避免線上版初始化失敗與分析頁 404。
 

@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v324`。
+- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v325`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -436,3 +436,6 @@
 ### 9.26 分析頁表格裁切深度修正紀錄（2026-07-04）
 - 分析頁三個清單式表格改為專用 block/grid 排版，移除橫向 overflow 容器與全站 table / tbody tr 規則影響，避免重開頁面後底部內容仍被裁切。
 - sw.js 快取版本更新為 expiry-manager-cache-v324，版本仍維持 v2.0。
+### 9.27 分析頁表格邊線修正紀錄（2026-07-04）
+- 分析頁三個清單式表格補上最後一列底線，並明確移除表格與儲存格左右邊線。
+- sw.js 快取版本更新為 expiry-manager-cache-v325，版本仍維持 v2.0。
