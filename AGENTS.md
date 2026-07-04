@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v326`。
+- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v327`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -445,3 +445,7 @@
 - Android WebView body 背景改用 scroll/repeat-y 並停用 topbar backdrop blur，降低多工返回時黑畫面或白畫面閃爍機率。
 - 商品效期概況新增備份狀態：主頁新增、覆蓋或編輯商品後累加 productChangeCountSinceBackup；主頁或設定頁 JSON 備份成功後歸零；分析頁顯示已備份/尚未備份。
 - sw.js 快取版本更新為 expiry-manager-cache-v326，版本仍維持 v2.0。
+### 9.29 隱私權與資料安全頁分析功能補充紀錄（2026-07-04）
+- privacy-policy.html 補充商品效期趨勢分析與備份狀態只使用本機商品資料與本機設定即時計算；分析結果不會上傳或另存到遠端伺服器。
+- 資料使用段落加入商品效期趨勢分析用途，資料保存段落補充 productChangeCountSinceBackup 只記錄上次 JSON 備份後新增/編輯筆數，會隨本機設定保留或刪除。
+- i18n.js 已同步英文與日文翻譯；sw.js 快取版本更新為 expiry-manager-cache-v327，版本仍維持 v2.0。

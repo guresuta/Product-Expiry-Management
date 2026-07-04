@@ -134,6 +134,7 @@
       <p class="help-text">本 App 可能由使用者自行建立商品分類、商品名稱、條碼、有效日期、主題設定與備份資料。</p>
       <p class="help-text">上述資料預設儲存在裝置本機 IndexedDB，不會由本 App 主動上傳到 GitHub Pages 或其他伺服器。</p>
       <p class="help-text">若使用「本機檔案位置」，資料會寫入使用者選擇的本機 JSON 檔案；使用者可自行保管、備份或刪除該檔案。</p>
+      <p class="help-text">商品效期趨勢分析與備份狀態只使用本機商品資料與本機設定即時計算；分析結果不會上傳或另存到遠端伺服器。</p>
     </section>
 
     <section class="panel settings-section">
@@ -145,7 +146,7 @@
 
     <section class="panel settings-section">
       <h2 class="section-title-bar">資料使用與分享</h2>
-      <p class="help-text">本 App 使用商品資料是為了在本機提供新增、編輯、刪除、搜尋、排序、月曆提醒、CSV 匯出、JSON 備份與還原功能。</p>
+      <p class="help-text">本 App 使用商品資料是為了在本機提供新增、編輯、刪除、搜尋、排序、月曆提醒、商品效期趨勢分析、CSV 匯出、JSON 備份與還原功能。</p>
       <p class="help-text">本 App 不會販售、分享或轉移使用者建立的商品資料給第三方。</p>
       <p class="help-text">若使用者自行匯出 CSV 或 JSON 檔案，該檔案由使用者自行保存、傳送或刪除。</p>
     </section>
@@ -161,6 +162,7 @@
       <h2 class="section-title-bar">資料保存與刪除</h2>
       <p class="help-text">本機資料會保留在使用者裝置中，直到使用者刪除商品、清除網站資料、移除 App，或刪除自行保存的備份檔。</p>
       <p class="help-text">使用者可在商品清單刪除個別商品，也可清除瀏覽器網站資料或移除 App 來刪除本機資料。</p>
+      <p class="help-text">備份狀態僅記錄自上次 JSON 備份後新增或編輯的商品筆數，會與本機設定一併保留或刪除。</p>
       <p class="help-text">若曾匯出 JSON 或指定本機檔案位置，請另外刪除使用者自行保存的檔案。</p>
     </section>
 
