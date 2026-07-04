@@ -23,7 +23,8 @@
   - 補齊分析頁英文與日文介面翻譯。
 - 發版資訊：
   - 將專案版本更新為 `v2.0`。
-  - `sw.js` 快取版本升級為 `expiry-manager-cache-v327`。
+  - `v2.0` 更新內容確認為「新增商品效期趨勢分析」、「版面最佳化」、「資料讀取最佳化」。
+  - `sw.js` 快取版本升級為 `expiry-manager-cache-v328`。
 - 部署修正：
   - 修正 GitHub Pages 部署清單，補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`，避免線上版初始化失敗與分析頁 404。
   - GitHub Pages workflow 對 `actions/deploy-pages` 暫時性 failure 加入容錯，並以線上 `sw.js` 快取版本驗證實際部署結果，避免已部署成功但 workflow 顯示紅燈。
