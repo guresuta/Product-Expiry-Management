@@ -15,6 +15,9 @@
 - 發版資訊：
   - 將專案版本更新為 `v2.0`。
   - `sw.js` 快取版本升級為 `expiry-manager-cache-v319`。
+- 部署修正：
+  - 修正 GitHub Pages 部署清單，補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`，避免線上版初始化失敗與分析頁 404。
+
 ## [v1.9.0] - 目前工作進度
 - 版面最佳化：
   - 放棄未整合的 Washi Cyber 主題草案，並從工作流程移除 `washicyber.css`。

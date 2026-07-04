@@ -410,8 +410,13 @@
 - 已同步補齊英文與日文更新內容翻譯。
 
 ### 9.20 v2.0 商品效期趨勢分析紀錄（2026-07-04）
-- 新增分析頁 nalytics.html / nalytics.js，入口為設定頁頂部「商品效期趨勢分析」按鈕；分析頁返回按鈕與 Android 返回鍵皆回 settings.html。
+- 新增分析頁 `analytics.html` / `analytics.js`，入口為設定頁頂部「商品效期趨勢分析」按鈕；分析頁返回按鈕與 Android 返回鍵皆回 `settings.html`。
 - 新增共用資料層 `data-store.js`，主頁、設定頁與分析頁共用 IndexedDB / 本機 JSON 檔案讀取與分類設定讀取邏輯。
 - 分析頁資料即時計算、不寫入 IndexedDB 或本機 JSON；本機檔案模式優先讀目前選定 JSON，失敗時才回退 IndexedDB 並顯示提示。
 - 商品分類健康狀態規則：30 天內到期比例 >= 50% 或過期+30 天內到期數量 >= 10 為高風險；30 天內比例 >= 20% 或 60 天內比例 >= 40% 為中等風險；其餘為低風險。
-- 版本更新為 2.0，sw.js 快取版本更新為 xpiry-manager-cache-v319；需同步 Android Studio assets 並打包 debug APK。
+- 版本更新為 `v2.0`，`sw.js` 快取版本更新為 `expiry-manager-cache-v319`；需同步 Android Studio assets 並打包 debug APK。
+
+### 9.21 GitHub Pages v2.0 部署修正紀錄（2026-07-04）
+- GitHub Pages 部署清單 `.github/workflows/deploy-pages.yml` 已補上 `analytics.html`、`analytics.js`、`data-store.js` 與 `resource-preload.js`。
+
+- 修正原因：v2.0 首次部署 artifact 漏掉新增頁面與共用資料層，導致線上版 window.AppDataStore 不存在並顯示初始化錯誤，分析頁 URL 顯示 404。
