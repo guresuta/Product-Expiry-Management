@@ -3217,32 +3217,41 @@ html[data-theme] .release-history-section .release-history-entry {
 .analytics-list-table-wrap {
   position: relative;
   margin-top: 0.75rem;
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
+}
+
+.analytics-list-table,
+.analytics-list-table thead,
+.analytics-list-table tbody,
+.analytics-list-table tr {
+  display: block;
+  width: 100%;
 }
 
 .analytics-list-table {
-  width: 100%;
-  min-width: 30rem;
-  border-collapse: collapse;
-  table-layout: fixed;
   color: var(--text);
   background: transparent;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: auto;
 }
 
-.analytics-list-table thead,
-.analytics-list-table tbody,
-.analytics-list-table tr,
-.analytics-list-table th,
-.analytics-list-table td {
+.analytics-list-table tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(6rem, auto);
+  align-items: center;
   background: transparent;
+  box-shadow: none;
 }
 
 .analytics-list-table th,
 .analytics-list-table td {
-  width: 50%;
+  display: block;
+  min-width: 0;
   padding: 1.05rem 1.25rem;
+  border-top: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  background: transparent;
   text-align: left;
   vertical-align: middle;
 }
@@ -3262,7 +3271,7 @@ html[data-theme] .release-history-section .release-history-entry {
   font-size: 1.02rem;
 }
 
-.analytics-list-table tr:last-child td {
+.analytics-list-table tbody tr:last-child td {
   border-bottom-color: transparent;
 }
 
