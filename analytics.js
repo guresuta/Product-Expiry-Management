@@ -19,6 +19,7 @@
 
   var ui = {
     fallbackNotice: document.getElementById("analyticsFallbackNotice"),
+    exportJsonBtn: document.getElementById("analyticsExportJsonBtn"),
     expiryOverview: document.getElementById("expiryOverview"),
     backupOverview: document.getElementById("backupOverview"),
     categoryCountBody: document.getElementById("categoryCountBody"),
@@ -415,6 +416,53 @@
     var count = Math.max(0, Number(state.backupChangeCount) || 0);
     var status = count > 0 ? "尚未備份" : "已備份";
     return "已新增或編輯" + count + "筆商品，" + status;
+  }
+
+  function buildBackupJsonPayload(products) {
+    var now = new Date().toISOString();
+    return {
+      schema: "expiry-manager-backup",
+      version: 1,
+      exportedAt: now,
+      app: {
+        db: window.AppDataStore.constants.APP_DB,
+        mode: state.storageMode || DEFAULT_MODE
+      },
+      settings: {
+        categories: Array.isArray(state.categories) ? state.categories : [],
+        theme: localStorage.getItem("uiTheme") || "dark-1"
+      },
+      products: Array.isArray(products) ? products : []
+    };
+  }
+
+  async function downloadJson(filename, payloadObj) {
+    var content = JSON.stringify(payloadObj, null, 2);
+    if (window.AppDataStore.nativeBridge && typeof window.AppDataStore.nativeBridge.exportJson === "function") {
+      await window.AppDataStore.nativeBridge.exportJson(filename, content);
+      return;
+    }
+    var blob = new Blob([content], { type: "application/json;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function backupJsonFromAnalytics() {
+    var payload = buildBackupJsonPayload(state.products);
+    var today = new Date().toISOString().slice(0, 10);
+    await downloadJson("expiry-backup-" + today + ".json", payload);
+    await window.AppDataStore.setSetting("indexedDbAddCountSinceBackup", 0);
+    await window.AppDataStore.setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
+    state.backupChangeCount = 0;
+    if (ui.backupOverview) {
+      ui.backupOverview.textContent = formatBackupOverview();
+    }
   }
 
   function renderAnalytics() {

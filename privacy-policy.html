@@ -48,7 +48,7 @@
       const savedLanguage = localStorage.getItem("appLanguage");
       const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
       const bootStartedAt = Date.now();
-      const minBootDurationMs = 1000;
+      const minBootDurationMs = 1800;
       let ready = false;
       let bootVisualReady = false;
       root.setAttribute("data-theme", themeKey);
@@ -71,7 +71,7 @@
       bootImage.onload = markBootVisualReady;
       bootImage.onerror = markBootVisualReady;
       bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
-      setTimeout(markBootVisualReady, 900);
+      setTimeout(markBootVisualReady, 1200);
       window.AppBoot = {
         ready() {
           if (ready) return;
@@ -88,7 +88,7 @@
           setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));
         }
       };
-      setTimeout(() => window.AppBoot.ready(), 1600);
+      setTimeout(() => window.AppBoot.ready(), 2600);
     })();
   </script>
   <link rel="manifest" href="./manifest.webmanifest">
@@ -108,7 +108,8 @@
         <p class="subtitle">說明資料儲存、相機權限與備份行為</p>
       </div>
       <nav class="actions settings-nav-actions">
-        <a class="btn secondary nav-link" href="./settings.html">返 回</a>
+        <button id="openAppInfoBtn" class="btn secondary nav-link transient-nav-btn privacy-app-info-btn" type="button" aria-label="應 用 程 式 資 訊">應 用 程 式 資 訊</button>
+        <a class="btn secondary nav-link" href="./inventory-management-app.html">返 回</a>
       </nav>
     </div>
   </header>
@@ -180,6 +181,17 @@
           return "home";
         }
       };
+      const openAppInfoBtn = document.getElementById("openAppInfoBtn");
+      if (openAppInfoBtn) {
+        openAppInfoBtn.addEventListener("click", () => {
+          if (window.AndroidBridge && typeof window.AndroidBridge.openAppInfo === "function") {
+            try {
+              window.AndroidBridge.openAppInfo();
+            } catch (_error) {
+            }
+          }
+        });
+      }
       try {
         if (!history.state || history.state.privacyPage !== true) {
           history.replaceState({ privacyPage: true }, "", location.href);

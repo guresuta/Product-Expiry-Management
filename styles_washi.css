@@ -166,7 +166,7 @@ html.app-booting body > :not(.app-boot-screen) {
   z-index: 9999;
   display: grid;
   place-items: center;
-  opacity: 0;
+  opacity: 1;
   background-image:
     radial-gradient(circle at center, var(--boot-glow), transparent 34%),
     var(--app-bg-image);
@@ -199,13 +199,13 @@ html.app-boot-visual-ready .app-boot-screen {
 
 html.app-ready body > :not(.app-boot-screen) {
   opacity: 1;
-  transition: opacity 120ms ease;
+  transition: opacity 220ms ease;
 }
 
 html.app-ready .app-boot-screen {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 160ms ease;
+  transition: opacity 280ms ease;
 }
 
 @keyframes appBootSpin {
@@ -403,6 +403,15 @@ html.android-webview .topbar-inner {
   box-shadow: 2px 4px 8px rgba(0,0,0,0.1);
   color: var(--primary);
   transition: none;
+}
+
+.privacy-app-info-btn {
+  min-width: 10.75rem;
+}
+
+html:not(.android-webview) .privacy-app-info-btn {
+  color: transparent;
+  text-shadow: none;
 }
 
 #openAddProductBtn.nav-link {
@@ -1874,7 +1883,9 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
 }
 
 .chip-delete {
+  flex: 0 0 44px;
   min-width: 44px;
+  width: 44px;
   height: 44px;
   padding: 0;
   border: 1px solid var(--line);
@@ -1882,6 +1893,7 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   background: #efefef;
   color: #666;
   line-height: 1;
+  font-size: 1.2rem;
   cursor: pointer;
   touch-action: manipulation;
 }
