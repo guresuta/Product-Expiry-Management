@@ -3199,7 +3199,7 @@ html[data-theme] .release-history-section .release-history-entry {
 }
 
 .analytics-section {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .analytics-summary {
@@ -3218,6 +3218,7 @@ html[data-theme] .release-history-section .release-history-entry {
   position: relative;
   margin-top: 0.75rem;
   overflow-x: auto;
+  overflow-y: visible;
 }
 
 .analytics-list-table {
