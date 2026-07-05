@@ -3464,3 +3464,36 @@ html[data-theme] .privacy-app-info-btn.app-info-unavailable:focus {
   pointer-events: none;
   cursor: default;
 }
+
+.category-chip-label {
+  min-width: 0;
+  max-width: min(16rem, calc(100vw - 9rem));
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+  pointer-events: none;
+}
+
+#categoryList .chip-delete {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+  min-width: 48px;
+  width: 48px;
+  height: 48px;
+  font-size: 1.35rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 633px) {
+  #categoryList.category-list {
+    gap: 0.65rem;
+  }
+
+  .category-chip {
+    max-width: 100%;
+    padding: 0.2rem 0.28rem 0.2rem 0.58rem;
+  }
+}

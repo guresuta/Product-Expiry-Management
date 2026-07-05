@@ -684,6 +684,7 @@
       chip.className = "category-chip";
       chip.setAttribute("data-category", category);
       const label = document.createElement("span");
+      label.className = "category-chip-label";
       label.textContent = category;
       const deleteButton = document.createElement("button");
       deleteButton.className = "chip-delete";
@@ -1688,6 +1689,7 @@
         return;
       }
       if (event.target && event.target.closest && event.target.closest(".chip-delete")) {
+        resetCategoryDragState();
         return;
       }
       const chip = event.target && event.target.closest ? event.target.closest(".category-chip") : null;

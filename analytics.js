@@ -343,9 +343,9 @@
         var row = document.createElement("tr");
         var stats = item.stats;
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品分類");
-        appendCell(row, String(stats.total), "總筆數");
-        appendCell(row, String(stats.expired), "已過期筆數");
-        appendCell(row, formatExpiredRatio(stats), "過期比例");
+        appendCell(row, String(stats.total), "筆數");
+        appendCell(row, String(stats.expired), "過期數");
+        appendCell(row, formatExpiredRatio(stats), "比例");
         ui.categoryRiskBody.appendChild(row);
       });
   }
