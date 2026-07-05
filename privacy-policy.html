@@ -182,13 +182,21 @@
         }
       };
       const openAppInfoBtn = document.getElementById("openAppInfoBtn");
+      const canOpenAppInfo = !!(window.AndroidBridge && typeof window.AndroidBridge.openAppInfo === "function");
       if (openAppInfoBtn) {
-        openAppInfoBtn.addEventListener("click", () => {
-          if (window.AndroidBridge && typeof window.AndroidBridge.openAppInfo === "function") {
-            try {
-              window.AndroidBridge.openAppInfo();
-            } catch (_error) {
-            }
+        if (!canOpenAppInfo) {
+          openAppInfoBtn.classList.add("app-info-unavailable");
+          openAppInfoBtn.setAttribute("aria-disabled", "true");
+          openAppInfoBtn.setAttribute("tabindex", "-1");
+        }
+        openAppInfoBtn.addEventListener("click", (event) => {
+          if (!canOpenAppInfo) {
+            event.preventDefault();
+            return;
+          }
+          try {
+            window.AndroidBridge.openAppInfo();
+          } catch (_error) {
           }
         });
       }

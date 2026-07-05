@@ -315,28 +315,18 @@
       });
   }
 
-  function riskForStats(stats) {
+  function formatExpiredRatio(stats) {
     if (!stats || stats.total <= 0) {
-      return "低風險";
+      return t("無資料");
     }
-    var ratio30 = stats.within30 / stats.total;
-    var ratio60 = (stats.within30 + stats.within60) / stats.total;
-    var urgentCount = stats.expired + stats.within30;
-    if (ratio30 >= 0.5 || urgentCount >= 10) {
-      return "高風險";
-    }
-    if (ratio30 >= 0.2 || ratio60 >= 0.4) {
-      return "中等風險";
-    }
-    return "低風險";
+    return String(Math.round((stats.expired / stats.total) * 100)) + "%";
   }
 
-  function renderRisk(data) {
+  function renderExpiredRatio(data) {
     clearNode(ui.categoryRiskBody);
     getCategoryStatsRows(data)
       .map(function (item) {
-        item.risk = riskForStats(item.stats);
-        item.urgentCount = item.stats.expired + item.stats.within30;
+        item.expiredRatio = item.stats.total > 0 ? item.stats.expired / item.stats.total : null;
         return item;
       })
       .sort(function (a, b) {
@@ -344,17 +334,18 @@
           a,
           b,
           function (row) {
-            return riskRank(row.risk) * 100000 + row.urgentCount * 100 + row.stats.within60;
+            return (row.expiredRatio === null ? -1 : row.expiredRatio * 1000000) + row.stats.expired * 100 + row.stats.total;
           },
           function (row) { return row.stats.total > 0; }
         );
       })
       .forEach(function (item) {
         var row = document.createElement("tr");
-        var risk = item.risk;
-        appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
-        appendCell(row, t(risk), "風險評估");
-        row.className = "analytics-risk-row analytics-risk-" + (risk === "高風險" ? "high" : (risk === "中等風險" ? "medium" : "low"));
+        var stats = item.stats;
+        appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品分類");
+        appendCell(row, String(stats.total), "總筆數");
+        appendCell(row, String(stats.expired), "已過期筆數");
+        appendCell(row, formatExpiredRatio(stats), "過期比例");
         ui.categoryRiskBody.appendChild(row);
       });
   }
@@ -473,7 +464,7 @@
     }
     renderCategoryCounts(data);
     renderHeatmap(data);
-    renderRisk(data);
+    renderExpiredRatio(data);
     renderAverageDays(data);
   }
 

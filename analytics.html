@@ -105,7 +105,7 @@
     <div class="container topbar-inner">
       <div>
         <h1>商品效期趨勢分析</h1>
-        <p class="subtitle">依照目前商品資料即時計算效期與分類風險</p>
+        <p class="subtitle">依照目前商品資料即時計算效期與過期比例</p>
       </div>
       <nav class="actions settings-nav-actions">
         <button id="analyticsExportJsonBtn" class="btn secondary nav-link transient-nav-btn" type="button">備 份 資 料 J S O N</button>
@@ -143,13 +143,15 @@
     </section>
 
     <section class="panel settings-section analytics-section">
-      <h2 class="section-title-bar">分類商品即期風險</h2>
+      <h2 class="section-title-bar">商品分類過期比例</h2>
       <div class="analytics-list-table-wrap">
-        <table class="analytics-list-table">
+        <table class="analytics-list-table analytics-expired-ratio-table">
           <thead>
             <tr>
-              <th>商品類別</th>
-              <th>風險評估</th>
+              <th>商品分類</th>
+              <th>總筆數</th>
+              <th>已過期筆數</th>
+              <th>過期比例</th>
             </tr>
           </thead>
           <tbody id="categoryRiskBody"></tbody>
