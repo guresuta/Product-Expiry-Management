@@ -3430,3 +3430,37 @@ html.legacy-webview .analytics-heat-cell.heat-level-3 {
   background: var(--calendar-block-bg-soft);
   border-color: var(--calendar-mark-border);
 }
+
+.analytics-expired-ratio-table tr {
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+}
+
+.analytics-expired-ratio-table th,
+.analytics-expired-ratio-table td {
+  display: flex;
+  align-items: center;
+  border-bottom: 0;
+}
+
+.analytics-expired-ratio-table th:first-child,
+.analytics-expired-ratio-table td:first-child {
+  justify-content: flex-start;
+}
+
+.analytics-expired-ratio-table th:not(:first-child),
+.analytics-expired-ratio-table td:not(:first-child) {
+  justify-content: flex-end;
+}
+
+html:not(.android-webview) .privacy-app-info-btn,
+html:not(.android-webview) .privacy-app-info-btn:hover,
+html:not(.android-webview) .privacy-app-info-btn:focus,
+html[data-theme] .privacy-app-info-btn.app-info-unavailable,
+html[data-theme] .privacy-app-info-btn.app-info-unavailable:hover,
+html[data-theme] .privacy-app-info-btn.app-info-unavailable:focus {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  text-shadow: none !important;
+  pointer-events: none;
+  cursor: default;
+}
