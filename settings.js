@@ -752,6 +752,42 @@
     openDeleteCategoryModal(category);
   }
 
+  function getCategoryDeleteButtonFromEvent(event) {
+    if (!event || !event.target || !event.target.closest) {
+      return null;
+    }
+    const directButton = event.target.closest("button[data-delete-category]");
+    if (directButton) {
+      return directButton;
+    }
+    const x = Number(event.clientX);
+    const y = Number(event.clientY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return null;
+    }
+    let chip = event.target.closest(".category-chip");
+    if (!chip || chip.parentElement !== ui.categoryList) {
+      const chips = Array.from(ui.categoryList.querySelectorAll(".category-chip"));
+      chip = chips.find(function (candidate) {
+        const rect = candidate.getBoundingClientRect();
+        return x >= rect.left && x <= rect.right + 16 && y >= rect.top - 12 && y <= rect.bottom + 12;
+      }) || null;
+    }
+    if (!chip || chip.parentElement !== ui.categoryList) {
+      return null;
+    }
+    const button = chip.querySelector("button[data-delete-category]");
+    if (!button) {
+      return null;
+    }
+    const buttonRect = button.getBoundingClientRect();
+    const chipRect = chip.getBoundingClientRect();
+    const hitPadding = 12;
+    const inExpandedButton = x >= buttonRect.left - hitPadding && x <= buttonRect.right + hitPadding && y >= buttonRect.top - hitPadding && y <= buttonRect.bottom + hitPadding;
+    const inChipDeleteSide = x >= chipRect.right - Math.max(64, buttonRect.width + hitPadding) && x <= chipRect.right + hitPadding && y >= chipRect.top - hitPadding && y <= chipRect.bottom + hitPadding;
+    return inExpandedButton || inChipDeleteSide ? button : null;
+  }
+
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
@@ -1662,7 +1698,7 @@
     });
 
     ui.categoryList.addEventListener("click", async (event) => {
-      const button = event.target.closest("button[data-delete-category]");
+      const button = getCategoryDeleteButtonFromEvent(event);
       if (!button) {
         return;
       }
@@ -1674,7 +1710,7 @@
       if (event.pointerType === "mouse") {
         return;
       }
-      const button = event.target.closest("button[data-delete-category]");
+      const button = getCategoryDeleteButtonFromEvent(event);
       if (!button) {
         return;
       }
@@ -1688,7 +1724,7 @@
       if (event.pointerType === "mouse" && event.button !== 0) {
         return;
       }
-      if (event.target && event.target.closest && event.target.closest(".chip-delete")) {
+      if (getCategoryDeleteButtonFromEvent(event)) {
         resetCategoryDragState();
         return;
       }

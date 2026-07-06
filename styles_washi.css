@@ -3497,3 +3497,22 @@ html[data-theme] .privacy-app-info-btn.app-info-unavailable:focus {
     padding: 0.2rem 0.28rem 0.2rem 0.58rem;
   }
 }
+.category-chip {
+  position: relative;
+  isolation: isolate;
+}
+
+.category-chip::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  bottom: -8px;
+  width: 72px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#categoryList .chip-delete {
+  margin-left: 0.15rem;
+}
