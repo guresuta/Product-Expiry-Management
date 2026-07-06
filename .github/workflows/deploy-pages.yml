@@ -53,13 +53,13 @@ jobs:
             echo "Unable to read expected cache name from pages-dist/sw.js"
             exit 1
           fi
-          for attempt in $(seq 1 12); do
+          for attempt in $(seq 1 30); do
             body="$(curl -fsSL "https://guresuta.github.io/Product-Expiry-Management/sw.js?verify=${GITHUB_SHA}-${attempt}" || true)"
             if echo "$body" | grep -Fq "$expected_cache"; then
               echo "Verified GitHub Pages cache: $expected_cache"
               exit 0
             fi
-            echo "Waiting for GitHub Pages to serve $expected_cache (attempt $attempt/12)"
+            echo "Waiting for GitHub Pages to serve $expected_cache (attempt $attempt/30)"
             sleep 10
           done
           echo "GitHub Pages did not serve expected cache: $expected_cache"
