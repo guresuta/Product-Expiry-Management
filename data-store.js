@@ -111,6 +111,68 @@
             reject(error);
           }
         });
+      },
+      supportsBarcodeScan: function () {
+        return typeof bridge.requestBarcodeScan === "function";
+      },
+      requestBarcodeScan: function (target) {
+        return new Promise(function (resolve, reject) {
+          if (typeof bridge.requestBarcodeScan !== "function") {
+            reject(new Error("此 Android App 不支援原生條碼掃描"));
+            return;
+          }
+          var handler = function (event) {
+            window.removeEventListener("android-barcode-scanned", handler);
+            var detail = event.detail || {};
+            if (detail.ok && detail.value) {
+              resolve({
+                value: String(detail.value),
+                format: String(detail.format || "")
+              });
+            } else if (detail.cancelled) {
+              resolve(null);
+            } else {
+              reject(new Error(detail.error || "原生條碼掃描失敗"));
+            }
+          };
+          window.addEventListener("android-barcode-scanned", handler, { once: true });
+          try {
+            var language = document.documentElement.lang || "zh-Hant";
+            var theme = document.documentElement.dataset.theme || "dark-1";
+            bridge.requestBarcodeScan(String(target || "input"), String(language), String(theme));
+          } catch (error) {
+            window.removeEventListener("android-barcode-scanned", handler);
+            reject(error);
+          }
+        });
+      },
+      setScreenBrightnessMax: function () {
+        return new Promise(function (resolve, reject) {
+          if (typeof bridge.setScreenBrightnessMax !== "function") {
+            resolve(false);
+            return;
+          }
+          try {
+            bridge.setScreenBrightnessMax();
+            resolve(true);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      },
+      resetScreenBrightness: function () {
+        return new Promise(function (resolve, reject) {
+          if (typeof bridge.resetScreenBrightness !== "function") {
+            resolve(false);
+            return;
+          }
+          try {
+            bridge.resetScreenBrightness();
+            resolve(true);
+          } catch (error) {
+            reject(error);
+          }
+        });
       }
     };
   }

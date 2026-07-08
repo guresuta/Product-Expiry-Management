@@ -1,6 +1,14 @@
 (function () {
   "use strict";
 
+  var APP_DB = "expiry_manager_app";
+  var APP_DB_VERSION = 1;
+  var STORE_PRODUCTS = "products";
+  var STORE_SETTINGS = "settings";
+  var MODE_SETTING_KEY = "storageMode";
+  var FILE_HANDLE_SETTING_KEY = "storageFileHandle";
+  var CATEGORY_SETTING_KEY = "categories";
+  var DEFAULT_CATEGORIES = ["飲料", "零食", "泡麵", "糖果"];
   var DEFAULT_APP_TITLE = "商品終期電馭監管裝置";
   var CUSTOM_APP_TITLE_KEY = "customAppTitle";
   var DEFAULT_MODE = "indexeddb";
@@ -31,6 +39,196 @@
     closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
     toast: document.getElementById("toast")
   };
+
+  var nativeBridge = createNativeBridge();
+
+  function createNativeBridge() {
+    if (!window.AndroidBridge) {
+      return null;
+    }
+    var bridge = window.AndroidBridge;
+    if (typeof bridge.hasSelectedDbFile !== "function" || typeof bridge.readDatabaseFile !== "function") {
+      return null;
+    }
+    return {
+      hasFile: function () {
+        try {
+          return !!bridge.hasSelectedDbFile();
+        } catch (_error) {
+          return false;
+        }
+      },
+      readFileText: async function () {
+        return String(bridge.readDatabaseFile() || "");
+      },
+      exportJson: function (filename, content) {
+        return new Promise(function (resolve, reject) {
+          if (typeof bridge.requestExportJsonFile !== "function") {
+            reject(new Error("裝置不支援原生 JSON 備份"));
+            return;
+          }
+          var handler = function (event) {
+            window.removeEventListener("android-json-exported", handler);
+            var detail = event.detail || {};
+            if (detail.ok) {
+              resolve(true);
+            } else {
+              reject(new Error(detail.error || "JSON 備份失敗"));
+            }
+          };
+          window.addEventListener("android-json-exported", handler, { once: true });
+          try {
+            bridge.requestExportJsonFile(String(filename || "expiry-backup.json"), String(content || ""));
+          } catch (error) {
+            window.removeEventListener("android-json-exported", handler);
+            reject(error);
+          }
+        });
+      }
+    };
+  }
+
+  function openDb() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(APP_DB, APP_DB_VERSION);
+      req.onupgradeneeded = function (event) {
+        var db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_PRODUCTS)) {
+          db.createObjectStore(STORE_PRODUCTS, { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains(STORE_SETTINGS)) {
+          db.createObjectStore(STORE_SETTINGS, { keyPath: "key" });
+        }
+      };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  async function withStore(storeName, mode, workFn) {
+    var db = await openDb();
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(storeName, mode);
+      var store = tx.objectStore(storeName);
+      var output = workFn(store, tx);
+      tx.oncomplete = function () {
+        db.close();
+        resolve(output);
+      };
+      tx.onerror = function () {
+        db.close();
+        reject(tx.error);
+      };
+      tx.onabort = function () {
+        db.close();
+        reject(tx.error || new Error("transaction aborted"));
+      };
+    });
+  }
+
+  async function getSetting(key) {
+    var db = await openDb();
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(STORE_SETTINGS, "readonly");
+      var req = tx.objectStore(STORE_SETTINGS).get(key);
+      req.onsuccess = function () { resolve(req.result ? req.result.value : null); };
+      req.onerror = function () { reject(req.error); };
+      tx.oncomplete = function () { db.close(); };
+      tx.onerror = function () { db.close(); };
+      tx.onabort = function () { db.close(); };
+    });
+  }
+
+  async function setSetting(key, value) {
+    await withStore(STORE_SETTINGS, "readwrite", function (store) {
+      store.put({ key: key, value: value });
+    });
+  }
+
+  async function getCategories() {
+    var saved = await getSetting(CATEGORY_SETTING_KEY);
+    if (Array.isArray(saved) && saved.length > 0) {
+      return saved;
+    }
+    return DEFAULT_CATEGORIES.slice();
+  }
+
+  async function getAllProductsFromIndexedDb() {
+    var db = await openDb();
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction(STORE_PRODUCTS, "readonly");
+      var req = tx.objectStore(STORE_PRODUCTS).getAll();
+      req.onsuccess = function () { resolve(req.result || []); };
+      req.onerror = function () { reject(req.error); };
+      tx.oncomplete = function () { db.close(); };
+      tx.onerror = function () { db.close(); };
+      tx.onabort = function () { db.close(); };
+    });
+  }
+
+  function parseProductsPayload(text) {
+    if (!text || !String(text).trim()) {
+      return [];
+    }
+    var parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    if (parsed && Array.isArray(parsed.products)) {
+      return parsed.products;
+    }
+    return [];
+  }
+
+  async function hasSelectedFile(fileHandle) {
+    if (nativeBridge) {
+      return nativeBridge.hasFile();
+    }
+    return !!fileHandle;
+  }
+
+  async function readProductsFromSelectedFile(fileHandle) {
+    if (nativeBridge) {
+      return parseProductsPayload(await nativeBridge.readFileText());
+    }
+    var file = await fileHandle.getFile();
+    return parseProductsPayload(await file.text());
+  }
+
+  async function loadStorageState(defaultMode) {
+    var savedMode = (await getSetting(MODE_SETTING_KEY)) || defaultMode || DEFAULT_MODE;
+    var fileHandle = await getSetting(FILE_HANDLE_SETTING_KEY);
+    var storageMode = savedMode === "file" || savedMode === "indexeddb" ? savedMode : DEFAULT_MODE;
+    if (storageMode === "file" && !(await hasSelectedFile(fileHandle))) {
+      storageMode = "indexeddb";
+      fileHandle = null;
+      await setSetting(MODE_SETTING_KEY, "indexeddb");
+      await setSetting(FILE_HANDLE_SETTING_KEY, null);
+    }
+    return { storageMode: storageMode, fileHandle: fileHandle };
+  }
+
+  async function loadProductsForCurrentStorage(options) {
+    var opts = options || {};
+    var storageMode = opts.storageMode || DEFAULT_MODE;
+    var fileHandle = opts.fileHandle || null;
+    var fallbackReason = "";
+    if (storageMode === "file") {
+      try {
+        if (await hasSelectedFile(fileHandle)) {
+          return { products: await readProductsFromSelectedFile(fileHandle), source: "file", fallbackReason: "" };
+        }
+        fallbackReason = "no-file";
+      } catch (error) {
+        fallbackReason = error && error.message ? error.message : "file-read-failed";
+      }
+    }
+    return {
+      products: await getAllProductsFromIndexedDb(),
+      source: storageMode === "file" ? "indexeddb-fallback" : "indexeddb",
+      fallbackReason: fallbackReason
+    };
+  }
 
   function t(text) {
     if (window.AppI18n && typeof window.AppI18n.translateText === "function") {
@@ -416,7 +614,7 @@
       version: 1,
       exportedAt: now,
       app: {
-        db: window.AppDataStore.constants.APP_DB,
+        db: APP_DB,
         mode: state.storageMode || DEFAULT_MODE
       },
       settings: {
@@ -429,8 +627,8 @@
 
   async function downloadJson(filename, payloadObj) {
     var content = JSON.stringify(payloadObj, null, 2);
-    if (window.AppDataStore.nativeBridge && typeof window.AppDataStore.nativeBridge.exportJson === "function") {
-      await window.AppDataStore.nativeBridge.exportJson(filename, content);
+    if (nativeBridge && typeof nativeBridge.exportJson === "function") {
+      await nativeBridge.exportJson(filename, content);
       return;
     }
     var blob = new Blob([content], { type: "application/json;charset=utf-8;" });
@@ -448,8 +646,8 @@
     var payload = buildBackupJsonPayload(state.products);
     var today = new Date().toISOString().slice(0, 10);
     await downloadJson("expiry-backup-" + today + ".json", payload);
-    await window.AppDataStore.setSetting("indexedDbAddCountSinceBackup", 0);
-    await window.AppDataStore.setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
+    await setSetting("indexedDbAddCountSinceBackup", 0);
+    await setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
     state.backupChangeCount = 0;
     if (ui.backupOverview) {
       ui.backupOverview.textContent = formatBackupOverview();
@@ -469,12 +667,12 @@
   }
 
   async function loadData() {
-    var storageState = await window.AppDataStore.loadStorageState(DEFAULT_MODE);
+    var storageState = await loadStorageState(DEFAULT_MODE);
     state.storageMode = storageState.storageMode;
     state.fileHandle = storageState.fileHandle;
-    state.categories = await window.AppDataStore.getCategories();
-    state.backupChangeCount = Number(await window.AppDataStore.getSetting(BACKUP_CHANGE_COUNT_KEY)) || 0;
-    var result = await window.AppDataStore.loadProductsForCurrentStorage({
+    state.categories = await getCategories();
+    state.backupChangeCount = Number(await getSetting(BACKUP_CHANGE_COUNT_KEY)) || 0;
+    var result = await loadProductsForCurrentStorage({
       storageMode: state.storageMode,
       fileHandle: state.fileHandle
     });

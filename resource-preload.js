@@ -17,7 +17,6 @@
     "./i18n.js",
     "./app.js",
     "./settings.js",
-    "./data-store.js",
     "./version.js",
     "./fonts/GenSekiGothic2TC-H.woff2",
     "./fonts/GenSekiGothic2TC-R.woff2"
