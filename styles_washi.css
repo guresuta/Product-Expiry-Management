@@ -3581,10 +3581,23 @@ html.android-webview .toast {
   }
 }
 
-/* Remove the Android WebView default orange focus ring from the add-product form. */
+/* Product fields keep their normal border until focus, then use the active theme color. */
+#customAppTitleInput:focus,
 #productForm input:focus,
-#productForm textarea:focus {
+#productForm textarea:focus,
+#editProductForm input:focus,
+#editProductForm textarea:focus {
   outline: none;
   outline-offset: 0;
+  border-color: var(--primary);
   box-shadow: none;
+}
+
+/* Improve readability for product names, barcode numbers, dates, and notes. */
+#productForm input:not(.hidden),
+#productForm textarea,
+#editProductForm input:not(.hidden),
+#editProductForm textarea {
+  font-size: 1.15rem;
+  line-height: 1.45;
 }
