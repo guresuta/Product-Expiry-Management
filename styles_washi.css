@@ -3601,3 +3601,29 @@ html.android-webview .toast {
   font-size: 1.15rem;
   line-height: 1.45;
 }
+
+/* Keep category labels equal to the product-input text in add and edit dialogs. */
+#addProductModal .custom-select-button,
+#addProductModal .custom-select-current,
+#editProductModal .custom-select-button,
+#editProductModal .custom-select-current {
+  font-size: 1.15rem;
+  line-height: 1.45;
+}
+
+/* Privacy-policy paragraphs need more breathing room without affecting other settings pages. */
+.privacy-page .settings-section .help-text {
+  margin: 0.8rem 0;
+  line-height: 1.65;
+}
+
+/* The product name replaces the removed barcode heading in the barcode dialog. */
+#barcodeModal .barcode-meta-row {
+  margin: 0.45rem 0 0.9rem;
+}
+
+#barcodeModal #barcodeProductName {
+  font-family: var(--app-title-font-family);
+  font-size: 1.42rem;
+  line-height: 1.3;
+}
