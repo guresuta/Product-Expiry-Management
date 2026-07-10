@@ -887,17 +887,17 @@
     }
     entry.buttonText.textContent = getSelectLabel(selectEl);
     entry.list.innerHTML = "";
-    Array.from(selectEl.options).forEach((option) => {
-      if (option.disabled) {
-        return;
-      }
+    const visibleOptions = Array.from(selectEl.options).filter((option) => !option.disabled);
+    const isProductCategorySelect = selectEl === ui.categoryInput || selectEl === ui.editCategorySelect;
+    const highlightedValue = selectEl.value || (isProductCategorySelect && visibleOptions[0] ? visibleOptions[0].value : "");
+    visibleOptions.forEach((option) => {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "custom-select-option";
       item.textContent = option.textContent || option.value;
       item.dataset.value = option.value;
       item.setAttribute("role", "option");
-      item.setAttribute("aria-selected", option.value === selectEl.value ? "true" : "false");
+      item.setAttribute("aria-selected", option.value === highlightedValue ? "true" : "false");
       item.addEventListener("click", () => {
         selectEl.value = option.value;
         syncCustomSelect(selectEl);
