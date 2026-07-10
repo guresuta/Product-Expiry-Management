@@ -3580,3 +3580,11 @@ html.android-webview .toast {
     bottom: calc(0.75rem + var(--safe-area-bottom));
   }
 }
+
+/* Remove the Android WebView default orange focus ring from the add-product form. */
+#productForm input:focus,
+#productForm textarea:focus {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
