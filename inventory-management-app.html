@@ -71,7 +71,7 @@
         }
         window.setTimeout(() => {
           window.location.href = href;
-        }, 120);
+        }, 32);
       };
       document.addEventListener("click", prepareAndroidTransitionCover, true);
       root.setAttribute("data-theme", themeKey);
@@ -260,11 +260,11 @@ const waitForFinish = () => {
 
       <div class="barcode-meta-row">
         <span id="barcodeProductName"></span>
-        <span id="barcodeFormatTag" class="barcode-format-tag"></span>
       </div>
       <div class="barcode-modal-wrap">
         <svg id="barcodeSvg" viewBox="0 0 400 180" preserveAspectRatio="none"></svg>
       </div>
+      <span id="barcodeFormatTag" class="barcode-format-tag"></span>
       <p id="barcodeModalText" class="help-text"></p>
       <div class="form-actions">
         <button id="closeBarcodeModalBtn" class="btn ghost" type="button">關閉</button>
