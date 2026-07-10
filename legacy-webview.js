@@ -74,6 +74,72 @@
     };
   }
 
+  function installMousePageDragScroll() {
+    var dragState = null;
+    var suppressNextClick = false;
+    var nativeInteractionSelector = "a, button, input, textarea, select, option, label, [role='button'], [contenteditable='true'], .custom-select, .category-list, .modal";
+
+    function keepsNativePointerBehavior(target) {
+      return !!(target && target.closest && target.closest(nativeInteractionSelector));
+    }
+
+    document.addEventListener("mousedown", function (event) {
+      if (event.button !== 0 || event.defaultPrevented || (event.sourceCapabilities && event.sourceCapabilities.firesTouchEvents) || keepsNativePointerBehavior(event.target)) {
+        return;
+      }
+      dragState = {
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollX: window.pageXOffset || document.documentElement.scrollLeft || 0,
+        scrollY: window.pageYOffset || document.documentElement.scrollTop || 0,
+        moved: false
+      };
+      event.preventDefault();
+    }, true);
+
+    document.addEventListener("mousemove", function (event) {
+      if (!dragState) {
+        return;
+      }
+      var deltaX = event.clientX - dragState.startX;
+      var deltaY = event.clientY - dragState.startY;
+      if (!dragState.moved && (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3)) {
+        dragState.moved = true;
+        document.documentElement.classList.add("mouse-page-dragging");
+      }
+      if (dragState.moved) {
+        window.scrollTo(dragState.scrollX - deltaX, dragState.scrollY - deltaY);
+        event.preventDefault();
+      }
+    }, true);
+
+    document.addEventListener("mouseup", function (event) {
+      if (!dragState) {
+        return;
+      }
+      suppressNextClick = dragState.moved;
+      dragState = null;
+      document.documentElement.classList.remove("mouse-page-dragging");
+      if (suppressNextClick) {
+        event.preventDefault();
+      }
+    }, true);
+
+    document.addEventListener("click", function (event) {
+      if (!suppressNextClick) {
+        return;
+      }
+      suppressNextClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }, true);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installMousePageDragScroll);
+  } else {
+    installMousePageDragScroll();
+  }
   try {
     new window.CustomEvent("legacy-webview-test");
   } catch (_error) {

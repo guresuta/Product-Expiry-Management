@@ -48,9 +48,32 @@
       const savedLanguage = localStorage.getItem("appLanguage");
       const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
       const bootStartedAt = Date.now();
-      const minBootDurationMs = 1800;
+      const minBootDurationMs = window.AndroidBridge ? 700 : 1800;
+      const maxBootDurationMs = window.AndroidBridge ? 1400 : 2600;
       let ready = false;
       let bootVisualReady = false;
+      let androidNavigationPending = false;
+      const prepareAndroidTransitionCover = (event) => {
+        if (!window.AndroidBridge || typeof window.AndroidBridge.prepareTransitionCover !== "function") return;
+        let node = event.target;
+        while (node && node !== document && String(node.tagName || "").toUpperCase() !== "A") {
+          node = node.parentNode;
+        }
+        if (!node || node === document || node.target === "_blank") return;
+        const href = node.getAttribute("href") || "";
+        if (!/^(?:\.\/)?(?:inventory-management-app|settings|analytics|privacy-policy)\.html(?:[?#].*)?$/.test(href)) return;
+        event.preventDefault();
+        if (androidNavigationPending) return;
+        androidNavigationPending = true;
+        try {
+          window.AndroidBridge.prepareTransitionCover();
+        } catch (_error) {
+        }
+        window.setTimeout(() => {
+          window.location.href = href;
+        }, 120);
+      };
+      document.addEventListener("click", prepareAndroidTransitionCover, true);
       root.setAttribute("data-theme", themeKey);
       root.setAttribute("lang", language);
       if (window.AndroidBridge) {
@@ -79,16 +102,36 @@
           const finish = () => {
             root.classList.remove("app-booting");
             root.classList.add("app-ready");
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              try {
+                if (window.AndroidBridge && typeof window.AndroidBridge.notifyPageBootReady === "function") {
+                  window.AndroidBridge.notifyPageBootReady();
+                }
+              } catch (_error) {
+              }
+            }));
             setTimeout(() => {
               const bootScreen = document.querySelector(".app-boot-screen");
               if (bootScreen) bootScreen.remove();
             }, 240);
           };
-          const elapsed = Date.now() - bootStartedAt;
-          setTimeout(finish, Math.max(0, minBootDurationMs - elapsed));
+const waitForFinish = () => {
+            const elapsed = Date.now() - bootStartedAt;
+            const minDelay = Math.max(0, minBootDurationMs - elapsed);
+            if (minDelay > 0) {
+              setTimeout(waitForFinish, minDelay);
+              return;
+            }
+            if (!bootVisualReady && elapsed < maxBootDurationMs) {
+              setTimeout(waitForFinish, 50);
+              return;
+            }
+            finish();
+          };
+          waitForFinish();
         }
       };
-      setTimeout(() => window.AppBoot.ready(), 2600);
+      setTimeout(() => window.AppBoot.ready(), maxBootDurationMs);
     })();
   </script>
   <link rel="manifest" href="./manifest.webmanifest">
@@ -188,13 +231,13 @@
       <h2 class="section-title-bar">關於</h2>
 	  <p class="help-text about-credit-line">構想：GURESUTA</p>
 	  <p class="help-text about-credit-line">策劃：GURESUTA</p>
-	  <p class="help-text about-credit-line">執行：Codex(GPT-5.3-Codex、GPT-5.5)</p>
-      <p class="help-text about-credit-line">代碼：Codex(GPT-5.3-Codex、GPT-5.5)</p>
-	  <p class="help-text about-credit-line">排版：Codex(GPT-5.3-Codex、GPT-5.5)</p>
+	  <p class="help-text about-credit-line">執行：GPT-5.3-Codex、GPT-5.5、GPT-5.6 Terra</p>
+      <p class="help-text about-credit-line">代碼：GPT-5.3-Codex、GPT-5.5、GPT-5.6 Terra</p>
+	  <p class="help-text about-credit-line">排版：GPT-5.3-Codex、GPT-5.5、GPT-5.6 Terra</p>
 	  <p class="help-text about-credit-line">色彩：Gemini Web、Codex(GPT-5.5)</p>
 	  <p class="help-text about-credit-line">字型：GenSekiGothic2TC</p>
-	  <p class="help-text about-credit-line">翻譯：Codex(GPT-5.5)</p>
-	  <p class="help-text about-credit-line">測試：Codex(GPT-5.3-Codex、GPT-5.5)</p>
+	  <p class="help-text about-credit-line">翻譯：GPT-5.5、GPT-5.6 Terra</p>
+	  <p class="help-text about-credit-line">測試：GPT-5.3-Codex、GPT-5.5、GPT-5.6 Terra</p>
 	  <p class="help-text about-credit-line">指示：GURESUTA</p>
 	  <p class="help-text about-credit-line">發布：GURESUTA</p>
      

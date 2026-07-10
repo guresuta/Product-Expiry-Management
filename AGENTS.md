@@ -468,3 +468,28 @@
   - `d855e87 Defer analytics loading and sort analytics tables`
   - `4dc1a72 Retry GitHub Pages deployment`
 - GitHub Pages 最終確認：`Deploy to GitHub Pages` 與 `pages build and deployment` 皆為 success，線上 `sw.js` 已回傳 `expiry-manager-cache-v329`。
+
+### 9.32 Android WebView 閃爍 / 背景延遲調查與目前狀態（2026-07-10）
+- 使用者回報 v2.0 新增分析頁後，Android 裝置從多工頁面切回本 App 時會短暫閃爍；程式內頁面切換也曾露出底色。已確認此現象不是單純 data-store.js 或分析頁即時資料讀取造成：停用主頁 data-store.js、分析頁改獨立讀取後仍存在；單頁 iframe 測試分支也未消除露底。
+- 曾建立 checkpoint 與測試分支：
+  - `08a5c98 Checkpoint before single-page navigation test`（main 上的 checkpoint）。
+  - `codex/single-page-navigation-test` / `68a0179 Test single-page WebView navigation` 測試 iframe 單頁導覽；使用者測試後仍有藍底/底色露出，已切回 main，測試分支保留但不作為目前基準。
+- 已做的 Android 原生緩解：
+  - `MainActivity.kt` 的 `APP_BACKGROUND_COLOR` 從 `0xFF000824` 改為 `0xFF050505`，並套用於 `window.decorView`、`WebView` 與 root `FrameLayout`，將原本藍底露出改為接近主題的黑底。
+  - `navigateHomeAndClearHistory()` 改為先檢查 WebView back-forward history，若首頁已存在則使用 `goBackOrForward()` 回首頁並清 history；找不到首頁才 `loadUrl(APP_HOME_URL)`，降低設定/分析返回主頁時重新載入造成的露底。
+- 已做的前端 / CSS 緩解：
+  - Android WebView 專用 `--boot-bg` 與 app-booting 背景維持 `#050505`，但已恢復 loading 畫面的主題背景圖；不要再把 `.app-boot-screen` 的 `background-image` 關掉，否則 loading 畫面背景會消失。
+  - 四個頁面 `inventory-management-app.html`、`settings.html`、`privacy-policy.html`、`analytics.html` 的 boot 流程已改為 Android WebView 至少顯示約 700ms，並等待目前主題背景 ready 後再淡出 boot，最多等 1400ms；一般瀏覽器 / PWA 仍維持較長的原本 loading 行為。
+  - `resource-preload.js` 已改為 Android / 小螢幕只預載「目前主題」背景，不一次預載四張高解析背景，避免主頁資料多時從分頁切回主頁背景延遲顯示。
+- 目前結論：
+  - loading 背景消失與主頁資料多時背景延遲，屬於上一輪 Android boot 背景優化造成的回歸，已修正並打包新版 debug APK。
+  - Android 多工頁面返回本程式仍閃爍，且只改 native / CSS 背景色會把藍底改成黑底但無法消除，判斷主因高機率是 Android WebView surface / Activity snapshot 恢復時短暫沒有網頁內容可畫，露出 native root 背景。
+  - 若使用者仍要求進一步消除多工返回閃爍，下一個有效方向應是 Android 原生層加入短暫主題背景或最近畫面截圖遮罩，等 WebView 第一幀恢復後移除；只靠 CSS 或換背景色預期效果有限。
+- 最新前端狀態：
+  - `sw.js` 快取版本已更新為 `expiry-manager-cache-v344`，`version.js` 仍維持 `v2.0` / `versionCode 20000`。
+  - 已同步 Android Studio assets，已重新打包 debug APK：`C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\debug\app-debug.apk`。
+  - 驗證通過：`node --check app.js`、`node --check settings.js`、`node --check analytics.js`、`node --check sw.js`、`node --check resource-preload.js`、`git diff --check`、`:app:assembleDebug`、`aapt dump badging`、`apksigner verify --verbose`。
+  - APK badging 確認 `package='com.guresuta.productexpirycybercontrol'`、`versionName='2.0'`、`versionCode='20000'`、`targetSdkVersion='36'`。
+- 目前未提交 / 未推送：
+  - Repo 內未提交檔案包含 `CHANGELOG.md`、`analytics.html`、`inventory-management-app.html`、`privacy-policy.html`、`resource-preload.js`、`settings.html`、`styles_washi.css`、`sw.js`。
+  - Android Studio 專案原生檔 `MainActivity.kt` 已修改但不在 `D:\AI Code\KEITAIHAN` Git repo 追蹤內；若重建 Android Studio 專案需依本段重新套用。

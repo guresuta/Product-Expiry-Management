@@ -18,6 +18,7 @@
   --app-font-family: "GenSekiGothic2TC-R", "Microsoft JhengHei", sans-serif;
   --app-title-font-family: "GenSekiGothic2TC-H", "Microsoft JhengHei", sans-serif;
   --safe-area-top: 0px;
+  --safe-area-bottom: 0px;
   --topbar-fixed-offset: calc(7.2rem + var(--safe-area-top));
   --bg: #050505;
   --bg-accent: #11141a;
@@ -50,6 +51,7 @@
 @supports (padding-top: env(safe-area-inset-top)) {
   :root {
     --safe-area-top: env(safe-area-inset-top);
+    --safe-area-bottom: env(safe-area-inset-bottom);
   }
 }
 
@@ -299,7 +301,14 @@ html.android-webview .android-release-hidden {
 }
 html.android-webview {
   --topbar-fixed-offset: calc(6.6rem + var(--safe-area-top));
+  --boot-bg: #050505;
 }
+
+html.android-webview.app-booting,
+html.android-webview.app-booting body {
+  background: #050505;
+}
+
 
 html.android-webview .topbar-inner {
   padding-top: calc(0.25rem + var(--safe-area-top));
@@ -435,7 +444,7 @@ html.android-webview body {
   background-attachment: scroll;
   background-size: 100% auto;
   background-repeat: repeat-y;
-  background-color: var(--bg);
+  background-color: #050505;
 }
 
 html.android-webview .topbar {
@@ -2499,6 +2508,7 @@ html[data-theme="dark-2"] .filter-row .custom-select-button:focus {
   align-items: center;
   justify-content: center;
   padding: 1rem;
+  padding-bottom: max(1rem, calc(1rem + var(--safe-area-bottom)));
   background: rgba(28, 30, 35, 0.6);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
@@ -2514,7 +2524,7 @@ html[data-theme="dark-2"] .filter-row .custom-select-button:focus {
 
 .modal-content {
   width: min(560px, 100%);
-  max-height: 92vh;
+  max-height: calc(92vh - var(--safe-area-bottom));
   overflow: auto;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -2640,7 +2650,7 @@ html[lang="en"] .action-cell .btn {
 .back-to-top-btn {
   position: fixed;
   right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  bottom: max(1rem, var(--safe-area-bottom), env(safe-area-inset-bottom));
   z-index: 900;
   min-width: 5.8rem;
   padding: 0.72rem 0.9rem;
@@ -2665,7 +2675,7 @@ html[lang="en"] .action-cell .btn {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  bottom: max(1rem, var(--safe-area-bottom), env(safe-area-inset-bottom));
   z-index: 13000;
   max-width: min(92vw, 28rem);
   transform: translateX(-50%);
@@ -2689,14 +2699,14 @@ html[data-theme^="dark"] .toast {
 @media (max-width: 730px) {
   .back-to-top-btn {
     right: max(0.75rem, env(safe-area-inset-right));
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    bottom: max(0.75rem, var(--safe-area-bottom), env(safe-area-inset-bottom));
     min-width: 5.2rem;
     padding: 0.65rem 0.75rem;
     font-size: 0.82rem;
   }
 
   .toast {
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    bottom: max(0.75rem, var(--safe-area-bottom), env(safe-area-inset-bottom));
   }
 }
 
@@ -2716,7 +2726,7 @@ html[data-theme^="dark"] .toast {
 
   .modal-content {
     width: 100%;
-    max-height: 94vh;
+    max-height: calc(94vh - var(--safe-area-bottom));
     padding: 0.85rem;
   }
 
@@ -3515,4 +3525,58 @@ html[data-theme] .privacy-app-info-btn.app-info-unavailable:focus {
 
 #categoryList .chip-delete {
   margin-left: 0.15rem;
+}
+
+/* Desktop mouse drag scrolling and intentional text-selection boundaries. */
+html,
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#barcodeModal,
+#barcodeModal * {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+html.mouse-page-dragging,
+html.mouse-page-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+html.category-page-scroll-locked {
+  overscroll-behavior: none;
+}
+
+/* Keep all list controls aligned, including English labels with a taller row. */
+.list-tools .filter-row .custom-select-button,
+.list-tools .search-row > .search-input-shell,
+.list-tools .search-row > #scanSearchBtn {
+  height: var(--touch-control-height);
+  min-height: var(--touch-control-height);
+  box-sizing: border-box;
+}
+
+html[lang="en"] .list-tools .filter-row .custom-select-button,
+html[lang="en"] .list-tools .search-row > .search-input-shell,
+html[lang="en"] .list-tools .search-row > #scanSearchBtn {
+  height: 58px;
+  min-height: 58px;
+}
+
+/* Android injects the real navigation-bar inset because env() is not reliable in WebView. */
+html.android-webview .back-to-top-btn,
+html.android-webview .toast {
+  bottom: calc(1rem + var(--safe-area-bottom));
+}
+
+@media (max-width: 730px) {
+  html.android-webview .back-to-top-btn,
+  html.android-webview .toast {
+    bottom: calc(0.75rem + var(--safe-area-bottom));
+  }
 }

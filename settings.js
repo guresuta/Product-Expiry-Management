@@ -875,11 +875,7 @@
     categoryScrollLocked = true;
     categoryLockedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
     document.addEventListener("touchmove", preventCategoryDragScroll, { passive: false });
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${categoryLockedScrollY}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
+    document.documentElement.classList.add("category-page-scroll-locked");
   }
 
   function unlockCategoryPageScroll() {
@@ -888,11 +884,7 @@
     }
     categoryScrollLocked = false;
     document.removeEventListener("touchmove", preventCategoryDragScroll);
-    document.body.style.removeProperty("position");
-    document.body.style.removeProperty("top");
-    document.body.style.removeProperty("left");
-    document.body.style.removeProperty("right");
-    document.body.style.removeProperty("width");
+    document.documentElement.classList.remove("category-page-scroll-locked");
     window.scrollTo(0, categoryLockedScrollY);
     categoryLockedScrollY = 0;
   }
@@ -1895,7 +1887,7 @@
           categoryDragGhost.style.left = `${chipRect.left}px`;
           categoryDragGhost.style.top = `${chipRect.top}px`;
           categoryDragGhost.style.width = `${chipRect.width}px`;
-          document.body.appendChild(categoryDragGhost);
+          document.documentElement.appendChild(categoryDragGhost);
         }
         ui.categoryList.classList.add("is-reordering");
       }, CATEGORY_LONG_PRESS_MS);

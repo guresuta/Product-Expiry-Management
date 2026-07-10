@@ -27,7 +27,29 @@
     "./key-visuals/background-vibrant-oasis.png",
     "./key-visuals/background-midnight-oasis.png"
   ];
-  var assets = baseAssets.concat(isAndroidWebView || isSmallViewport ? [] : backgroundAssets);
+function getCurrentBackgroundAsset() {
+    var themeAliases = {
+      "dark-7": "dark-1",
+      "light-7": "light-1",
+      "light-8": "light-2",
+      "dark-8": "dark-2"
+    };
+    var themeBackgrounds = {
+      "dark-1": "./key-visuals/background-neon-cyber.png",
+      "light-1": "./key-visuals/background-daylight-cyber.png",
+      "light-2": "./key-visuals/background-vibrant-oasis.png",
+      "dark-2": "./key-visuals/background-midnight-oasis.png"
+    };
+    var savedTheme = "dark-1";
+    try {
+      savedTheme = localStorage.getItem("uiTheme") || "dark-1";
+    } catch (_error) {
+    }
+    var themeKey = themeAliases[savedTheme] || savedTheme;
+    return themeBackgrounds[themeKey] || themeBackgrounds["dark-1"];
+  }
+
+  var assets = baseAssets.concat(isAndroidWebView || isSmallViewport ? [getCurrentBackgroundAsset()] : backgroundAssets);
 
   function schedule(task) {
     if (typeof window.requestIdleCallback === "function") {
