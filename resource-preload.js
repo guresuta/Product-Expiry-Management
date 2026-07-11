@@ -4,23 +4,28 @@
   var started = false;
   var isAndroidWebView = /; wv\)/i.test(navigator.userAgent || "") || !!window.AndroidBridge;
   var isSmallViewport = Math.min(window.innerWidth || 0, window.innerHeight || 0) <= 730;
-  var pages = isAndroidWebView || isSmallViewport
-    ? ["./settings.html"]
+  var isConstrainedRuntime = isAndroidWebView || isSmallViewport;
+  // Android and compact devices already have the current page assets loaded. Avoid warming
+  // other documents and large scripts in the background so the visible page keeps more RAM.
+  var pages = isConstrainedRuntime
+    ? []
     : [
       "./inventory-management-app.html",
       "./settings.html",
       "./privacy-policy.html"
     ];
-  var baseAssets = [
-    "./styles_washi.css",
-    "./legacy-webview.js",
-    "./i18n.js",
-    "./app.js",
-    "./settings.js",
-    "./version.js",
-    "./fonts/GenSekiGothic2TC-H.woff2",
-    "./fonts/GenSekiGothic2TC-R.woff2"
-  ];
+  var baseAssets = isConstrainedRuntime
+    ? []
+    : [
+      "./styles_washi.css",
+      "./legacy-webview.js",
+      "./i18n.js",
+      "./app.js",
+      "./settings.js",
+      "./version.js",
+      "./fonts/GenSekiGothic2TC-H.woff2",
+      "./fonts/GenSekiGothic2TC-R.woff2"
+    ];
   var backgroundAssets = [
     "./key-visuals/background-neon-cyber.png",
     "./key-visuals/background-daylight-cyber.png",
@@ -131,7 +136,9 @@ function getCurrentBackgroundAsset() {
         warmFetch(url);
       }
     });
-    warmFonts();
+    if (!isConstrainedRuntime) {
+      warmFonts();
+    }
   }
 
   if (document.readyState === "complete") {

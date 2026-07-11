@@ -20,6 +20,7 @@
   const CATEGORY_SETTING_KEY = "categories";
   const CUSTOM_APP_TITLE_KEY = "customAppTitle";
   const DEFAULT_APP_TITLE = "商品終期電馭監管裝置";
+  const DEFAULT_HOME_SUBTITLE = "- 快速掌握商品效期，提前發現即期與過期風險 -";
   const DEFAULT_CATEGORIES = ["飲料", "零食", "泡麵", "糖果"];
   const DEFAULT_THEME_KEY = "dark-1";
   const THEME_ALIASES = {
@@ -160,6 +161,7 @@
   let touchGuardStartY = 0;
   let suppressRowClickUntil = 0;
   let suppressNativeContextMenuUntil = 0;
+  let searchRenderFrame = null;
   let brightnessRaised = false;
   let pendingDeleteIds = [];
   let pendingDuplicateChoice = null;
@@ -448,6 +450,27 @@
 
   function refreshCustomAppTitle() {
     applyAppTitle();
+  }
+
+  function getHomeSubtitles() {
+    const list = Array.isArray(window.HOME_SUBTITLES) ? window.HOME_SUBTITLES : [];
+    return list.map((item) => {
+      if (typeof item === "string") {
+        return item.trim();
+      }
+      return String(item && item.text ? item.text : "").trim();
+    }).filter(Boolean);
+  }
+
+  function applyRandomHomeSubtitle() {
+    if (!ui.appMainSubtitle) {
+      return;
+    }
+    const subtitles = getHomeSubtitles();
+    const selected = subtitles.length > 0
+      ? subtitles[Math.floor(Math.random() * subtitles.length)]
+      : DEFAULT_HOME_SUBTITLE;
+    ui.appMainSubtitle.textContent = selected;
   }
 
   function isNativeFileMode() {
@@ -1304,15 +1327,36 @@
   function getHealthStats(products = state.products) {
     const scopedProducts = Array.isArray(products) ? products : [];
     const duplicateSet = getDuplicateBarcodeSet(scopedProducts);
-    return {
-      missingDate: scopedProducts.filter((item) => !String(item.expiryDate || "").trim()).length,
-      missingBarcode: scopedProducts.filter((item) => !String(item.barcode || "").trim()).length,
-      duplicateBarcode: scopedProducts.filter((item) => duplicateSet.has(String(item.barcode || "").trim())).length,
-      expired: scopedProducts.filter((item) => isExpiredProduct(item)).length,
-      expiring60: scopedProducts.filter((item) => isExpiringBetween(item, 31, 60)).length,
-      expiring30: scopedProducts.filter((item) => isExpiringWithin(item, 30)).length,
-      duplicateSet
-    };
+    let missingDate = 0;
+    let missingBarcode = 0;
+    let duplicateBarcode = 0;
+    let expired = 0;
+    let expiring60 = 0;
+    let expiring30 = 0;
+
+    scopedProducts.forEach((item) => {
+      const expiryDate = String(item.expiryDate || "").trim();
+      const barcode = String(item.barcode || "").trim();
+      if (!expiryDate) {
+        missingDate += 1;
+      }
+      if (!barcode) {
+        missingBarcode += 1;
+      }
+      if (duplicateSet.has(barcode)) {
+        duplicateBarcode += 1;
+      }
+      const diffDays = getDaysUntilExpiry(expiryDate);
+      if (diffDays < 0) {
+        expired += 1;
+      } else if (diffDays <= 30) {
+        expiring30 += 1;
+      } else if (diffDays <= EXPIRING_SOON_DAYS) {
+        expiring60 += 1;
+      }
+    });
+
+    return { missingDate, missingBarcode, duplicateBarcode, expired, expiring60, expiring30, duplicateSet };
   }
 
   function sortProducts(products) {
@@ -1867,6 +1911,16 @@
     renderExpiryCalendar();
   }
 
+  function scheduleSearchRender() {
+    if (searchRenderFrame !== null) {
+      return;
+    }
+    searchRenderFrame = requestAnimationFrame(() => {
+      searchRenderFrame = null;
+      renderProducts();
+    });
+  }
+
   function handleSortModeChange() {
     renderProducts();
   }
@@ -2108,9 +2162,6 @@
     applyRememberedAddCategory();
     syncCustomSelect(ui.categoryInput);
     openManagedModal("add", ui.addProductModal);
-    if (ui.nameInput) {
-      ui.nameInput.focus();
-    }
   }
 
   function closeAddProductModal(options = {}) {
@@ -2802,7 +2853,7 @@
     });
 
     ui.clearFormBtn.addEventListener("click", clearForm);
-    ui.searchInput.addEventListener("input", renderProducts);
+    ui.searchInput.addEventListener("input", scheduleSearchRender);
     ui.categoryFilter.addEventListener("change", renderProducts);
     ui.sortSelect.addEventListener("change", handleSortModeChange);
 
@@ -3339,6 +3390,7 @@
   async function init() {
     applySavedTheme();
     refreshCustomAppTitle();
+    applyRandomHomeSubtitle();
     window.addEventListener("storage", (event) => {
       if (event.key === CUSTOM_APP_TITLE_KEY) {
         refreshCustomAppTitle();

@@ -148,7 +148,7 @@ const waitForFinish = () => {
     <div class="container topbar-inner">
       <div>
         <h1 id="appMainTitle">商品終期電馭監管裝置</h1>
-        <p class="subtitle">- 快速掌握商品效期，提前發現即期與過期風險 -</p>
+        <p id="appMainSubtitle" class="subtitle" data-i18n-skip="true">- 快速掌握商品效期，提前發現即期與過期風險 -</p>
       </div>
       <nav class="actions">
         <button id="openAddProductBtn" class="btn secondary nav-link transient-nav-btn" type="button">新 增 商 品</button>
@@ -433,6 +433,7 @@ const waitForFinish = () => {
   </div>
   <button id="backToTopBtn" class="back-to-top-btn hidden" type="button" aria-label="返回頁面頂端">返回頂端</button>
   <div id="toast" class="toast hidden"></div>
+  <script src="./home-subtitles.js" defer></script>
   <script src="./i18n.js" defer></script>
   <script src="./version.js" defer></script>
   <script src="./app.js" defer></script>
