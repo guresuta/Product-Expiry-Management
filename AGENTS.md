@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v327`。
+- 目前 `version.js` 版本為 `v2.0.1`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v359`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -492,3 +492,41 @@
 - 目前未提交 / 未推送：
   - Repo 內未提交檔案包含 `CHANGELOG.md`、`analytics.html`、`inventory-management-app.html`、`privacy-policy.html`、`resource-preload.js`、`settings.html`、`styles_washi.css`、`sw.js`。
   - Android Studio 專案原生檔 `MainActivity.kt` 已修改但不在 `D:\AI Code\KEITAIHAN` Git repo 追蹤內；若重建 Android Studio 專案需依本段重新套用。
+### 9.33 本視窗副標輪替、資料層清理與 Android 同步紀錄（2026-07-11）
+- 本輪完成並已推送的 Git 提交：
+  - `7ffb41d Speed up Android WebView resume`
+  - `851d190 Improve home startup performance`
+  - `d9a3358 Rotate home subtitles and remove unused data store`
+  - `4040b44 Fix subtitle rotation on Android resume`
+  - `e5decfb Fix localized home subtitle rendering`
+- Android 多工快速恢復：
+  - `MainActivity.kt` 正常背景返回會保留既有 WebView，先等待短暫 visual-state callback；逾時才顯示較短的原生讀取遮罩。
+  - Activity 重建時會使用 `WebView.saveState()` / `restoreState()` 復原導覽狀態。
+  - Android WebView 從背景返回時，`MainActivity.kt` 會派送 `android-app-resumed` 事件給網頁。
+- 主頁副標：
+  - 新增 `home-subtitles.js`，目前由使用者維護 8 筆、ID 1–8 的中文副標資料。
+  - `app.js` 已建立 `ui.appMainSubtitle` DOM 參照；先前缺少此參照使隨機邏輯直接返回，已修正。
+  - 僅中文介面讀取隨機副標清單：首次隨機選取，同一副標連續顯示 3 次，第四次開啟／回到前景時再換一則。
+  - 英文與日文介面固定使用 `i18n.js` 既有的英／日主頁副標，不套用中文隨機清單。
+- 前端與資料層：
+  - 新增商品視窗不再自動聚焦商品名稱欄位，避免 Android 自動開啟鍵盤。
+  - 商品健康統計改為單次走訪；搜尋輸入每個畫面週期最多觸發一次重繪；Android／小螢幕取消背景預抓其他頁面與大型腳本，降低記憶體壓力。
+  - 已確認 `data-store.js` 不再有執行頁面載入或程式呼叫，已從來源、Android assets、GitHub Pages workflow 移除；保留各頁既有獨立資料讀取邏輯。
+  - 已移除未追蹤的 flicker / recents 診斷截圖、log 與影片，未影響程式功能。
+- 隱私權與更新紀錄：
+  - `privacy-policy.html` 的使用者手動更新已提交並同步 Android Studio assets。
+  - 設定頁免責聲明新增第四條：中文主頁副標為原創裝飾與提醒文案，並補齊英日翻譯。
+  - `version.js` 的 v2.0 更新內容現含「中文介面新增隨機出現裝飾性主頁副標」，英日翻譯已同步。
+- 發版與驗證：
+  - `version.js` 維持 `v2.0`，Android APK `versionName='2.0'`、`versionCode='20000'`。
+  - `sw.js` 目前快取版本為 `expiry-manager-cache-v358`。
+  - 已多次同步 runtime assets 至 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\src\main\assets` 並以 SHA-256 驗證；最新 APK 已確認包含 `home-subtitles.js`、不包含已移除的 `data-store.js`，且包含副標 DOM 修正與英日語言限制。
+  - 最新 debug APK：`C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\debug\app-debug.apk`。
+  - 最近一次 `:app:assembleDebug` 通過；僅保留既有 WebView `allowFileAccessFromFileURLs` / `allowUniversalAccessFromFileURLs` deprecated 警告。
+- 下個視窗接續前先執行 `git status --short`，並確認 Android Studio 外部原生 `MainActivity.kt` 的上述修改仍存在；該原生專案不由 `D:\AI Code\KEITAIHAN` Git repo 追蹤。
+
+### 9.34 v2.0.1 政策資訊翻譯與實機驗證結案（2026-07-11）
+- 使用者已完成完整人工實機驗證，Android 多工返回不再出現閃爍；後續工作流程不再將多工返回閃爍列為待驗證或待修正項目。
+- `privacy-policy.html` 維持政策資訊適用範圍的兩段式排版，並為兩段文字補齊英日翻譯。
+- 設定頁免責聲明第四條改為限定「本 App 中文介面」的主頁副標短語，`i18n.js` 的英日翻譯已同步更新。
+- 版本更新為 `v2.0.1`，更新內容維持既有項目；`sw.js` 快取版本為 `expiry-manager-cache-v359`，Android `versionCode` 應同步為 `20001`。

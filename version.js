@@ -9,6 +9,16 @@ window.APP_RELEASE = {
   ],
   history: [
     {
+      version: "v2.0.1",
+      title: "v2.0.1更新內容",
+      items: [
+        "新增商品趨勢分析",
+        "修正頁面閃爍與破圖",
+        "版面最佳化",
+        "中文介面新增隨機出現裝飾性主頁副標",
+      ]
+    },
+    {
       version: "v2.0",
       title: "v2.0更新內容",
       items: [
