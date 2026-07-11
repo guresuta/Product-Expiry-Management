@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0.1`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v359`。
+- 目前 `version.js` 版本為 `v2.0.1`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v360`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -530,3 +530,7 @@
 - `privacy-policy.html` 維持政策資訊適用範圍的兩段式排版，並為兩段文字補齊英日翻譯。
 - 設定頁免責聲明第四條改為限定「本 App 中文介面」的主頁副標短語，`i18n.js` 的英日翻譯已同步更新。
 - 版本更新為 `v2.0.1`，更新內容維持既有項目；`sw.js` 快取版本為 `expiry-manager-cache-v359`，Android `versionCode` 應同步為 `20001`。
+### 9.35 v2.0.1 更新內容翻譯確認（2026-07-11）
+- 使用者手動調整 `version.js` 的 v2.0.1 更新項目順序；英日翻譯標題與四項內容皆已存在且對應正確，無須新增翻譯 key。
+- 依前端資產發版規則，`sw.js` 快取版本更新為 `expiry-manager-cache-v360`。
+- 已同步最新 `version.js`、`i18n.js`、`sw.js` 至 Android Studio assets，並重新打包 debug APK；Android 版本維持 `versionName = 2.0.1`、`versionCode = 20001`。
