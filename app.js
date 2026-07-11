@@ -154,6 +154,7 @@
     toast: document.getElementById("toast")
   };
   ui.appMainTitle = document.getElementById("appMainTitle");
+  ui.appMainSubtitle = document.getElementById("appMainSubtitle");
 
   let longPressTimer = null;
   let longPressProductId = null;
@@ -495,6 +496,13 @@
 
   function applyRandomHomeSubtitle() {
     if (!ui.appMainSubtitle) {
+      return;
+    }
+    const language = window.AppI18n && typeof window.AppI18n.getLanguage === "function"
+      ? window.AppI18n.getLanguage()
+      : (document.documentElement.lang || "zh-Hant");
+    if (language !== "zh-Hant") {
+      ui.appMainSubtitle.textContent = t(DEFAULT_HOME_SUBTITLE);
       return;
     }
     const subtitles = getHomeSubtitles();
