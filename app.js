@@ -518,6 +518,29 @@
     saveHomeSubtitleRotation((openCount + 1) % HOME_SUBTITLE_ROTATION_OPEN_COUNT, selected.id);
   }
 
+  function bindHomeSubtitleRotation() {
+    if (window.AndroidBridge) {
+      window.addEventListener("android-app-resumed", applyRandomHomeSubtitle);
+      return;
+    }
+    let wasHidden = document.hidden;
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        wasHidden = true;
+        return;
+      }
+      if (wasHidden) {
+        wasHidden = false;
+        applyRandomHomeSubtitle();
+      }
+    });
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        applyRandomHomeSubtitle();
+      }
+    });
+  }
+
   function isNativeFileMode() {
     return !!nativeBridge;
   }
@@ -3436,6 +3459,7 @@
     applySavedTheme();
     refreshCustomAppTitle();
     applyRandomHomeSubtitle();
+    bindHomeSubtitleRotation();
     window.addEventListener("storage", (event) => {
       if (event.key === CUSTOM_APP_TITLE_KEY) {
         refreshCustomAppTitle();
