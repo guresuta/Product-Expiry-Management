@@ -86,7 +86,6 @@
   - `index.html`
   - `styles_washi.css`
   - `legacy-webview.js`
-  - `data-store.js`
   - `analytics.js`
   - `i18n.js`
   - `app.js`

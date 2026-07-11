@@ -21,6 +21,9 @@
   const CUSTOM_APP_TITLE_KEY = "customAppTitle";
   const DEFAULT_APP_TITLE = "商品終期電馭監管裝置";
   const DEFAULT_HOME_SUBTITLE = "- 快速掌握商品效期，提前發現即期與過期風險 -";
+  const HOME_SUBTITLE_OPEN_COUNT_KEY = "homeSubtitleOpenCount";
+  const HOME_SUBTITLE_SELECTED_ID_KEY = "homeSubtitleSelectedId";
+  const HOME_SUBTITLE_ROTATION_OPEN_COUNT = 3;
   const DEFAULT_CATEGORIES = ["飲料", "零食", "泡麵", "糖果"];
   const DEFAULT_THEME_KEY = "dark-1";
   const THEME_ALIASES = {
@@ -454,12 +457,40 @@
 
   function getHomeSubtitles() {
     const list = Array.isArray(window.HOME_SUBTITLES) ? window.HOME_SUBTITLES : [];
-    return list.map((item) => {
+    return list.map((item, index) => {
       if (typeof item === "string") {
-        return item.trim();
+        return { id: `subtitle-${index + 1}`, text: item.trim() };
       }
-      return String(item && item.text ? item.text : "").trim();
-    }).filter(Boolean);
+      return {
+        id: String(item && item.id !== undefined ? item.id : `subtitle-${index + 1}`),
+        text: String(item && item.text ? item.text : "").trim()
+      };
+    }).filter((item) => item.text);
+  }
+
+  function getStoredHomeSubtitleOpenCount() {
+    try {
+      const parsed = parseInt(localStorage.getItem(HOME_SUBTITLE_OPEN_COUNT_KEY) || "0", 10);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed % HOME_SUBTITLE_ROTATION_OPEN_COUNT : 0;
+    } catch (_error) {
+      return 0;
+    }
+  }
+
+  function getStoredHomeSubtitleId() {
+    try {
+      return String(localStorage.getItem(HOME_SUBTITLE_SELECTED_ID_KEY) || "");
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function saveHomeSubtitleRotation(openCount, subtitleId) {
+    try {
+      localStorage.setItem(HOME_SUBTITLE_OPEN_COUNT_KEY, String(openCount));
+      localStorage.setItem(HOME_SUBTITLE_SELECTED_ID_KEY, String(subtitleId));
+    } catch (_error) {
+    }
   }
 
   function applyRandomHomeSubtitle() {
@@ -467,10 +498,24 @@
       return;
     }
     const subtitles = getHomeSubtitles();
-    const selected = subtitles.length > 0
-      ? subtitles[Math.floor(Math.random() * subtitles.length)]
-      : DEFAULT_HOME_SUBTITLE;
-    ui.appMainSubtitle.textContent = selected;
+    if (subtitles.length === 0) {
+      ui.appMainSubtitle.textContent = DEFAULT_HOME_SUBTITLE;
+      return;
+    }
+    const storedId = getStoredHomeSubtitleId();
+    const storedIndex = subtitles.findIndex((item) => item.id === storedId);
+    const openCount = getStoredHomeSubtitleOpenCount();
+    const shouldRotate = storedIndex < 0 || openCount === 0;
+    let selectedIndex = storedIndex;
+    if (shouldRotate) {
+      selectedIndex = Math.floor(Math.random() * subtitles.length);
+      if (subtitles.length > 1 && selectedIndex === storedIndex) {
+        selectedIndex = (selectedIndex + 1) % subtitles.length;
+      }
+    }
+    const selected = subtitles[selectedIndex >= 0 ? selectedIndex : 0];
+    ui.appMainSubtitle.textContent = selected.text;
+    saveHomeSubtitleRotation((openCount + 1) % HOME_SUBTITLE_ROTATION_OPEN_COUNT, selected.id);
   }
 
   function isNativeFileMode() {
