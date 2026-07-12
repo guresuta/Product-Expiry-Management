@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0.3`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v362`。
+- 目前 `version.js` 版本為 `v2.0.3`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v364`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -568,3 +568,17 @@
 - 搜尋、分類、排序與健康檢查操作統一排入下一個畫面更新幀；非日期篩選操作不再重繪效期月曆，以降低點擊延遲。
 - 版本為 `v2.0.3`，更新內容為「改善點擊延遲、版面最佳化」；英日翻譯已同步，Service Worker 快取為 `expiry-manager-cache-v362`。
 - Android Studio 已同步前端 runtime assets 與 `versionName = "2.0.3"`、`versionCode = 20003`；本批次將以 `minifiedDebug` R8 APK 進行模擬器啟動測試。
+
+### 9.42 v2.0.3 主頁其餘控制項延遲續行改善（2026-07-12）
+- 月曆日期篩選、掃描後搜尋、清除健康篩選皆改用延後批次清單更新，且不重繪未改變的月曆。
+- 勾選單筆商品與全選／取消全選不再重建完整商品清單，只同步勾選框、全選狀態與已勾選筆數。
+- 清單重繪安排為雙重動畫幀，讓下拉選單、健康檢查與月曆選取樣式先完成畫面回饋，再執行較重的清單工作。
+- Service Worker 快取更新為 `expiry-manager-cache-v363`；版本維持 `v2.0.3`、Android `versionCode = 20003`。
+- Pixel 7 R8 版已重新啟動並通過行程／崩潰檢查。Windows 自動畫面連線無法讀取 WebView 內部 HTML 控制項，因此觸控回應以事件路徑與建置後啟動驗證為準。
+
+### 9.43 原生掃描隨機閃退生命週期修正（2026-07-12）
+- 根因為原生 `BarcodeScannerActivity` 在暫停／銷毀或快速重開時，CameraX 分析器、相機綁定與 ML Kit 尚在處理的影像回呼缺少共同的生命週期協調；可能導致關閉中的資源仍被回呼使用。
+- 現已加入可見狀態與相機綁定鎖，僅在 Activity 可見且權限已授予時綁定；暫停時清除 `ImageAnalysis` analyzer、解除 CameraX 綁定並停用手電筒。
+- 取消、成功、錯誤與銷毀皆會標記完成；ML Kit scanner 會等待當前影像處理完成後才關閉，避免關閉競態。
+- 使用暫時僅限 `minifiedDebug` 的 exported manifest 在 Pixel_7 授權相機後，先後完成 8 次與修正後 12 次掃描 Activity 開關壓力測試；未見 CameraX、ML Kit、executor、NoSuchMethod 或 FATAL EXCEPTION。最終已移除測試 manifest，正式掃描 Activity 維持 `exported="false"`。
+- 使用者手動更新的 `settings.html` 免責聲明引號格式已保留並同步 Android assets；Service Worker 快取為 `expiry-manager-cache-v364`。

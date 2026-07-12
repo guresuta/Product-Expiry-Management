@@ -1641,7 +1641,7 @@
       return;
     }
     state.healthFilter = "";
-    renderProducts();
+    scheduleProductRender({ renderCalendar: false });
   }
 
   function cancelLongPress() {
@@ -1765,7 +1765,8 @@
           } else {
             state.calendarSelectedDate = dateStr;
           }
-          renderProducts();
+          syncCalendarSelectionUi();
+          scheduleProductRender({ renderCalendar: false });
         });
       }
       if (state.calendarSelectedDate === dateStr) {
@@ -1860,6 +1861,15 @@
     closeManagedModal("datePicker", ui.datePickerModal, options);
   }
 
+  function syncCalendarSelectionUi() {
+    if (!ui.expiryCalendarGrid) {
+      return;
+    }
+    const selectedDate = String(state.calendarSelectedDate || "").trim();
+    ui.expiryCalendarGrid.querySelectorAll(".calendar-day").forEach((cell) => {
+      cell.classList.toggle("is-selected", cell.dataset.date === selectedDate);
+    });
+  }
   function renderProducts(options = {}) {
     const keyword = ui.searchInput.value.trim();
     const categoryFilter = ui.categoryFilter ? ui.categoryFilter.value : "";
@@ -1967,17 +1977,26 @@
       productRowsFragment.appendChild(tr);
     });
     ui.productTableBody.appendChild(productRowsFragment);
+    syncProductSelectionUi();
+    ui.emptyHint.style.display = sorted.length === 0 ? "block" : "none";
+    if (options.renderCalendar !== false) {
+      renderExpiryCalendar();
+    }
+  }
+
+  function syncProductSelectionUi() {
+    const visibleRows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
+    const visibleSelectedCount = visibleRows.filter((row) => state.selectedProductIds.has(row.getAttribute("data-select-id"))).length;
     const syncSelectAllState = (checkboxEl) => {
       if (!checkboxEl) {
         return;
       }
-      if (sorted.length === 0) {
+      if (visibleRows.length === 0) {
         checkboxEl.checked = false;
         checkboxEl.indeterminate = false;
       } else {
-        const selectedCount = sorted.filter((item) => state.selectedProductIds.has(item.id)).length;
-        checkboxEl.checked = selectedCount === sorted.length;
-        checkboxEl.indeterminate = selectedCount > 0 && selectedCount < sorted.length;
+        checkboxEl.checked = visibleSelectedCount === visibleRows.length;
+        checkboxEl.indeterminate = visibleSelectedCount > 0 && visibleSelectedCount < visibleRows.length;
       }
     };
     syncSelectAllState(ui.selectAllProducts);
@@ -1987,21 +2006,18 @@
       ui.selectedCountBadge.textContent = `已勾選 ${selectedCount} 筆`;
       ui.selectedCountBadge.classList.toggle("is-hidden", selectedCount <= 0);
     }
-    ui.emptyHint.style.display = sorted.length === 0 ? "block" : "none";
-    if (options.renderCalendar !== false) {
-      renderExpiryCalendar();
-    }
   }
-
   function scheduleProductRender(options = {}) {
     const needsCalendar = options.renderCalendar === true;
     productRenderNeedsCalendar = productRenderNeedsCalendar || needsCalendar;
     if (productRenderFrame !== null) return;
     productRenderFrame = requestAnimationFrame(() => {
-      productRenderFrame = null;
-      const renderCalendar = productRenderNeedsCalendar;
-      productRenderNeedsCalendar = false;
-      renderProducts({ renderCalendar });
+      productRenderFrame = requestAnimationFrame(() => {
+        productRenderFrame = null;
+        const renderCalendar = productRenderNeedsCalendar;
+        productRenderNeedsCalendar = false;
+        renderProducts({ renderCalendar });
+      });
     });
   }
 
@@ -2791,7 +2807,7 @@
     if (barcodeTarget === "search") {
       ui.searchInput.value = scannedValue;
       ui.syncSearchInputMirror();
-      renderProducts();
+      scheduleProductRender({ renderCalendar: false });
     } else if (barcodeTarget === "edit") {
       if (ui.editBarcodeInput) {
         ui.editBarcodeInput.value = scannedValue;
@@ -3008,11 +3024,14 @@
         const filter = button.getAttribute("data-health-filter") || "";
         state.healthFilter = state.healthFilter === filter ? "" : filter;
         const calendarSelectionChanged = state.healthFilter === "missing-date" && !!state.calendarSelectedDate;
-        if (calendarSelectionChanged) state.calendarSelectedDate = "";
+        if (calendarSelectionChanged) {
+          state.calendarSelectedDate = "";
+          syncCalendarSelectionUi();
+        }
         ui.healthCheckBar.querySelectorAll("[data-health-filter]").forEach((item) => {
           item.classList.toggle("is-active", item.getAttribute("data-health-filter") === state.healthFilter);
         });
-        scheduleProductRender({ renderCalendar: calendarSelectionChanged });
+        scheduleProductRender({ renderCalendar: false });
       });
     }
     if (ui.backupNowBtn) {
@@ -3093,7 +3112,7 @@
         } else {
           state.selectedProductIds.delete(selectId);
         }
-        renderProducts();
+        syncProductSelectionUi();
         return;
       }
       if (!deleteButton && !editButton) {
@@ -3208,28 +3227,24 @@
         const rows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
         if (rows.length === 0) {
           state.selectedProductIds.clear();
-          renderProducts();
+          syncProductSelectionUi();
           return;
         }
-        if (checkboxEl.checked) {
-          rows.forEach((row) => {
-            const rowId = row.getAttribute("data-select-id");
-            if (rowId) {
-              state.selectedProductIds.add(rowId);
-            }
-          });
-        } else {
-          rows.forEach((row) => {
-            const rowId = row.getAttribute("data-select-id");
-            if (rowId) {
-              state.selectedProductIds.delete(rowId);
-            }
-          });
-        }
-        renderProducts();
+        rows.forEach((row) => {
+          const rowId = row.getAttribute("data-select-id");
+          if (!rowId) {
+            return;
+          }
+          if (checkboxEl.checked) {
+            state.selectedProductIds.add(rowId);
+          } else {
+            state.selectedProductIds.delete(rowId);
+          }
+          row.checked = state.selectedProductIds.has(rowId);
+        });
+        syncProductSelectionUi();
       });
-    };
-    bindSelectAllHandler(ui.selectAllProducts);
+    };    bindSelectAllHandler(ui.selectAllProducts);
     bindSelectAllHandler(ui.selectAllProductsMobile);
 
     ui.scanBtn.addEventListener("click", async () => {
