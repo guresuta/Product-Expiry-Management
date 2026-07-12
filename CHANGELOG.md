@@ -2,12 +2,28 @@
 
 所有重要變更皆記錄於此檔案。
 
+## [v2.0.3] - 2026-07-12
+
+- 改善商品清單健康檢查、搜尋、分類與排序操作的回應速度：健康統計改為單次資料走訪，清單列改以 `DocumentFragment` 批次更新，且不再在無關操作時重繪月曆。
+- 將連續的清單操作合併至下一個畫面更新幀，降低觸控時的主執行緒阻塞感。
+- 修正分析頁資料表欄位交界處的分隔線斷裂，改由整列繪製單一直線。
+- 版本更新為 v2.0.3；更新內容為「改善點擊延遲、版面最佳化」，並同步英文與日文翻譯。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v362`。
+## [v2.0.2] - 2026-07-11
+- 分析頁「分類商品數量分布」及其他分析區塊標題補上適當行距，改善英文標題換行時的可讀性。
+- 版本更新為 `v2.0.2`，更新內容為「改善應用程式容量與效能」、「版面最佳化」，並同步英文與日文翻譯。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v361`。
+
 ## [v2.0.1] - 2026-07-11
 - 修正隱私權與資料安全頁「政策資訊」兩段文字未命中英日翻譯 key 的問題；英日介面現完整顯示翻譯。
 - 免責聲明第四條改為明確限定「本 App 中文介面」的主頁副標短語，並同步更新英文與日文翻譯。
 - 版本更新為 `v2.0.1`，保留既有更新內容；`sw.js` 快取版本更新為 `expiry-manager-cache-v359`。
 - 使用者調整 v2.0.1 更新項目順序；英日翻譯已逐項確認存在，並依前端資產更新將 `sw.js` 快取版本更新為 `expiry-manager-cache-v360`。
 - 使用者已完成實機驗證，Android 多工返回不再閃爍；後續工作流程不再將此列為待驗證或待修正項目。
+- Android release 現啟用 R8 程式碼縮減／混淆與未使用資源縮減；新增採 debug 簽章但非 debuggable 的 `minifiedDebug`，可實際驗證 R8 產物，並保護 WebView `AndroidBridge` 的 JavaScript 介面。
+- `assembleMinifiedDebug` 與 `assembleRelease` 已通過；R8 測試 APK 由 118.6 MB 降至 109.5 MB，並在 API 26 與 Pixel_7 模擬器成功啟動，未見 R8 相關崩潰。
+- 修正 R8 移除 ML Kit 反射載入的 Component Registrar 建構子、使原生條碼掃描在啟動時閃退的問題；僅保留 Common、Barcode 與 VisionCommon 三個 Registrar 的 class name 與無參數建構子。
+- Pixel_7 已驗證 R8 Scanner Activity 可啟動並載入 ML Kit 原生條碼庫，且正式安全設定下的 R8 測試版與一般 debug APK 均可正常啟動。
 
 ## [v2.0] - 目前工作進度
 - 本次修正：

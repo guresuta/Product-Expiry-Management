@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0.1`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v360`。
+- 目前 `version.js` 版本為 `v2.0.3`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v362`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -534,3 +534,37 @@
 - 使用者手動調整 `version.js` 的 v2.0.1 更新項目順序；英日翻譯標題與四項內容皆已存在且對應正確，無須新增翻譯 key。
 - 依前端資產發版規則，`sw.js` 快取版本更新為 `expiry-manager-cache-v360`。
 - 已同步最新 `version.js`、`i18n.js`、`sw.js` 至 Android Studio assets，並重新打包 debug APK；Android 版本維持 `versionName = 2.0.1`、`versionCode = 20001`。
+### 9.36 Android R8 與資源縮減最佳化（2026-07-11）
+- Android Studio `release` 已啟用 R8 程式碼縮減／混淆與未使用資源縮減：`isMinifyEnabled = true`、`isShrinkResources = true`。
+- 新增 `minifiedDebug` build type：沿用 debug 簽章、使用 `.r8test` application ID suffix，但設為 `isDebuggable = false` 以實際啟用 R8，並套用相同資源縮減設定，供不需 release keystore 的可安裝功能驗證。
+- `proguard-rules.pro` 保留 `AndroidBridge` 的 `@JavascriptInterface` 方法與 RuntimeVisibleAnnotations，避免 R8 移除或改名 WebView 反射呼叫的原生 API。
+- 後續需以 `:app:assembleMinifiedDebug` 建置、安裝 `com.guresuta.productexpirycybercontrol.r8test`，驗證 WebView Bridge、本機檔案、匯出、相機掃描與返回鍵；若 R8 報錯，僅依 `missing_rules.txt` 補入最小必要規則。
+### 9.37 Android R8 最佳化建置與模擬器驗證（2026-07-11）
+- `:app:assembleRelease` 與修正後的 `:app:assembleMinifiedDebug` 均通過；`minifiedDebug` 確認執行 `minifyMinifiedDebugWithR8` 與 `optimizeMinifiedDebugResources`。
+- `app-minifiedDebug.apk` 使用 `com.guresuta.productexpirycybercontrol.r8test`、`versionName=2.0.1-r8test`，由 debug 簽章簽署但 `isDebuggable=false`；可安裝於測試裝置而不覆蓋正式 App。
+- APK 體積：debug 118,597,657 bytes；R8 測試版 109,462,754 bytes；release unsigned 109,410,898 bytes，R8 測試版較 debug 減少約 9.1 MB（7.7%）。
+- R8 mapping 已確認 `AndroidBridge` 的 `hasSelectedDbFile`、`readDatabaseFile`、`writeDatabaseFile`、`requestBarcodeScan`、`openAppInfo`、`setStatusBarColor` 等 `@JavascriptInterface` 方法保留原名；`BarcodeScannerActivity` 也保留在 mapping。
+- API 26 `Small_Phone` 與 Pixel_7 模擬器皆可安裝／啟動 R8 測試版至 MainActivity，API 26 第一段返回鍵仍由 App 接收，logcat 未見本 App 的 FATAL EXCEPTION、ClassNotFound 或 NoSuchMethod。API 26 UIAutomator 無 WebView root；Pixel_7 可見 WebView 容器但無子節點，Windows 畫面控制連線亦受本機 sandbox helper 錯誤阻擋。因此相機掃描、本機檔案、CSV／JSON 匯出入的端對端點擊流程仍待使用者手動測試。
+- 由 adb 外部啟動 `BarcodeScannerActivity` 被 `exported=false` 正確拒絕，屬既有安全設定，不是 R8 問題；應從 App 內掃描入口測試。
+### 9.38 R8 ML Kit Scanner 修正（2026-07-11）
+- 使用者在 `minifiedDebug` R8 測試 APK 發現點擊掃描會使程式無回應；以 Pixel_7 直接啟動掃描 Activity 並取得 logcat 重現。
+- 根因：ML Kit `MlKitInitProvider` 反射載入 `CommonComponentRegistrar`、`BarcodeRegistrar`、`VisionCommonRegistrar` 時，R8 已移除其無參數建構子，造成 `NoSuchMethodException` 與 Scanner Activity `onCreate()` NPE / FATAL EXCEPTION。
+- `proguard-rules.pro` 已以三條精確 `-keep class ... { <init>(); }` 規則保留上述 Registrar 的 class name 與建構子；不擴大保留整個 ML Kit 套件。
+- 修正後需重新建置 R8 測試 APK、在 Pixel_7 啟動 Scanner Activity，確認不再出現 ComponentDiscovery / NoSuchMethodException / FATAL EXCEPTION；最後移除僅供 adb 啟動的 minifiedDebug test manifest，重建 production-safe R8 測試版與一般 debug APK。
+### 9.39 R8 Scanner 修正驗證完成（2026-07-11）
+- Pixel_7 以暫時只作用於 `minifiedDebug` 的 exported Scanner manifest 重現後，套用 ML Kit Registrar keep rules 再測：Scanner Activity 可持續啟動、`libbarhopper_v3.so` 正常載入，logcat 未見 ComponentDiscovery、NoSuchMethodException 或 FATAL EXCEPTION。
+- 診斷用 `app/src/minifiedDebug/AndroidManifest.xml` 已移除，最終 `minifiedDebug` 與 release 均維持正式 Manifest 的 `BarcodeScannerActivity android:exported="false"`。
+- 已重建 `:app:assembleMinifiedDebug`、`:app:assembleDebug`、`:app:assembleRelease`；Pixel_7 已安裝並啟動最終 R8 測試版與一般 debug APK，皆無本 App 崩潰。
+- 供使用者手動測試的 R8 APK：`app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`；一般 debug APK：`app/build/outputs/apk/debug/app-debug.apk`。
+### 9.40 v2.0.2 分析頁標題行距與 R8 測試版（2026-07-11）
+- `styles_washi.css` 對 `.analytics-section .section-title-bar` 設定 `line-height: 1.28`，改善英文「Category Product Count Distribution」換行後兩行文字過於緊密的問題；不影響表格資料與其他頁面標題。
+- 版本升級為 `v2.0.2`，更新內容為「改善應用程式容量與效能」、「版面最佳化」；`i18n.js` 已補齊英日標題與第一項新內容翻譯。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v361`；Android 版本應同步為 `versionName = 2.0.2`、`versionCode = 20002`。
+- 本次只需建置 `:app:assembleMinifiedDebug` 供 R8 手動測試，不再例行建置一般 debug APK。
+
+### 9.41 v2.0.3 分析頁分隔線與商品清單互動改善（2026-07-12）
+- 分析頁 `.analytics-list-table` 的分隔線改由每一列統一繪製，避免兩欄 Grid 邊界因小數像素產生斷裂。
+- 商品清單健康檢查統計改為單次資料走訪；清單列使用 `DocumentFragment` 批次插入。
+- 搜尋、分類、排序與健康檢查操作統一排入下一個畫面更新幀；非日期篩選操作不再重繪效期月曆，以降低點擊延遲。
+- 版本為 `v2.0.3`，更新內容為「改善點擊延遲、版面最佳化」；英日翻譯已同步，Service Worker 快取為 `expiry-manager-cache-v362`。
+- Android Studio 已同步前端 runtime assets 與 `versionName = "2.0.3"`、`versionCode = 20003`；本批次將以 `minifiedDebug` R8 APK 進行模擬器啟動測試。

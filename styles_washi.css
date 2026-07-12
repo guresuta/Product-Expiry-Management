@@ -3242,6 +3242,10 @@ html[data-theme] .release-history-section .release-history-entry {
   overflow: visible;
 }
 
+.analytics-section .section-title-bar {
+  line-height: 1.28;
+}
+
 .analytics-summary {
   margin: 0;
   color: var(--text);
@@ -3289,6 +3293,7 @@ html[data-theme] .release-history-section .release-history-entry {
   align-items: center;
   background: transparent;
   box-shadow: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
 }
 
 .analytics-list-table th,
@@ -3298,7 +3303,7 @@ html[data-theme] .release-history-section .release-history-entry {
   padding: 1.05rem 1.25rem;
   border-top: 0;
   border-right: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  border-bottom: 0;
   border-left: 0;
   background: transparent;
   text-align: left;

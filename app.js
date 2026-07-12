@@ -166,6 +166,8 @@
   let suppressRowClickUntil = 0;
   let suppressNativeContextMenuUntil = 0;
   let searchRenderFrame = null;
+  let productRenderFrame = null;
+  let productRenderNeedsCalendar = false;
   let brightnessRaised = false;
   let pendingDeleteIds = [];
   let pendingDuplicateChoice = null;
@@ -1402,10 +1404,9 @@
 
   function getHealthStats(products = state.products) {
     const scopedProducts = Array.isArray(products) ? products : [];
-    const duplicateSet = getDuplicateBarcodeSet(scopedProducts);
+    const barcodeCounts = new Map();
     let missingDate = 0;
     let missingBarcode = 0;
-    let duplicateBarcode = 0;
     let expired = 0;
     let expiring60 = 0;
     let expiring30 = 0;
@@ -1413,25 +1414,26 @@
     scopedProducts.forEach((item) => {
       const expiryDate = String(item.expiryDate || "").trim();
       const barcode = String(item.barcode || "").trim();
-      if (!expiryDate) {
-        missingDate += 1;
-      }
+      if (!expiryDate) missingDate += 1;
       if (!barcode) {
         missingBarcode += 1;
-      }
-      if (duplicateSet.has(barcode)) {
-        duplicateBarcode += 1;
+      } else {
+        barcodeCounts.set(barcode, (barcodeCounts.get(barcode) || 0) + 1);
       }
       const diffDays = getDaysUntilExpiry(expiryDate);
-      if (diffDays < 0) {
-        expired += 1;
-      } else if (diffDays <= 30) {
-        expiring30 += 1;
-      } else if (diffDays <= EXPIRING_SOON_DAYS) {
-        expiring60 += 1;
-      }
+      if (diffDays < 0) expired += 1;
+      else if (diffDays <= 30) expiring30 += 1;
+      else if (diffDays <= EXPIRING_SOON_DAYS) expiring60 += 1;
     });
 
+    const duplicateSet = new Set();
+    let duplicateBarcode = 0;
+    barcodeCounts.forEach((count, barcode) => {
+      if (count > 1) {
+        duplicateSet.add(barcode);
+        duplicateBarcode += count;
+      }
+    });
     return { missingDate, missingBarcode, duplicateBarcode, expired, expiring60, expiring30, duplicateSet };
   }
 
@@ -1858,7 +1860,7 @@
     closeManagedModal("datePicker", ui.datePickerModal, options);
   }
 
-  function renderProducts() {
+  function renderProducts(options = {}) {
     const keyword = ui.searchInput.value.trim();
     const categoryFilter = ui.categoryFilter ? ui.categoryFilter.value : "";
     const sortMode = ui.sortSelect ? ui.sortSelect.value : "";
@@ -1878,6 +1880,7 @@
       Array.from(state.selectedProductIds).filter((id) => validIds.has(id))
     );
     ui.productTableBody.innerHTML = "";
+    const productRowsFragment = document.createDocumentFragment();
     sorted.forEach((product) => {
       const status = getStatus(product.expiryDate);
       const note = String(product.note || "").trim();
@@ -1961,8 +1964,9 @@
       tr.appendChild(statusCell);
       tr.appendChild(actionCell);
       tr.appendChild(selectCell);
-      ui.productTableBody.appendChild(tr);
+      productRowsFragment.appendChild(tr);
     });
+    ui.productTableBody.appendChild(productRowsFragment);
     const syncSelectAllState = (checkboxEl) => {
       if (!checkboxEl) {
         return;
@@ -1984,21 +1988,29 @@
       ui.selectedCountBadge.classList.toggle("is-hidden", selectedCount <= 0);
     }
     ui.emptyHint.style.display = sorted.length === 0 ? "block" : "none";
-    renderExpiryCalendar();
+    if (options.renderCalendar !== false) {
+      renderExpiryCalendar();
+    }
   }
 
-  function scheduleSearchRender() {
-    if (searchRenderFrame !== null) {
-      return;
-    }
-    searchRenderFrame = requestAnimationFrame(() => {
-      searchRenderFrame = null;
-      renderProducts();
+  function scheduleProductRender(options = {}) {
+    const needsCalendar = options.renderCalendar === true;
+    productRenderNeedsCalendar = productRenderNeedsCalendar || needsCalendar;
+    if (productRenderFrame !== null) return;
+    productRenderFrame = requestAnimationFrame(() => {
+      productRenderFrame = null;
+      const renderCalendar = productRenderNeedsCalendar;
+      productRenderNeedsCalendar = false;
+      renderProducts({ renderCalendar });
     });
   }
 
+  function scheduleSearchRender() {
+    scheduleProductRender({ renderCalendar: false });
+  }
+
   function handleSortModeChange() {
-    renderProducts();
+    scheduleProductRender({ renderCalendar: false });
   }
 
   function escapeHtml(str) {
@@ -2930,7 +2942,7 @@
 
     ui.clearFormBtn.addEventListener("click", clearForm);
     ui.searchInput.addEventListener("input", scheduleSearchRender);
-    ui.categoryFilter.addEventListener("change", renderProducts);
+    ui.categoryFilter.addEventListener("change", () => scheduleProductRender({ renderCalendar: false }));
     ui.sortSelect.addEventListener("change", handleSortModeChange);
 
     if (ui.openAddProductBtn) {
@@ -2995,10 +3007,12 @@
         }
         const filter = button.getAttribute("data-health-filter") || "";
         state.healthFilter = state.healthFilter === filter ? "" : filter;
-        if (state.healthFilter === "missing-date" && state.calendarSelectedDate) {
-          state.calendarSelectedDate = "";
-        }
-        renderProducts();
+        const calendarSelectionChanged = state.healthFilter === "missing-date" && !!state.calendarSelectedDate;
+        if (calendarSelectionChanged) state.calendarSelectedDate = "";
+        ui.healthCheckBar.querySelectorAll("[data-health-filter]").forEach((item) => {
+          item.classList.toggle("is-active", item.getAttribute("data-health-filter") === state.healthFilter);
+        });
+        scheduleProductRender({ renderCalendar: calendarSelectionChanged });
       });
     }
     if (ui.backupNowBtn) {
