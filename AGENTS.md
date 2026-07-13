@@ -621,3 +621,11 @@
 - 設定、分析、隱私權頁返回鍵改為「商 品」：英文 `Products`、日文「商 品」。分析頁商品鍵直接連回 `inventory-management-app.html`。
 - 版本更新為 `v2.0.5`／Android `versionCode = 20005`；更新內容英日翻譯已同步。使用者手動更新的 `home-subtitles.js` 必須一併同步 Android assets 並納入 Git 提交。
 - Service Worker 快取版本為 `expiry-manager-cache-v368`。Pixel_7 R8 實測確認：按壓效果立即呈現、鍵盤 Enter 回饋正常、設定頁英文 `Products`／日文「商 品」、分析頁商品鍵直回主頁。最終 R8 APK 已重建與重新安裝，`versionCode=20005`、無 FATAL EXCEPTION 且未暴露 WebView debugging endpoint。
+### 9.50 v2.0.5 設定頁英日翻譯修正（2026-07-13）
+- 修正根因：`i18n.js` 內設定頁「關於」與免責聲明四項的翻譯 key 仍使用舊版文案與標點，無法命中使用者更新後的 `settings.html` 原文。
+- 已以目前原文更新英文與日文鍵值；「關於」中的執行、代碼、排版、色彩、翻譯與測試欄位，以及免責聲明四項均會完整翻譯。
+- 版本維持 `v2.0.5`，Service Worker 快取更新為 `expiry-manager-cache-v369`；需同步 `i18n.js`、`settings.html`、`privacy-policy.html`、`sw.js` 至 Android Studio assets，並重建 `minifiedDebug` R8 APK。
+### 9.51 v2.0.5 中文主頁副標同步（2026-07-13）
+- 使用者手動更新 `home-subtitles.js` 第 11 則中文副標文案；已保留原始編號與輪替邏輯。
+- 此檔為主頁 runtime asset，需與 `i18n.js`、`sw.js` 一併同步 Android Studio `app/src/main/assets/`，並以 SHA-256 確認。
+- 版本維持 `v2.0.5`，Service Worker 快取更新為 `expiry-manager-cache-v370`；完成 R8 `minifiedDebug` 重建後，將本批次變更提交並推送 GitHub。
