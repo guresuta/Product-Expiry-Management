@@ -135,6 +135,89 @@
     }, true);
   }
 
+  function installPressFeedback() {
+    var pressSelector = "button, a[href], .nav-link, [role='button'], .custom-select-button, .custom-select-option, .calendar-day, .custom-date-day, .category-chip, .chip-delete, .health-check-btn, .theme-option-btn";
+    var activeTarget = null;
+    var pressedAt = 0;
+    var releaseTimer = null;
+    var minimumVisibleMs = 120;
+
+    function findPressTarget(target) {
+      if (!target || !target.closest) {
+        return null;
+      }
+      var control = target.closest(pressSelector);
+      if (!control || control.disabled || control.getAttribute("aria-disabled") === "true" || control.classList.contains("empty")) {
+        return null;
+      }
+      return control;
+    }
+
+    function clearPressedTarget(target) {
+      if (releaseTimer !== null) {
+        window.clearTimeout(releaseTimer);
+        releaseTimer = null;
+      }
+      if (target) {
+        target.classList.remove("is-pressed");
+      }
+    }
+
+    function releasePressFeedback() {
+      if (!activeTarget) {
+        return;
+      }
+      var target = activeTarget;
+      activeTarget = null;
+      var remaining = Math.max(0, minimumVisibleMs - (Date.now() - pressedAt));
+      if (releaseTimer !== null) {
+        window.clearTimeout(releaseTimer);
+      }
+      releaseTimer = window.setTimeout(function () {
+        target.classList.remove("is-pressed");
+        releaseTimer = null;
+      }, remaining);
+    }
+
+    document.addEventListener("pointerdown", function (event) {
+      if (event.defaultPrevented || event.isPrimary === false || (typeof event.button === "number" && event.button !== 0)) {
+        return;
+      }
+      var target = findPressTarget(event.target);
+      if (!target) {
+        return;
+      }
+      clearPressedTarget(activeTarget);
+      activeTarget = target;
+      pressedAt = Date.now();
+      target.classList.add("is-pressed");
+    }, true);
+
+    document.addEventListener("keydown", function (event) {
+      if (event.repeat || (event.key !== "Enter" && event.key !== " " && event.key !== "Spacebar")) {
+        return;
+      }
+      var target = findPressTarget(event.target);
+      if (!target) {
+        return;
+      }
+      clearPressedTarget(activeTarget);
+      activeTarget = target;
+      pressedAt = Date.now();
+      target.classList.add("is-pressed");
+    }, true);
+
+    document.addEventListener("keyup", function (event) {
+      if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        releasePressFeedback();
+      }
+    }, true);
+    document.addEventListener("pointerup", releasePressFeedback, true);
+    document.addEventListener("pointercancel", releasePressFeedback, true);
+    document.addEventListener("pointerleave", releasePressFeedback, true);
+  }
+  installPressFeedback();
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", installMousePageDragScroll);
   } else {

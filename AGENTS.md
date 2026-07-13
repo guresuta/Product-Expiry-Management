@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0.3`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v364`。
+- 目前 `version.js` 版本為 `v2.0.5`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v368`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -582,3 +582,42 @@
 - 取消、成功、錯誤與銷毀皆會標記完成；ML Kit scanner 會等待當前影像處理完成後才關閉，避免關閉競態。
 - 使用暫時僅限 `minifiedDebug` 的 exported manifest 在 Pixel_7 授權相機後，先後完成 8 次與修正後 12 次掃描 Activity 開關壓力測試；未見 CameraX、ML Kit、executor、NoSuchMethod 或 FATAL EXCEPTION。最終已移除測試 manifest，正式掃描 Activity 維持 `exported="false"`。
 - 使用者手動更新的 `settings.html` 免責聲明引號格式已保留並同步 Android assets；Service Worker 快取為 `expiry-manager-cache-v364`。
+
+### 9.44 Play Console 原生偵錯符號警告確認（2026-07-12）
+- Android Studio release 設定已加入 `ndk { debugSymbolLevel = "SYMBOL_TABLE" }`，供未來自有 native library 自動隨 AAB 納入符號 metadata。
+- `:app:bundleRelease` 通過，並以 `:app:extractReleaseNativeSymbolTables --rerun-tasks --info` 驗證目前無 symbols ZIP／AAB debug-symbol metadata 可產生。
+- 原因已由 Gradle 確認：ML Kit／CameraX 預編譯的 `libbarhopper_v3.so`、`libimage_processing_util_jni.so`、`libsurface_util_jni.so` 在全部 ABI 的 native debug metadata 均已經 stripped；本專案未含自有 C/C++ library，因此無可補上的符號檔。
+- Play Console 警告屬建議性、不阻擋上架；對這些第三方原生庫的符號化需要供應商提供對應 symbols。正常 Java/Kotlin／R8 堆疊仍使用 `mapping.txt`，與此警告不同。
+- `app-release.aab` 仍是未簽署建置驗證產物；正式上傳仍需使用者在 Android Studio 以自己的 release keystore 產生 signed AAB。
+
+### 9.45 主頁控制項後捲動跳動修正與測試（2026-07-13）
+- 原因為 v2.0.3 的雙重動畫幀清單重繪可在使用者開始滑動時才替換商品列，內容高度重算會造成頁面捲動跳動。
+- `scheduleProductRender()` 改為單一動畫幀；若偵測到頁面捲動，待最後一次 scroll 120ms 後才重繪，並在排程期間確認 scroll position 未變才替換清單。
+- 版本維持 `v2.0.3`，Service Worker 快取為 `expiry-manager-cache-v365`；本批次依使用者要求需重新建置 `minifiedDebug` R8 APK 與 Pixel_7 操作／壓力測試。
+- Pixel_7 實測已完成：主頁完成 14 次新增／取消、14 筆新增、18 次編輯開關、分類／排序／搜尋／健康篩選／勾選，以及點擊後立即滑動測試；scroll position 維持不變。設定頁完成 12 次標題儲存／還原、分類新增刪除、主題與語言切換；分析與隱私權頁皆正常載入且未顯示錯誤。
+- 另完成 40 次新增視窗開關及 30 次篩選壓力測試；無崩潰或未關閉 modal，僅觀察到一次 67ms long task，發生於連續篩選造成的清單重繪，尚未達明顯卡頓，本輪不自行改善，待使用者決定。
+- 最終 `minifiedDebug` R8 APK 已以 Pixel_7 清除資料後安裝啟動，確認 `versionName=2.0.3-r8test`、v2 debug 簽章有效、無 App crash；測試用 WebView debugging hook 已移除。
+
+### 9.46 1,200 筆主頁資料效能實測（2026-07-13）
+- 以 Pixel_7 的隔離 R8 `minifiedDebug` WebView 建立 1,200 筆商品資料後量測：完整排序約 365ms、完整分類重繪約 323ms、健康篩選並重繪 680 筆約 197ms、搜尋縮小至 100 筆約 67ms、全選 1,200 筆約 10ms。
+- 篩選後立即滑動的 scroll position 差值為 0，9.45 的滑動跳動修正仍有效。
+- 結論：大資料量下的瓶頸是 `renderProducts()` 完整移除並重建所有商品列，排序／分類／健康篩選可造成明顯卡頓；依使用者指示僅報告，不在本輪自行改善。
+- 測試用 WebView debugging hook 已移除、1,200 筆資料已從 Pixel_7 R8 測試包清除，最終 R8 APK 已重新建置與安裝。
+### 9.47 1,200 筆商品分段渲染（2026-07-13）
+- 商品清單改為保留完整排序／篩選結果、但初始只透過 `DocumentFragment` 建立前 100 筆列；清單尾端進入距離視窗底部約 2.5 個螢幕高度時，下一批 100 筆會先於 idle 時段建構，接近時再直接接上。
+- 篩選、搜尋、排序或日期變動會使分段狀態安全重置；以 token 忽略舊的預建工作。舊 WebView 若不支援 `IntersectionObserver`，以位置檢查作為降級行為。
+- 全選／取消全選改為作用於目前完整篩選結果，而非只作用於已建立的 DOM 列；後續接上的商品列會維持正確勾選狀態。
+- Pixel_7 R8 隔離測試以 1,200 筆資料驗證：初始 100 列，接近尾端依序載入至 200、300 列；第二批第 150 列連續 5 次開啟／關閉編輯視窗均正常。完整 1,200 筆全選會延續到後續批次。
+- 操作量測：排序首次畫面更新約 94ms、分類約 24ms、精確搜尋約 28ms；篩選後立即滑動的位移誤差約 0.2px，未見跳動。Service Worker 快取更新為 `expiry-manager-cache-v366`，版本維持 `v2.0.3`。
+- 測試用 WebView debugging hook 已移除，Pixel_7 的隔離 R8 測試資料已清除；已重新建置正式設定的 `minifiedDebug` R8 APK。
+### 9.48 共用按壓視覺回饋（2026-07-13）
+- `legacy-webview.js` 在所有頁面共用的 capture 階段監聽 `pointerdown`／`pointerup`／`pointercancel`；按下按鈕、導覽、自訂選單、月曆、健康檢查、分類與主題等可點擊控制項時，立即加入 `is-pressed`，放開後至少保留 120ms。
+- `styles_washi.css` 以深色覆蓋、微下壓與短轉場呈現按壓狀態；原本 click handler 仍立即執行，不增加操作延遲。空白月曆格、disabled 與 `aria-disabled` 控制項不套用。
+- 同時保留 `:active` 作為 JavaScript 不可用時的基本回饋，並設定 `touch-action: manipulation`。
+- 版本維持 `v2.0.3`，Service Worker 快取更新為 `expiry-manager-cache-v367`。Pixel_7 R8 實測確認主頁新增、健康檢查、自訂選單，以及設定頁主題／導覽、分析頁導覽均可呈現按壓變色與下壓；新增視窗仍立即開啟。測試用 WebView debugging hook 已移除；最終 `minifiedDebug` R8 APK 已在 Pixel_7 重新安裝啟動，無 FATAL EXCEPTION，且未暴露 WebView debugging endpoint。
+### 9.49 v2.0.5 操作回饋、商品鍵與中文副標（2026-07-13）
+- 共用按壓回饋的進場動畫改為立即生效，放開後仍由最短 120ms 的 `is-pressed` 狀態維持可見回饋；功能不延後。
+- 回饋涵蓋 `a[href]` 功能連結，並補上鍵盤 Enter／Space／Spacebar 的按下與放開處理；`prefers-reduced-motion` 會保留變色但取消下壓位移。
+- 設定、分析、隱私權頁返回鍵改為「商 品」：英文 `Products`、日文「商 品」。分析頁商品鍵直接連回 `inventory-management-app.html`。
+- 版本更新為 `v2.0.5`／Android `versionCode = 20005`；更新內容英日翻譯已同步。使用者手動更新的 `home-subtitles.js` 必須一併同步 Android assets 並納入 Git 提交。
+- Service Worker 快取版本為 `expiry-manager-cache-v368`。Pixel_7 R8 實測確認：按壓效果立即呈現、鍵盤 Enter 回饋正常、設定頁英文 `Products`／日文「商 品」、分析頁商品鍵直回主頁。最終 R8 APK 已重建與重新安裝，`versionCode=20005`、無 FATAL EXCEPTION 且未暴露 WebView debugging endpoint。

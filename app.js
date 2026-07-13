@@ -127,6 +127,7 @@
     errorModalMessage: document.getElementById("errorModalMessage"),
     closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
     productTableBody: document.getElementById("productTableBody"),
+    productRenderSentinel: document.getElementById("productRenderSentinel"),
     selectAllProducts: document.getElementById("selectAllProducts"),
     selectAllProductsMobile: document.getElementById("selectAllProductsMobile"),
     selectedCountBadge: document.getElementById("selectedCountBadge"),
@@ -167,7 +168,17 @@
   let suppressNativeContextMenuUntil = 0;
   let searchRenderFrame = null;
   let productRenderFrame = null;
+  let productRenderScrollTimer = null;
   let productRenderNeedsCalendar = false;
+  let productRenderScrollUntil = 0;
+  const PRODUCT_RENDER_BATCH_SIZE = 100;
+  const PRODUCT_RENDER_PRELOAD_ROOT_MARGIN = "0px 0px 250% 0px";
+  let activeProductView = [];
+  let renderedProductCount = 0;
+  let prebuiltProductBatch = null;
+  let productBatchBuildToken = 0;
+  let productPreloadObserver = null;
+  let productPreloadFallbackBound = false;
   let brightnessRaised = false;
   let pendingDeleteIds = [];
   let pendingDuplicateChoice = null;
@@ -1870,10 +1881,193 @@
       cell.classList.toggle("is-selected", cell.dataset.date === selectedDate);
     });
   }
+  function createProductRow(product) {
+    const status = getStatus(product.expiryDate);
+    const note = String(product.note || "").trim();
+    const noteClass = note ? "note-cell" : "note-cell is-empty";
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-product-id", product.id);
+    tr.setAttribute("data-barcode", product.barcode || "");
+
+    const categoryCell = document.createElement("td");
+    categoryCell.setAttribute("data-label", "分類");
+    categoryCell.textContent = product.category || "";
+
+    const nameCell = document.createElement("td");
+    nameCell.setAttribute("data-label", "商品名稱");
+    const nameWrap = document.createElement("span");
+    nameWrap.className = "product-text-wrap";
+    nameWrap.textContent = product.name || "";
+    nameCell.appendChild(nameWrap);
+
+    const barcodeCell = document.createElement("td");
+    barcodeCell.setAttribute("data-label", "條碼");
+    barcodeCell.textContent = product.barcode || "";
+
+    const expiryCell = document.createElement("td");
+    expiryCell.setAttribute("data-label", "有效日期");
+    expiryCell.textContent = product.expiryDate || "";
+
+    const noteCell = document.createElement("td");
+    noteCell.className = noteClass;
+    noteCell.setAttribute("data-label", "備註");
+    const noteWrap = document.createElement("span");
+    noteWrap.className = "product-text-wrap";
+    noteWrap.textContent = note;
+    noteCell.appendChild(noteWrap);
+
+    const statusCell = document.createElement("td");
+    statusCell.setAttribute("data-label", "狀態");
+    const statusBadge = document.createElement("span");
+    statusBadge.className = `badge ${status.badgeClass}`;
+    statusBadge.textContent = status.label;
+    statusCell.appendChild(statusBadge);
+
+    const actionCell = document.createElement("td");
+    actionCell.className = "action-cell";
+    actionCell.setAttribute("data-label", "操作");
+    const actionStack = document.createElement("div");
+    actionStack.className = "action-stack";
+    const editButton = document.createElement("button");
+    editButton.className = "btn secondary";
+    editButton.type = "button";
+    editButton.setAttribute("data-edit-id", product.id);
+    editButton.textContent = t("編輯");
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "btn secondary";
+    deleteButton.type = "button";
+    deleteButton.setAttribute("data-delete-id", product.id);
+    deleteButton.textContent = t("刪除");
+    actionStack.appendChild(editButton);
+    actionStack.appendChild(deleteButton);
+    actionCell.appendChild(actionStack);
+
+    const selectCell = document.createElement("td");
+    selectCell.className = "select-col";
+    selectCell.setAttribute("data-label", "選取");
+    const selectLabel = document.createElement("label");
+    selectLabel.className = "checkbox-touch-target";
+    selectLabel.setAttribute("aria-label", "選取商品");
+    const selectInput = document.createElement("input");
+    selectInput.className = "row-select-product";
+    selectInput.type = "checkbox";
+    selectInput.setAttribute("data-select-id", product.id);
+    selectInput.checked = state.selectedProductIds.has(product.id);
+    selectLabel.appendChild(selectInput);
+    selectCell.appendChild(selectLabel);
+
+    tr.appendChild(categoryCell);
+    tr.appendChild(nameCell);
+    tr.appendChild(barcodeCell);
+    tr.appendChild(expiryCell);
+    tr.appendChild(noteCell);
+    tr.appendChild(statusCell);
+    tr.appendChild(actionCell);
+    tr.appendChild(selectCell);
+    return tr;
+  }
+
+  function createProductRowsFragment(products) {
+    const fragment = document.createDocumentFragment();
+    products.forEach((product) => fragment.appendChild(createProductRow(product)));
+    return fragment;
+  }
+
+  function updateProductRenderSentinel() {
+    if (!ui.productRenderSentinel) {
+      return;
+    }
+    ui.productRenderSentinel.hidden = renderedProductCount >= activeProductView.length;
+  }
+
+  function buildNextProductBatch() {
+    const start = renderedProductCount;
+    const end = Math.min(start + PRODUCT_RENDER_BATCH_SIZE, activeProductView.length);
+    if (start >= end) {
+      return null;
+    }
+    return {
+      start,
+      end,
+      fragment: createProductRowsFragment(activeProductView.slice(start, end))
+    };
+  }
+
+  function scheduleNextProductBatchPrebuild() {
+    if (prebuiltProductBatch || renderedProductCount >= activeProductView.length) {
+      return;
+    }
+    const buildToken = productBatchBuildToken;
+    const build = () => {
+      if (buildToken !== productBatchBuildToken || prebuiltProductBatch || renderedProductCount >= activeProductView.length) {
+        return;
+      }
+      prebuiltProductBatch = buildNextProductBatch();
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      window.requestIdleCallback(build, { timeout: 250 });
+    } else {
+      window.setTimeout(build, 0);
+    }
+  }
+
+  function appendNextProductBatch() {
+    if (renderedProductCount >= activeProductView.length) {
+      updateProductRenderSentinel();
+      return;
+    }
+    let nextBatch = prebuiltProductBatch;
+    if (!nextBatch || nextBatch.start !== renderedProductCount) {
+      nextBatch = buildNextProductBatch();
+    }
+    if (!nextBatch) {
+      updateProductRenderSentinel();
+      return;
+    }
+    prebuiltProductBatch = null;
+    ui.productTableBody.appendChild(nextBatch.fragment);
+    renderedProductCount = nextBatch.end;
+    syncProductSelectionUi();
+    updateProductRenderSentinel();
+    scheduleNextProductBatchPrebuild();
+  }
+
+  function maybeAppendPreloadedProductBatch() {
+    if (!ui.productRenderSentinel || ui.productRenderSentinel.hidden) {
+      return;
+    }
+    const sentinelTop = ui.productRenderSentinel.getBoundingClientRect().top;
+    if (sentinelTop <= window.innerHeight * 3.5) {
+      appendNextProductBatch();
+    }
+  }
+
+  function ensureProductPreloadObserver() {
+    if (!ui.productRenderSentinel) {
+      return;
+    }
+    if (!("IntersectionObserver" in window)) {
+      if (!productPreloadFallbackBound) {
+        productPreloadFallbackBound = true;
+        window.addEventListener("scroll", maybeAppendPreloadedProductBatch, { passive: true });
+      }
+      return;
+    }
+    if (productPreloadObserver) {
+      return;
+    }
+    productPreloadObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          appendNextProductBatch();
+        }
+      });
+    }, { rootMargin: PRODUCT_RENDER_PRELOAD_ROOT_MARGIN, threshold: 0 });
+    productPreloadObserver.observe(ui.productRenderSentinel);
+  }
   function renderProducts(options = {}) {
     const keyword = ui.searchInput.value.trim();
     const categoryFilter = ui.categoryFilter ? ui.categoryFilter.value : "";
-    const sortMode = ui.sortSelect ? ui.sortSelect.value : "";
     const selectedDate = String(state.calendarSelectedDate || "").trim();
     const categoryScopedProducts = state.products.filter((item) => productMatchesCategoryFilter(item, categoryFilter));
     const healthStats = getHealthStats(categoryScopedProducts);
@@ -1889,116 +2083,46 @@
     state.selectedProductIds = new Set(
       Array.from(state.selectedProductIds).filter((id) => validIds.has(id))
     );
+
+    productBatchBuildToken += 1;
+    prebuiltProductBatch = null;
+    activeProductView = sorted;
+    renderedProductCount = 0;
     ui.productTableBody.innerHTML = "";
-    const productRowsFragment = document.createDocumentFragment();
-    sorted.forEach((product) => {
-      const status = getStatus(product.expiryDate);
-      const note = String(product.note || "").trim();
-      const noteClass = note ? "note-cell" : "note-cell is-empty";
-      const tr = document.createElement("tr");
-      tr.setAttribute("data-product-id", product.id);
-      tr.setAttribute("data-barcode", product.barcode || "");
-
-      const categoryCell = document.createElement("td");
-      categoryCell.setAttribute("data-label", "分類");
-      categoryCell.textContent = product.category || "";
-
-      const nameCell = document.createElement("td");
-      nameCell.setAttribute("data-label", "商品名稱");
-      const nameWrap = document.createElement("span");
-      nameWrap.className = "product-text-wrap";
-      nameWrap.textContent = product.name || "";
-      nameCell.appendChild(nameWrap);
-
-      const barcodeCell = document.createElement("td");
-      barcodeCell.setAttribute("data-label", "條碼");
-      barcodeCell.textContent = product.barcode || "";
-
-      const expiryCell = document.createElement("td");
-      expiryCell.setAttribute("data-label", "有效日期");
-      expiryCell.textContent = product.expiryDate || "";
-
-      const noteCell = document.createElement("td");
-      noteCell.className = noteClass;
-      noteCell.setAttribute("data-label", "備註");
-      const noteWrap = document.createElement("span");
-      noteWrap.className = "product-text-wrap";
-      noteWrap.textContent = note;
-      noteCell.appendChild(noteWrap);
-
-      const statusCell = document.createElement("td");
-      statusCell.setAttribute("data-label", "狀態");
-      const statusBadge = document.createElement("span");
-      statusBadge.className = `badge ${status.badgeClass}`;
-      statusBadge.textContent = status.label;
-      statusCell.appendChild(statusBadge);
-
-      const actionCell = document.createElement("td");
-      actionCell.className = "action-cell";
-      actionCell.setAttribute("data-label", "操作");
-      const actionStack = document.createElement("div");
-      actionStack.className = "action-stack";
-      const editButton = document.createElement("button");
-      editButton.className = "btn secondary";
-      editButton.type = "button";
-      editButton.setAttribute("data-edit-id", product.id);
-      editButton.textContent = t("編輯");
-      const deleteButton = document.createElement("button");
-      deleteButton.className = "btn secondary";
-      deleteButton.type = "button";
-      deleteButton.setAttribute("data-delete-id", product.id);
-      deleteButton.textContent = t("刪除");
-      actionStack.appendChild(editButton);
-      actionStack.appendChild(deleteButton);
-      actionCell.appendChild(actionStack);
-
-      const selectCell = document.createElement("td");
-      selectCell.className = "select-col";
-      selectCell.setAttribute("data-label", "選取");
-      const selectLabel = document.createElement("label");
-      selectLabel.className = "checkbox-touch-target";
-      selectLabel.setAttribute("aria-label", "選取商品");
-      const selectInput = document.createElement("input");
-      selectInput.className = "row-select-product";
-      selectInput.type = "checkbox";
-      selectInput.setAttribute("data-select-id", product.id);
-      selectInput.checked = state.selectedProductIds.has(product.id);
-      selectLabel.appendChild(selectInput);
-      selectCell.appendChild(selectLabel);
-
-      tr.appendChild(categoryCell);
-      tr.appendChild(nameCell);
-      tr.appendChild(barcodeCell);
-      tr.appendChild(expiryCell);
-      tr.appendChild(noteCell);
-      tr.appendChild(statusCell);
-      tr.appendChild(actionCell);
-      tr.appendChild(selectCell);
-      productRowsFragment.appendChild(tr);
-    });
-    ui.productTableBody.appendChild(productRowsFragment);
+    const initialProducts = activeProductView.slice(0, PRODUCT_RENDER_BATCH_SIZE);
+    ui.productTableBody.appendChild(createProductRowsFragment(initialProducts));
+    renderedProductCount = initialProducts.length;
     syncProductSelectionUi();
     ui.emptyHint.style.display = sorted.length === 0 ? "block" : "none";
+    ensureProductPreloadObserver();
+    updateProductRenderSentinel();
+    scheduleNextProductBatchPrebuild();
+    if (!("IntersectionObserver" in window)) {
+      window.setTimeout(maybeAppendPreloadedProductBatch, 0);
+    }
     if (options.renderCalendar !== false) {
       renderExpiryCalendar();
     }
   }
 
   function syncProductSelectionUi() {
-    const visibleRows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
-    const visibleSelectedCount = visibleRows.filter((row) => state.selectedProductIds.has(row.getAttribute("data-select-id"))).length;
+    const renderedRows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
+    const selectedViewCount = activeProductView.filter((product) => state.selectedProductIds.has(product.id)).length;
     const syncSelectAllState = (checkboxEl) => {
       if (!checkboxEl) {
         return;
       }
-      if (visibleRows.length === 0) {
+      if (activeProductView.length === 0) {
         checkboxEl.checked = false;
         checkboxEl.indeterminate = false;
       } else {
-        checkboxEl.checked = visibleSelectedCount === visibleRows.length;
-        checkboxEl.indeterminate = visibleSelectedCount > 0 && visibleSelectedCount < visibleRows.length;
+        checkboxEl.checked = selectedViewCount === activeProductView.length;
+        checkboxEl.indeterminate = selectedViewCount > 0 && selectedViewCount < activeProductView.length;
       }
     };
+    renderedRows.forEach((row) => {
+      row.checked = state.selectedProductIds.has(row.getAttribute("data-select-id"));
+    });
     syncSelectAllState(ui.selectAllProducts);
     syncSelectAllState(ui.selectAllProductsMobile);
     if (ui.selectedCountBadge) {
@@ -2010,14 +2134,31 @@
   function scheduleProductRender(options = {}) {
     const needsCalendar = options.renderCalendar === true;
     productRenderNeedsCalendar = productRenderNeedsCalendar || needsCalendar;
-    if (productRenderFrame !== null) return;
+    queueProductRender();
+  }
+
+  function queueProductRender() {
+    if (productRenderFrame !== null || productRenderScrollTimer !== null) {
+      return;
+    }
+    const remainingScrollDelay = productRenderScrollUntil - performance.now();
+    if (remainingScrollDelay > 0) {
+      productRenderScrollTimer = window.setTimeout(() => {
+        productRenderScrollTimer = null;
+        queueProductRender();
+      }, Math.ceil(remainingScrollDelay));
+      return;
+    }
+    const scheduledScrollY = window.scrollY;
     productRenderFrame = requestAnimationFrame(() => {
-      productRenderFrame = requestAnimationFrame(() => {
-        productRenderFrame = null;
-        const renderCalendar = productRenderNeedsCalendar;
-        productRenderNeedsCalendar = false;
-        renderProducts({ renderCalendar });
-      });
+      productRenderFrame = null;
+      if (window.scrollY !== scheduledScrollY || performance.now() < productRenderScrollUntil) {
+        queueProductRender();
+        return;
+      }
+      const renderCalendar = productRenderNeedsCalendar;
+      productRenderNeedsCalendar = false;
+      renderProducts({ renderCalendar });
     });
   }
 
@@ -3054,6 +3195,7 @@
     if (ui.backToTopBtn) {
       ui.backToTopBtn.addEventListener("click", scrollToPageTop);
       window.addEventListener("scroll", () => {
+        productRenderScrollUntil = performance.now() + 120;
         if (touchGuardActive || longPressTimer) {
           cancelLongPress();
           suppressRowClicksTemporarily();
@@ -3224,29 +3366,23 @@
         return;
       }
       checkboxEl.addEventListener("change", () => {
-        const rows = Array.from(ui.productTableBody.querySelectorAll("input.row-select-product[data-select-id]"));
-        if (rows.length === 0) {
+        if (activeProductView.length === 0) {
           state.selectedProductIds.clear();
           syncProductSelectionUi();
           return;
         }
-        rows.forEach((row) => {
-          const rowId = row.getAttribute("data-select-id");
-          if (!rowId) {
-            return;
-          }
+        activeProductView.forEach((product) => {
           if (checkboxEl.checked) {
-            state.selectedProductIds.add(rowId);
+            state.selectedProductIds.add(product.id);
           } else {
-            state.selectedProductIds.delete(rowId);
+            state.selectedProductIds.delete(product.id);
           }
-          row.checked = state.selectedProductIds.has(rowId);
         });
         syncProductSelectionUi();
       });
-    };    bindSelectAllHandler(ui.selectAllProducts);
+    };
+    bindSelectAllHandler(ui.selectAllProducts);
     bindSelectAllHandler(ui.selectAllProductsMobile);
-
     ui.scanBtn.addEventListener("click", async () => {
       try {
         await startScanner("barcode", "input");
