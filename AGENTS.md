@@ -45,7 +45,7 @@
 - 不主動更新 `version.js`；只有使用者明確要求更新版本 / 更新紀錄時才修改。
 - 打包 APK 時需以 `version.js` 的 `APP_RELEASE.version` 作為 Android `versionName` 來源，並同步產生對應 `versionCode`。
 - 每次專案修改都要同步更新 `CHANGELOG.md`。
-- 目前 `version.js` 版本為 `v2.0.5`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v368`。
+- 目前 `version.js` 版本為 `v2.0.5`；目前 `sw.js` 快取版本為 `expiry-manager-cache-v370`。
 
 ## 6. 修改準則
 - 以「不破壞既有功能」為最高優先。
@@ -629,3 +629,10 @@
 - 使用者手動更新 `home-subtitles.js` 第 11 則中文副標文案；已保留原始編號與輪替邏輯。
 - 此檔為主頁 runtime asset，需與 `i18n.js`、`sw.js` 一併同步 Android Studio `app/src/main/assets/`，並以 SHA-256 確認。
 - 版本維持 `v2.0.5`，Service Worker 快取更新為 `expiry-manager-cache-v370`；完成 R8 `minifiedDebug` 重建後，將本批次變更提交並推送 GitHub。
+### 9.52 Android 15+ edge-to-edge 複核（2026-07-13）
+- Play Console 的提示屬 target SDK 35 以上預設無邊框的通用相容性提醒，不代表目前已發生遮擋；本專案目前 `targetSdk = 36`，必須持續自行處理 inset。
+- 現有實作已符合需求：`MainActivity` 主動採 `WindowCompat.setDecorFitsSystemWindows(window, false)`；以 `ViewCompat.setOnApplyWindowInsetsListener` 讀取 system bars 與 display cutout，原生 WebView 套用左右／底部 padding，並依 display density 將上／下 inset 注入 CSS `--safe-area-top`／`--safe-area-bottom`。前端 topbar、modal、toast 與返回頂端按鈕均使用這些變數。
+- Android 15 以上的 `AndroidBridge.setStatusBarColor()` 不再呼叫無效的 `window.statusBarColor`，只更新狀態列圖示明暗；原生掃描 Activity 則維持沉浸式 system-bar 隱藏，並以 `WindowInsets` 調整底部提示與手電筒控制項。
+- 不要僅為此提示額外加入 `enableEdgeToEdge()`：現有手動實作已主動進入 edge-to-edge 且已處理 inset；重複初始化沒有額外效益，也可能干擾目前的 WebView／CSS 分工。
+- 實測 R8 `minifiedDebug` v2.0.5-r8test：Pixel 7（API 36，1080x2400）完成 clean launch、主頁、設定頁及設定頁底部免責聲明可視檢查，狀態列與手勢導覽列均未遮擋內容；Pixel 10 Pro XL（API 37，1344x2992）完成 clean launch 與初始資料儲存視窗檢查，頂／底 system bar 未裁切視窗。兩台測試期間 logcat 未見本 App `FATAL EXCEPTION`／`AndroidRuntime`。
+- 本輪結論為無需修改原生／前端程式、版本、快取或重新打包；僅新增本工作紀錄。未來若改動固定頂欄、modal、toast、返回頂端按鈕或掃描底部提示，需在 Android 15+ 再次檢查 inset。
