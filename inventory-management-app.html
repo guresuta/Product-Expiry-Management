@@ -272,7 +272,7 @@ const waitForFinish = () => {
       </div>
     </div>
   </div>
-  <div id="addProductModal" class="modal hidden">
+  <div id="addProductModal" class="modal product-editor-modal hidden">
     <div class="modal-content">
       <h3>新增商品</h3>
       <form id="productForm" class="form-stack">
@@ -311,24 +311,6 @@ const waitForFinish = () => {
       </form>
     </div>
   </div>
-  <div id="storageSetupModal" class="modal hidden">
-    <div class="modal-content storage-setup-modal">
-      <h3>選擇資料儲存方式</h3>
-      <p class="help-text">
-        iPhone / iPad Safari 只能使用IndexedDB將資料儲存在本機瀏覽器資料中；若清除 Safari 網站資料，商品資料會被刪除。建議定期匯出 JSON 備份到「檔案 App」或 iCloud Drive。
-      </p>
-      <div class="storage-choice-list">
-        <button id="chooseIndexedDbStorageBtn" class="btn secondary storage-choice-btn" type="button">
-          <span class="storage-choice-title">使用 IndexedDB</span>
-          <span>資料儲存在此瀏覽器與裝置中；清除瀏覽器資料會一併清除本專案資料。</span>
-        </button>
-        <button id="chooseFileStorageBtn" class="btn secondary storage-choice-btn" type="button">
-          <span class="storage-choice-title">使用本機檔案位置</span>
-          <span>可自行指定本機檔案位置；若瀏覽器支援，之後會從同一個資料檔讀寫。瀏覽器可能會在重新開啟後要求確認檔案編輯權限。</span>
-        </button>
-      </div>
-    </div>
-  </div>
   <div id="updateNoticeModal" class="modal hidden">
     <div class="modal-content update-notice-modal">
       <h3 id="updateNoticeTitle">更新內容</h3>
@@ -355,7 +337,7 @@ const waitForFinish = () => {
       </div>
     </div>
   </div>
-  <div id="editProductModal" class="modal hidden">
+  <div id="editProductModal" class="modal product-editor-modal hidden">
     <div class="modal-content">
       <h3>編輯商品</h3>
       <form id="editProductForm" class="form-stack">
@@ -399,6 +381,15 @@ const waitForFinish = () => {
       <div class="form-actions">
         <button id="confirmDeleteBtn" class="btn danger-btn" type="button">確定</button>
         <button id="cancelDeleteBtn" class="btn ghost" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+  <div id="storageTransitionNoticeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>資料備份提醒</h3>
+      <p class="help-text">請先使用「備份資料 JSON 」建立備份，後續更新的版本只會使用本機 IndexedDB做為資料儲存方式 ，不會再讀取或自動將先前指定的本機檔案位置匯入資料庫。若曾使用「本機檔案位置」，請在下一個程式版本更新前匯出JSON ，並在更新後用「還原資料 JSON 」恢復資料。</p>
+      <div class="form-actions">
+        <button id="closeStorageTransitionNoticeBtn" class="btn primary" type="button">了解並繼續</button>
       </div>
     </div>
   </div>

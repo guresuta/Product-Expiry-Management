@@ -169,21 +169,9 @@ const waitForFinish = () => {
       </div>
       <div id="categoryList" class="category-list"></div>
     </section>
-
-    <section class="panel settings-section storage-section">
-      <h2 class="section-title-bar">資料儲存</h2>
-      <p id="storageModeLabel" class="help-text">目前模式：讀取中</p>
-      <p class="help-text">切換到本機檔案位置時會先把目前資料寫入該檔案。</p>
-      <p class="help-text android-release-hidden">iPhone / iPad Safari 只能使用IndexedDB將資料儲存在本機瀏覽器資料中；若清除 Safari 網站資料，商品資料會被刪除。建議定期匯出 JSON 備份到「檔案 App」或 iCloud Drive。</p>
-      <div class="form-actions">
-        <button id="useIndexedDbStorageBtn" class="btn secondary" type="button">改用 IndexedDB</button>
-        <button id="chooseStorageFileBtn" class="btn secondary" type="button">選擇本機檔案位置</button>
-      </div>
-    </section>
-
     <section class="panel settings-section io-section">
       <h2 class="section-title-bar">檔案功能</h2>
-      <p class="help-text">此裝置資料為獨立儲存。</p>
+      <p class="help-text">匯入會保留原有商品，合併上傳的商品資料。</p>
       <div class="form-actions">
         <button id="exportCsvBtn" class="btn secondary" type="button">匯出 CSV</button>
         <button id="exportJsonBtn" class="btn secondary" type="button">備份資料 JSON</button>
@@ -194,7 +182,6 @@ const waitForFinish = () => {
         <button id="importCsvFileBtn" class="btn secondary" type="button">匯入試算表資料</button>
         <button id="importJsonFileBtn" class="btn secondary" type="button">還原資料 JSON</button>
       </div>
-      <p class="help-text">匯入會保留原有商品，並合併上傳檔案中的資料。</p>
     </section>
 
     <section class="panel settings-section theme-section">

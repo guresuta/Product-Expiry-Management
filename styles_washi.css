@@ -3719,3 +3719,74 @@ html.android-webview .toast {
 .custom-select-button {
   touch-action: manipulation;
 }
+
+/* Keep long custom titles inside the fixed header and make product editors keyboard-safe. */
+:root {
+  --visual-viewport-height: 100vh;
+  --android-ime-height: 0px;
+}
+
+.topbar-inner h1 {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.product-editor-modal {
+  top: 0;
+  bottom: auto;
+  height: var(--visual-viewport-height);
+  min-height: 0;
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.product-editor-modal .modal-content {
+  max-height: calc(var(--visual-viewport-height) - var(--safe-area-top) - var(--safe-area-bottom) - 1.5rem);
+  margin: auto;
+  overscroll-behavior: contain;
+}
+
+/* Android edge-to-edge WebView does not reliably resize visualViewport for the IME.
+   The native host injects --android-ime-height so this parent scroll area stays above the keyboard. */
+html.android-webview .product-editor-modal {
+  top: 0;
+  bottom: var(--android-ime-height);
+  height: auto;
+  padding-top: max(0.65rem, calc(var(--safe-area-top) + 0.35rem));
+  padding-bottom: max(0.85rem, calc(var(--safe-area-bottom) + 0.5rem));
+}
+
+html.android-webview .product-editor-modal .modal-content {
+  max-height: none;
+  overflow: visible;
+  margin: 0 auto;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --visual-viewport-height: 100dvh;
+  }
+}
+
+@media (max-width: 768px) {
+  .product-editor-modal {
+    padding-top: max(0.65rem, calc(var(--safe-area-top) + 0.35rem));
+  }
+
+  .product-editor-modal .modal-content {
+    max-height: calc(var(--visual-viewport-height) - var(--safe-area-top) - var(--safe-area-bottom) - 1.3rem);
+  }
+}
+/* Give the one-time storage-transition notice enough breathing room for its long backup guidance. */
+#storageTransitionNoticeModal .help-text {
+  margin: 1rem 0;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+#storageTransitionNoticeModal .form-actions {
+  margin-top: 1.35rem;
+}

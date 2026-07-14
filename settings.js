@@ -5,9 +5,6 @@
   const APP_DB_VERSION = 1;
   const STORE_PRODUCTS = "products";
   const STORE_SETTINGS = "settings";
-  const MODE_SETTING_KEY = "storageMode";
-  const STORAGE_SETUP_KEY = "storageSetupCompleted";
-  const FILE_HANDLE_SETTING_KEY = "storageFileHandle";
   const INDEXEDDB_ADD_COUNT_KEY = "indexedDbAddCountSinceBackup";
   const BACKUP_CHANGE_COUNT_KEY = "productChangeCountSinceBackup";
   const THEME_SETTING_KEY = "uiTheme";
@@ -30,8 +27,6 @@
     { key: "dark-2", mode: "dark", label: "深夜綠洲", swatch: "linear-gradient(120deg,#101814,#2fc274 50%,#e05a5a)" }
   ];
   const state = {
-    storageMode: "file",
-    fileHandle: null,
     categories: []
   };
 
@@ -52,9 +47,6 @@
     importCsvFileBtn: document.getElementById("importCsvFileBtn"),
     importJsonFileInput: document.getElementById("importJsonFileInput"),
     importJsonFileBtn: document.getElementById("importJsonFileBtn"),
-    storageModeLabel: document.getElementById("storageModeLabel"),
-    useIndexedDbStorageBtn: document.getElementById("useIndexedDbStorageBtn"),
-    chooseStorageFileBtn: document.getElementById("chooseStorageFileBtn"),
     newCategoryInput: document.getElementById("newCategoryInput"),
     addCategoryBtn: document.getElementById("addCategoryBtn"),
     categoryList: document.getElementById("categoryList"),
@@ -107,51 +99,7 @@
       return null;
     }
     const bridge = window.AndroidBridge;
-    if (
-      typeof bridge.hasSelectedDbFile !== "function" ||
-      typeof bridge.readDatabaseFile !== "function" ||
-      typeof bridge.writeDatabaseFile !== "function"
-    ) {
-      return null;
-    }
     return {
-      hasFile() {
-        try {
-          return !!bridge.hasSelectedDbFile();
-        } catch (_error) {
-          return false;
-        }
-      },
-      async writeFileText(text) {
-        const ok = bridge.writeDatabaseFile(String(text));
-        if (!ok) {
-          throw new Error("寫入檔案失敗");
-        }
-      },
-      selectFileText(filename, content) {
-        return new Promise((resolve, reject) => {
-          if (typeof bridge.requestSelectDbFile !== "function") {
-            reject(new Error("裝置不支援選擇本機 JSON 檔案"));
-            return;
-          }
-          const handler = (event) => {
-            window.removeEventListener("android-db-file-selected", handler);
-            const detail = event.detail || {};
-            if (detail.ok) {
-              resolve(true);
-            } else {
-              reject(new Error(detail.error || "本機 JSON 檔案選擇失敗"));
-            }
-          };
-          window.addEventListener("android-db-file-selected", handler, { once: true });
-          try {
-            bridge.requestSelectDbFile(String(filename || "expiry-manager-data.json"), String(content || ""));
-          } catch (error) {
-            window.removeEventListener("android-db-file-selected", handler);
-            reject(error);
-          }
-        });
-      },
       exportCsv(filename, content) {
         return new Promise((resolve, reject) => {
           if (typeof bridge.requestExportCsvFile !== "function") {
@@ -201,43 +149,6 @@
         });
       }
     };
-  }
-
-  function isNativeFileMode() {
-    return !!nativeBridge;
-  }
-
-  function supportsWebFileStorage() {
-    return typeof window.showSaveFilePicker === "function";
-  }
-
-  function supportsExternalFileStorage() {
-    return isNativeFileMode() || supportsWebFileStorage();
-  }
-
-  async function chooseStorageFileHandle() {
-    if (!supportsWebFileStorage()) {
-      throw new Error("此瀏覽器不支援指定本機檔案位置，請使用 IndexedDB 並定期備份 JSON");
-    }
-    return window.showSaveFilePicker({
-      suggestedName: "expiry-manager-data.json",
-      types: [
-        {
-          description: t("商品效期資料 JSON"),
-          accept: { "application/json": [".json"] }
-        }
-      ]
-    });
-  }
-
-  function renderStorageMode() {
-    if (ui.storageModeLabel) {
-      const label = state.storageMode === "file" ? "本機檔案位置" : "IndexedDB";
-      ui.storageModeLabel.textContent = t(`目前模式：${label}`);
-    }
-    if (ui.chooseStorageFileBtn) {
-      ui.chooseStorageFileBtn.disabled = !supportsExternalFileStorage();
-    }
   }
 
   function renderAppVersion() {
@@ -969,118 +880,6 @@
     });
   }
 
-  function serializeProductsPayload(products) {
-    return JSON.stringify(
-      {
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        products: Array.isArray(products) ? products : []
-      },
-      null,
-      2
-    );
-  }
-
-  async function hasSelectedFile() {
-    if (isNativeFileMode()) {
-      return nativeBridge.hasFile();
-    }
-    return !!state.fileHandle;
-  }
-
-  async function hasReadWritePermission(fileHandle, options = {}) {
-    if (!fileHandle) {
-      return false;
-    }
-    const permissionOptions = { mode: "readwrite" };
-    if ((await fileHandle.queryPermission(permissionOptions)) === "granted") {
-      return true;
-    }
-    if (!options.request) {
-      return false;
-    }
-    if (navigator.userActivation && !navigator.userActivation.isActive) {
-      return false;
-    }
-    return (await fileHandle.requestPermission(permissionOptions)) === "granted";
-  }
-
-  async function writeProductsToSelectedFile(products) {
-    const payload = serializeProductsPayload(products);
-    if (isNativeFileMode()) {
-      await nativeBridge.writeFileText(payload);
-      return;
-    }
-    const writer = await state.fileHandle.createWritable();
-    await writer.write(payload);
-    await writer.close();
-  }
-
-  async function tryWriteProductsToSelectedFile(products) {
-    if (!(await hasSelectedFile())) {
-      return { skipped: false };
-    }
-    if (!isNativeFileMode()) {
-      const ok = await hasReadWritePermission(state.fileHandle, { request: false });
-      if (!ok) {
-        return { skipped: true };
-      }
-    }
-    try {
-      await writeProductsToSelectedFile(products);
-      return { skipped: false };
-    } catch (error) {
-      if (isFilePermissionActivationError(error.message)) {
-        return { skipped: true };
-      }
-      throw error;
-    }
-  }
-
-  async function switchToIndexedDbStorage() {
-    state.storageMode = "indexeddb";
-    state.fileHandle = null;
-    await setSetting(MODE_SETTING_KEY, "indexeddb");
-    await setSetting(FILE_HANDLE_SETTING_KEY, null);
-    await setSetting(STORAGE_SETUP_KEY, true);
-    renderStorageMode();
-    showToast("已改用 IndexedDB");
-  }
-
-  async function switchToFileStorage() {
-    const products = await getAllProductsFromIndexedDb();
-
-    if (isNativeFileMode()) {
-      await nativeBridge.selectFileText("expiry-manager-data.json", serializeProductsPayload(products));
-      state.storageMode = "file";
-      await setSetting(MODE_SETTING_KEY, "file");
-      await setSetting(STORAGE_SETUP_KEY, true);
-      renderStorageMode();
-      showToast("已改用本機檔案位置，並寫入目前資料");
-      return;
-    }
-
-    const handle = await chooseStorageFileHandle();
-    const ok = await hasReadWritePermission(handle, { request: true });
-    if (!ok) {
-      throw new Error("未取得檔案讀寫權限");
-    }
-    state.fileHandle = handle;
-    state.storageMode = "file";
-    await setSetting(FILE_HANDLE_SETTING_KEY, handle);
-    await setSetting(MODE_SETTING_KEY, "file");
-    await setSetting(STORAGE_SETUP_KEY, true);
-    await writeProductsToSelectedFile(products);
-    renderStorageMode();
-    showToast("已改用本機檔案位置，並寫入目前資料");
-  }
-
-  function isFilePickerAbort(error) {
-    const name = String(error && error.name || "");
-    const message = String(error && error.message || "");
-    return name === "AbortError" || message.includes("user aborted");
-  }
-
   function normalizeDateInput(raw) {
     const value = String(raw || "").trim();
     const m = value.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
@@ -1363,7 +1162,7 @@
       exportedAt: now,
       app: {
         db: APP_DB,
-        mode: state.storageMode || "file"
+        mode: "indexeddb"
       },
       settings: {
         categories: Array.isArray(state.categories) ? state.categories : [],
@@ -1375,7 +1174,7 @@
 
   async function downloadJson(filename, payloadObj) {
     const content = JSON.stringify(payloadObj, null, 2);
-    if (isNativeFileMode() && typeof nativeBridge.exportJson === "function") {
+    if (nativeBridge && typeof nativeBridge.exportJson === "function") {
       await nativeBridge.exportJson(filename, content);
       return;
     }
@@ -1524,15 +1323,12 @@
       renderCategories();
     }
 
-    // 還原 JSON 時不變更目前主題，僅還原資料與分類
-
-    const fileSync = await tryWriteProductsToSelectedFile(mergedProducts);
-
-    return { addedCount, updatedCount, totalCount: mergedProducts.length, cancelled: false, fileSyncSkipped: fileSync.skipped };
+    // 還原 JSON 時不變更目前主題，僅還原資料與分類。
+    return { addedCount, updatedCount, totalCount: mergedProducts.length, cancelled: false };
   }
 
   async function downloadCsv(filename, content) {
-    if (isNativeFileMode() && typeof nativeBridge.exportCsv === "function") {
+    if (nativeBridge && typeof nativeBridge.exportCsv === "function") {
       await nativeBridge.exportCsv(filename, content);
       return;
     }
@@ -1548,24 +1344,8 @@
   }
 
   async function loadInitialState() {
-    const savedMode = await getSetting(MODE_SETTING_KEY);
-    state.fileHandle = await getSetting(FILE_HANDLE_SETTING_KEY);
-    if (savedMode === "file" || savedMode === "indexeddb") {
-      state.storageMode = savedMode;
-    } else {
-      state.storageMode = "indexeddb";
-      await setSetting(MODE_SETTING_KEY, state.storageMode);
-    }
-    if (state.storageMode === "file" && !(await hasSelectedFile())) {
-      state.storageMode = "indexeddb";
-      state.fileHandle = null;
-      await setSetting(MODE_SETTING_KEY, "indexeddb");
-      await setSetting(FILE_HANDLE_SETTING_KEY, null);
-    }
-
     state.categories = await getCategories();
     renderCategories();
-    renderStorageMode();
   }
 
   function setupTextInputMirror(input) {
@@ -1669,28 +1449,6 @@
         closeOpenCustomSelect();
       }
     });
-    if (ui.useIndexedDbStorageBtn) {
-      ui.useIndexedDbStorageBtn.addEventListener("click", async () => {
-        try {
-          await switchToIndexedDbStorage();
-        } catch (error) {
-          showToast(`儲存模式切換失敗: ${error.message}`, true);
-        }
-      });
-    }
-    if (ui.chooseStorageFileBtn) {
-      ui.chooseStorageFileBtn.addEventListener("click", async () => {
-        try {
-          await switchToFileStorage();
-        } catch (error) {
-          if (isFilePickerAbort(error)) {
-            showToast("已取消選擇本機檔案位置");
-            return;
-          }
-          showToast(`本機檔案位置設定失敗: ${error.message}`, true);
-        }
-      });
-    }
     if (ui.saveCustomAppTitleBtn) {
       ui.saveCustomAppTitleBtn.addEventListener("click", saveCustomAppTitle);
     }
@@ -1754,10 +1512,6 @@
         await setCategories(state.categories);
         renderCategories();
 
-        if (await hasSelectedFile()) {
-          await writeProductsToSelectedFile(products);
-        }
-
         const addedCount = Math.max(0, products.length - existingProducts.length);
         showToast(`匯入成功，新增 ${addedCount} 筆，目前共 ${products.length} 筆`);
         ui.importCsvFileInput.value = "";
@@ -1785,8 +1539,7 @@
             ui.importJsonFileInput.value = "";
             return;
           }
-          const fileSyncText = result.fileSyncSkipped ? "；本機檔案位置未同步，請重新選擇本機檔案位置或匯出 JSON 備份" : "";
-          showToast(`JSON 還原成功，新增 ${result.addedCount} 筆、更新 ${result.updatedCount || 0} 筆，目前共 ${result.totalCount} 筆商品${fileSyncText}`);
+          showToast(`JSON 還原成功，新增 ${result.addedCount} 筆、更新 ${result.updatedCount || 0} 筆，目前共 ${result.totalCount} 筆商品`);
           ui.importJsonFileInput.value = "";
         } catch (error) {
           showToast(`JSON 還原失敗: ${error.message}`, true);

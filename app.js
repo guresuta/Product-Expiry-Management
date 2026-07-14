@@ -5,9 +5,10 @@
   const APP_DB_VERSION = 1;
   const STORE_PRODUCTS = "products";
   const STORE_SETTINGS = "settings";
-  const MODE_SETTING_KEY = "storageMode";
-  const STORAGE_SETUP_KEY = "storageSetupCompleted";
-  const FILE_HANDLE_SETTING_KEY = "storageFileHandle";
+  const LEGACY_STORAGE_MODE_KEY = "storageMode";
+  const LEGACY_FILE_HANDLE_SETTING_KEY = "storageFileHandle";
+  const LEGACY_STORAGE_MIGRATION_KEY = "indexedDbPrimaryStorageMigration";
+  const STORAGE_TRANSITION_NOTICE_KEY = "indexedDbStorageTransitionNoticeSeen-v2.0.8";
   const LAST_SEEN_VERSION_KEY = "lastSeenAppVersion";
   const INDEXEDDB_ADD_COUNT_KEY = "indexedDbAddCountSinceBackup";
   const BACKUP_CHANGE_COUNT_KEY = "productChangeCountSinceBackup";
@@ -40,8 +41,6 @@
 
   const state = {
     products: [],
-    storageMode: DEFAULT_MODE,
-    fileHandle: null,
     categories: [],
     scanner: {
       running: false,
@@ -70,10 +69,9 @@
     addProductModal: document.getElementById("addProductModal"),
     openAddProductBtn: document.getElementById("openAddProductBtn"),
     cancelAddProductBtn: document.getElementById("cancelAddProductBtn"),
-    storageSetupModal: document.getElementById("storageSetupModal"),
-    chooseIndexedDbStorageBtn: document.getElementById("chooseIndexedDbStorageBtn"),
-    chooseFileStorageBtn: document.getElementById("chooseFileStorageBtn"),
     updateNoticeModal: document.getElementById("updateNoticeModal"),
+    storageTransitionNoticeModal: document.getElementById("storageTransitionNoticeModal"),
+    closeStorageTransitionNoticeBtn: document.getElementById("closeStorageTransitionNoticeBtn"),
     updateNoticeTitle: document.getElementById("updateNoticeTitle"),
     updateNoticeList: document.getElementById("updateNoticeList"),
     closeUpdateNoticeBtn: document.getElementById("closeUpdateNoticeBtn"),
@@ -210,8 +208,8 @@
     "duplicate",
     "delete",
     "backup",
+    "storageTransition",
     "update",
-    "storage",
     "add"
   ];
   const HASH_HISTORY_MODAL_KEYS = new Set(["add", "edit"]);
@@ -307,54 +305,16 @@
       return null;
     }
     const bridge = window.AndroidBridge;
-    if (
-      typeof bridge.hasSelectedDbFile !== "function" ||
-      typeof bridge.readDatabaseFile !== "function" ||
-      typeof bridge.writeDatabaseFile !== "function"
-    ) {
-      return null;
-    }
-
     return {
-      hasFile() {
+      consumeLegacyFileText() {
+        if (typeof bridge.consumeLegacyDatabaseFile !== "function") {
+          return "";
+        }
         try {
-          return !!bridge.hasSelectedDbFile();
+          return String(bridge.consumeLegacyDatabaseFile() || "");
         } catch (_error) {
-          return false;
+          return "";
         }
-      },
-      async readFileText() {
-        return String(bridge.readDatabaseFile() || "");
-      },
-      async writeFileText(text) {
-        const ok = bridge.writeDatabaseFile(String(text));
-        if (!ok) {
-          throw new Error("寫入檔案失敗");
-        }
-      },
-      selectFileText(filename, content) {
-        return new Promise((resolve, reject) => {
-          if (typeof bridge.requestSelectDbFile !== "function") {
-            reject(new Error("裝置不支援選擇本機 JSON 檔案"));
-            return;
-          }
-          const handler = (event) => {
-            window.removeEventListener("android-db-file-selected", handler);
-            const detail = event.detail || {};
-            if (detail.ok) {
-              resolve(true);
-            } else {
-              reject(new Error(detail.error || "本機 JSON 檔案選擇失敗"));
-            }
-          };
-          window.addEventListener("android-db-file-selected", handler, { once: true });
-          try {
-            bridge.requestSelectDbFile(String(filename || "expiry-manager-data.json"), String(content || ""));
-          } catch (error) {
-            window.removeEventListener("android-db-file-selected", handler);
-            reject(error);
-          }
-        });
       },
       exportJson(filename, content) {
         return new Promise((resolve, reject) => {
@@ -467,8 +427,63 @@
 
   function refreshCustomAppTitle() {
     applyAppTitle();
+    window.requestAnimationFrame(syncTopbarLayout);
   }
 
+  function syncTopbarLayout() {
+    const topbar = document.querySelector(".topbar");
+    if (!topbar) {
+      return;
+    }
+    const height = Math.ceil(topbar.getBoundingClientRect().height);
+    if (height > 0) {
+      document.documentElement.style.setProperty("--topbar-fixed-offset", `${height}px`);
+    }
+  }
+
+  function syncVisualViewportLayout() {
+    const viewport = window.visualViewport;
+    const height = viewport && viewport.height ? Math.round(viewport.height) : window.innerHeight;
+    if (height > 0) {
+      document.documentElement.style.setProperty("--visual-viewport-height", `${height}px`);
+    }
+    syncTopbarLayout();
+  }
+
+  function focusProductEditorField(event) {
+    const field = event.target;
+    if (field !== ui.noteInput && field !== ui.editNoteInput) {
+      return;
+    }
+    window.setTimeout(() => {
+      try {
+        field.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      } catch (_error) {
+        field.scrollIntoView(false);
+      }
+    }, 180);
+  }
+
+  function setupResponsiveLayout() {
+    syncVisualViewportLayout();
+    window.addEventListener("resize", syncVisualViewportLayout);
+    window.addEventListener("orientationchange", syncVisualViewportLayout);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", syncVisualViewportLayout);
+      window.visualViewport.addEventListener("scroll", syncVisualViewportLayout);
+    }
+    if (window.ResizeObserver) {
+      const topbar = document.querySelector(".topbar");
+      if (topbar) {
+        new ResizeObserver(syncTopbarLayout).observe(topbar);
+      }
+    }
+    [ui.addProductModal, ui.editProductModal].forEach((modal) => {
+      if (modal) {
+        modal.addEventListener("focusin", focusProductEditorField);
+      }
+    });
+  }
   function getHomeSubtitles() {
     const list = Array.isArray(window.HOME_SUBTITLES) ? window.HOME_SUBTITLES : [];
     return list.map((item, index) => {
@@ -560,18 +575,6 @@
         applyRandomHomeSubtitle();
       }
     });
-  }
-
-  function isNativeFileMode() {
-    return !!nativeBridge;
-  }
-
-  function supportsWebFileStorage() {
-    return typeof window.showSaveFilePicker === "function";
-  }
-
-  function supportsExternalFileStorage() {
-    return isNativeFileMode() || supportsWebFileStorage();
   }
 
   function getAppRelease() {
@@ -684,7 +687,7 @@
   function getVisibleModalKey() {
     const modalMap = {
       add: ui.addProductModal,
-      storage: ui.storageSetupModal,
+
       update: ui.updateNoticeModal,
       datePicker: ui.datePickerModal,
       scanner: ui.scannerModal,
@@ -692,6 +695,7 @@
       edit: ui.editProductModal,
       delete: ui.deleteConfirmModal,
       backup: ui.backupReminderModal,
+      storageTransition: ui.storageTransitionNoticeModal,
       duplicate: ui.duplicateBarcodeModal,
       error: ui.errorModal
     };
@@ -709,6 +713,8 @@
       closeDeleteConfirm(options);
     } else if (key === "backup") {
       closeManagedModal("backup", ui.backupReminderModal, options);
+    } else if (key === "storageTransition") {
+      closeStorageTransitionNotice(options).catch((error) => showToast(`資料備份提醒狀態儲存失敗: ${error.message}`, true));
     } else if (key === "duplicate") {
       resolveDuplicateBarcodeChoice("cancel", options);
     } else if (key === "update") {
@@ -723,7 +729,6 @@
       closeErrorModal(options);
     }
   }
-
   function closeTopModalFromHistory() {
     const key = getVisibleModalKey();
     if (!key) {
@@ -874,45 +879,6 @@
       clearReq.onsuccess = () => {
         products.forEach((product) => store.put(product));
       };
-    });
-  }
-
-  async function hasReadWritePermission(fileHandle, options = {}) {
-    if (!fileHandle) {
-      return false;
-    }
-    const permissionOptions = { mode: "readwrite" };
-    if ((await fileHandle.queryPermission(permissionOptions)) === "granted") {
-      return true;
-    }
-    if (!options.request) {
-      return false;
-    }
-    if (navigator.userActivation && !navigator.userActivation.isActive) {
-      return false;
-    }
-    return (await fileHandle.requestPermission(permissionOptions)) === "granted";
-  }
-
-  async function hasReadWritePermissionGrant(fileHandle) {
-    if (!fileHandle || typeof fileHandle.queryPermission !== "function") {
-      return false;
-    }
-    return (await fileHandle.queryPermission({ mode: "readwrite" })) === "granted";
-  }
-
-  async function chooseStorageFileHandle() {
-    if (!supportsWebFileStorage()) {
-      throw new Error("此瀏覽器不支援指定本機檔案位置，請使用 IndexedDB 並定期備份 JSON");
-    }
-    return window.showSaveFilePicker({
-      suggestedName: "expiry-manager-data.json",
-      types: [
-        {
-          description: t("商品效期資料 JSON"),
-          accept: { "application/json": [".json"] }
-        }
-      ]
     });
   }
 
@@ -1167,38 +1133,6 @@
     syncCustomSelect(ui.categoryFilter);
   }
 
-  function serializeProductsPayload(products) {
-    return JSON.stringify(
-      {
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        products
-      },
-      null,
-      2
-    );
-  }
-
-  async function readProductsFromSelectedFile() {
-    if (isNativeFileMode()) {
-      const text = await nativeBridge.readFileText();
-      return parseProductsPayload(text);
-    }
-    const file = await state.fileHandle.getFile();
-    const text = await file.text();
-    return parseProductsPayload(text);
-  }
-
-  async function writeProductsToSelectedFile(products) {
-    if (isNativeFileMode()) {
-      await nativeBridge.writeFileText(serializeProductsPayload(products));
-      return;
-    }
-    const writer = await state.fileHandle.createWritable();
-    await writer.write(serializeProductsPayload(products));
-    await writer.close();
-  }
-
   function buildBackupJsonPayload(products) {
     return {
       schema: "expiry-manager-backup",
@@ -1207,7 +1141,7 @@
       app: {
         version: getAppRelease().version,
         db: APP_DB,
-        mode: state.storageMode || "indexeddb"
+        mode: "indexeddb"
       },
       settings: {
         categories: state.categories || []
@@ -1218,7 +1152,7 @@
 
   async function downloadJson(filename, payloadObj) {
     const content = JSON.stringify(payloadObj, null, 2);
-    if (isNativeFileMode() && typeof nativeBridge.exportJson === "function") {
+    if (nativeBridge && typeof nativeBridge.exportJson === "function") {
       await nativeBridge.exportJson(filename, content);
       return;
     }
@@ -1245,11 +1179,7 @@
   }
 
   async function recordIndexedDbAddForBackupReminder() {
-    try {
-      if (state.storageMode !== "indexeddb") {
-        return;
-      }
-      const current = Number(await getSetting(INDEXEDDB_ADD_COUNT_KEY)) || 0;
+    try {      const current = Number(await getSetting(INDEXEDDB_ADD_COUNT_KEY)) || 0;
       const next = current + 1;
       await setSetting(INDEXEDDB_ADD_COUNT_KEY, next);
       if (next >= INDEXEDDB_BACKUP_REMINDER_THRESHOLD && ui.backupReminderModal) {
@@ -1269,13 +1199,6 @@
     } catch (_error) {
       // 備份狀態顯示失敗不應影響商品儲存流程。
     }
-  }
-
-  async function hasSelectedFile() {
-    if (isNativeFileMode()) {
-      return nativeBridge.hasFile();
-    }
-    return !!state.fileHandle;
   }
 
   function normalizeDateInput(raw) {
@@ -2181,162 +2104,70 @@
 
   async function persistCurrentProducts() {
     await replaceAllProductsIndexedDb(state.products);
-    if (state.storageMode === "file") {
-      if (!(await hasSelectedFile())) {
-        state.storageMode = "indexeddb";
-        await setSetting(MODE_SETTING_KEY, "indexeddb");
-        return;
-      }
-      if (!isNativeFileMode()) {
-        const ok = await hasReadWritePermission(state.fileHandle);
-        if (!ok) {
-          showToast("尚未連回先前的本機 JSON 檔案，已先儲存在 IndexedDB。請到設定重新選擇同一個 JSON 檔案");
-          return;
-        }
-      }
-      await writeProductsToSelectedFile(state.products);
+  }
+
+  async function migrateLegacyFileStorage() {
+    if (await getSetting(LEGACY_STORAGE_MIGRATION_KEY) === true) {
+      return false;
     }
+
+    const savedMode = await getSetting(LEGACY_STORAGE_MODE_KEY);
+    let legacyProducts = [];
+    if (savedMode === "file" && nativeBridge) {
+      try {
+        legacyProducts = parseProductsPayload(nativeBridge.consumeLegacyFileText());
+      } catch (_error) {
+        legacyProducts = [];
+      }
+    }
+
+    if (legacyProducts.length > 0) {
+      await replaceAllProductsIndexedDb(legacyProducts);
+    }
+    await setSetting(LEGACY_STORAGE_MODE_KEY, "indexeddb");
+    await setSetting(LEGACY_FILE_HANDLE_SETTING_KEY, null);
+    await setSetting(LEGACY_STORAGE_MIGRATION_KEY, true);
+    return legacyProducts.length > 0;
   }
 
   async function loadInitialState() {
-    const savedMode = (await getSetting(MODE_SETTING_KEY)) || DEFAULT_MODE;
-    state.storageMode = savedMode;
-    state.fileHandle = await getSetting(FILE_HANDLE_SETTING_KEY);
-    if (state.storageMode === "file" && !(await hasSelectedFile())) {
-      state.storageMode = "indexeddb";
-      await setSetting(MODE_SETTING_KEY, "indexeddb");
-    }
-
+    const migratedLegacyFile = await migrateLegacyFileStorage();
     state.categories = await getCategories();
     state.lastAddCategory = String((await getSetting(LAST_ADD_CATEGORY_KEY)) || "").trim();
     renderCategoryOptions(state.categories);
     renderEditCategoryOptions(state.categories);
-    renderCategoryFilterOptions();
-
-    if (state.storageMode === "file" && isNativeFileMode()) {
-      if (await hasSelectedFile()) {
-        try {
-          const fileProducts = sortProducts(await readProductsFromSelectedFile());
-          if (Array.isArray(fileProducts) && fileProducts.length > 0) {
-            state.products = fileProducts;
-          } else {
-            const indexedProducts = sortProducts(await getAllProductsFromIndexedDb());
-            state.products = indexedProducts;
-            if (indexedProducts.length > 0) {
-              await writeProductsToSelectedFile(indexedProducts);
-            }
-          }
-        } catch (error) {
-          showToast(`讀取檔案資料庫失敗: ${error.message}`, true);
-          state.products = sortProducts(await getAllProductsFromIndexedDb());
-        }
-      } else {
-        state.products = sortProducts(await getAllProductsFromIndexedDb());
-      }
-      renderProducts();
-      return;
-    }
-
-    if (state.storageMode === "file" && state.fileHandle) {
-      try {
-        const granted = await hasReadWritePermissionGrant(state.fileHandle);
-        if (granted) {
-          state.products = sortProducts(await readProductsFromSelectedFile());
-        } else {
-          state.products = sortProducts(await getAllProductsFromIndexedDb());
-        }
-      } catch (error) {
-        state.products = sortProducts(await getAllProductsFromIndexedDb());
-        showToast(`讀取檔案資料庫失敗: ${error.message}`, true);
-      }
-      renderProducts();
-      return;
-    }
-
     state.products = sortProducts(await getAllProductsFromIndexedDb());
+    renderCategoryFilterOptions();
     renderProducts();
+    if (migratedLegacyFile) {
+      showToast("已將舊本機檔案資料移入本機資料庫，請匯出 JSON 建立新備份。");
+    }
+  }
+  function closeStorageTransitionNotice(options = {}) {
+    closeManagedModal("storageTransition", ui.storageTransitionNoticeModal, options);
+    window.setTimeout(() => {
+      maybeShowUpdateNotice().catch((error) => {
+        showToast(`更新公告讀取失敗: ${error.message}`, true);
+      });
+    }, 0);
+    return setSetting(STORAGE_TRANSITION_NOTICE_KEY, true).catch((error) => {
+      showToast(`資料備份提醒狀態儲存失敗: ${error.message}`, true);
+    });
   }
 
-  function openStorageSetupModal() {
-    if (!ui.storageSetupModal) {
-      return;
+  async function maybeShowStorageTransitionNotice() {
+    if (!ui.storageTransitionNoticeModal || await getSetting(STORAGE_TRANSITION_NOTICE_KEY) === true) {
+      return false;
     }
-    if (ui.chooseFileStorageBtn) {
-      ui.chooseFileStorageBtn.disabled = !supportsExternalFileStorage();
-    }
-    openManagedModal("storage", ui.storageSetupModal);
+    openManagedModal("storageTransition", ui.storageTransitionNoticeModal);
+    return true;
   }
-
-  function closeStorageSetupModal(options = {}) {
-    closeManagedModal("storage", ui.storageSetupModal, options);
-  }
-
-  async function completeIndexedDbStorageSetup() {
-    state.storageMode = "indexeddb";
-    state.fileHandle = null;
-    await setSetting(MODE_SETTING_KEY, "indexeddb");
-    await setSetting(FILE_HANDLE_SETTING_KEY, null);
-    await setSetting(STORAGE_SETUP_KEY, true);
-    closeStorageSetupModal();
-    showToast("已使用 IndexedDB 儲存資料");
-    await maybeShowUpdateNotice();
-  }
-
-  async function completeFileStorageSetup() {
-    if (isNativeFileMode()) {
-      await nativeBridge.selectFileText("expiry-manager-data.json", serializeProductsPayload(state.products));
-      state.storageMode = "file";
-      await setSetting(MODE_SETTING_KEY, "file");
-      await setSetting(STORAGE_SETUP_KEY, true);
-      closeStorageSetupModal();
-      showToast("已使用本機檔案位置儲存資料");
-      await maybeShowUpdateNotice();
-      return;
-    }
-
-    const handle = await chooseStorageFileHandle();
-    const ok = await hasReadWritePermission(handle, { request: true });
-    if (!ok) {
-      throw new Error("未取得檔案讀寫權限");
-    }
-    state.fileHandle = handle;
-    state.storageMode = "file";
-    await setSetting(FILE_HANDLE_SETTING_KEY, handle);
-    await setSetting(MODE_SETTING_KEY, "file");
-    await setSetting(STORAGE_SETUP_KEY, true);
-
-    const existingProducts = await readProductsFromSelectedFile();
-    if (Array.isArray(existingProducts) && existingProducts.length > 0) {
-      state.products = sortProducts(existingProducts);
-      await replaceAllProductsIndexedDb(state.products);
-      renderProducts();
-    } else {
-      await writeProductsToSelectedFile(state.products);
-    }
-
-    closeStorageSetupModal();
-    showToast("已使用本機檔案位置儲存資料");
-    await maybeShowUpdateNotice();
-  }
-
-  async function maybeShowStorageSetup() {
-    const completed = await getSetting(STORAGE_SETUP_KEY);
-    if (completed === true) {
-      return;
-    }
-    openStorageSetupModal();
-  }
-
   async function closeUpdateNotice(options = {}) {
     await setSetting(LAST_SEEN_VERSION_KEY, getAppRelease().version);
     closeManagedModal("update", ui.updateNoticeModal, options);
   }
 
   async function maybeShowUpdateNotice() {
-    const storageSetupCompleted = await getSetting(STORAGE_SETUP_KEY);
-    if (storageSetupCompleted !== true) {
-      return;
-    }
     const lastSeenVersion = await getSetting(LAST_SEEN_VERSION_KEY);
     const release = getAppRelease();
     if (lastSeenVersion === release.version) {
@@ -3118,24 +2949,6 @@
         }
       });
     }
-    if (ui.chooseIndexedDbStorageBtn) {
-      ui.chooseIndexedDbStorageBtn.addEventListener("click", async () => {
-        try {
-          await completeIndexedDbStorageSetup();
-        } catch (error) {
-          showToast(`儲存設定失敗: ${error.message}`, true);
-        }
-      });
-    }
-    if (ui.chooseFileStorageBtn) {
-      ui.chooseFileStorageBtn.addEventListener("click", async () => {
-        try {
-          await completeFileStorageSetup();
-        } catch (error) {
-          showToast(`本機檔案位置設定失敗: ${error.message}`, true);
-        }
-      });
-    }
     if (ui.closeUpdateNoticeBtn) {
       ui.closeUpdateNoticeBtn.addEventListener("click", async () => {
         try {
@@ -3156,7 +2969,18 @@
         }
       });
     }
-    if (ui.healthCheckBar) {
+    if (ui.closeStorageTransitionNoticeBtn) {
+      ui.closeStorageTransitionNoticeBtn.addEventListener("click", () => {
+        closeStorageTransitionNotice();
+      });
+    }
+    if (ui.storageTransitionNoticeModal) {
+      ui.storageTransitionNoticeModal.addEventListener("click", (event) => {
+        if (event.target === ui.storageTransitionNoticeModal) {
+          closeStorageTransitionNotice();
+        }
+      });
+    }    if (ui.healthCheckBar) {
       ui.healthCheckBar.addEventListener("click", (event) => {
         const button = event.target.closest("[data-health-filter]");
         if (!button) {
@@ -3630,6 +3454,7 @@
 
   async function init() {
     applySavedTheme();
+    setupResponsiveLayout();
     refreshCustomAppTitle();
     applyRandomHomeSubtitle();
     bindHomeSubtitleRotation();
@@ -3684,8 +3509,10 @@
     });
     wireEvents();
     await loadInitialState();
-    await maybeShowStorageSetup();
-    await maybeShowUpdateNotice();
+    const storageTransitionNoticeShown = await maybeShowStorageTransitionNotice();
+    if (!storageTransitionNoticeShown) {
+      await maybeShowUpdateNotice();
+    }
     await registerServiceWorker();
     await finishAppBoot();
   }

@@ -704,23 +704,23 @@
     state.backupChangeCount = 0;
   }
 
-  function goBackToSettings() {
+  function goBackToHome() {
     if (window.AndroidBridge && typeof window.AndroidBridge.prepareTransitionCover === "function") {
       try {
         window.AndroidBridge.prepareTransitionCover();
       } catch (_error) {
       }
       window.setTimeout(function () {
-        window.location.href = "./settings.html";
+        window.location.href = "./inventory-management-app.html";
       }, 120);
       return;
     }
-    window.location.href = "./settings.html";
+    window.location.href = "./inventory-management-app.html";
   }
 
   window.AppNativeBack = {
     handleBack: function () {
-      goBackToSettings();
+      goBackToHome();
       return true;
     }
   };
