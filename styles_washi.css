@@ -3316,7 +3316,6 @@ html[data-theme] .release-history-section .release-history-entry {
 }
 
 .analytics-section .section-title-bar {
-  border-radius: 1px;
   line-height: 1.28;
 }
 
@@ -3567,7 +3566,7 @@ html[data-theme] .release-history-section .release-history-entry {
     height: 0.42rem;
     margin-top: 0.48rem;
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: 1px;
     background: color-mix(in srgb, var(--line) 72%, transparent);
   }
 
