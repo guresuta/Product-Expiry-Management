@@ -38,7 +38,7 @@
       "平均剩餘效期分析": "Average Days Until Expiry",
       "目前無法讀取本機 JSON 檔案，已暫時使用 IndexedDB 備援資料。請回設定頁重新選擇資料檔。": "Unable to read the local JSON file right now. IndexedDB fallback data is being used temporarily. Go back to Settings and select the data file again.",
       "讀取中": "Loading",
-      "商品類別": "Product Category",
+      "商品類別": "Category",
       "商品筆數": "Product Count",
       "筆": " products",
       "筆到期": " products expiring",
@@ -865,7 +865,7 @@
 
   const patterns = [
     [/^已勾選 (\d+) 筆$/, { en: "$1 selected", ja: "$1件選択中" }],
-    [/^已新增或編輯(\d+)筆商品，已備份$/, { en: "Added or edited $1 products; backed up", ja: "$1件の商品を追加または編集済み、バックアップ済み" }],
+    [/^已新增或編輯(\d+)筆商品，已備份$/, { en: "Added or edited $1 products; backed up", ja: "$1件の商品を追加または編集済み、\\nバックアップ済み" }],
     [/^已新增或編輯(\d+)筆商品，尚未備份$/, { en: "Added or edited $1 products; not backed up", ja: "$1件の商品を追加または編集済み、未バックアップ" }],
     [/^目前主題：(.+)$/, { en: "Current theme: $1", ja: "現在のテーマ: $1" }],
     [/^目前模式：(.+)$/, { en: "Current mode: $1", ja: "現在のモード: $1" }],
