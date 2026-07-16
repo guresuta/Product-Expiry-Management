@@ -1133,7 +1133,7 @@
     syncCustomSelect(ui.categoryFilter);
   }
 
-  function buildBackupJsonPayload(products) {
+  function buildBackupJsonPayload(products, analyticsHistory) {
     return {
       schema: "expiry-manager-backup",
       version: 1,
@@ -1146,7 +1146,8 @@
       settings: {
         categories: state.categories || []
       },
-      products: Array.isArray(products) ? products : []
+      products: Array.isArray(products) ? products : [],
+      analyticsHistory: analyticsHistory || null
     };
   }
 
@@ -1169,7 +1170,8 @@
 
   async function backupCurrentProductsJson() {
     const today = new Date().toISOString().slice(0, 10);
-    await downloadJson(`expiry-backup-${today}.json`, buildBackupJsonPayload(state.products));
+    const history = window.AnalyticsHistoryStore ? await window.AnalyticsHistoryStore.load() : null;
+    await downloadJson(`expiry-backup-${today}.json`, buildBackupJsonPayload(state.products, history));
     await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
     await setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
     if (ui.backupReminderModal) {
@@ -2106,6 +2108,11 @@
     await replaceAllProductsIndexedDb(state.products);
   }
 
+  async function recordAnalyticsEvents(events) {
+    if (!window.AnalyticsHistoryStore) return;
+    await window.AnalyticsHistoryStore.record(events || [], state.products);
+  }
+
   async function migrateLegacyFileStorage() {
     if (await getSetting(LEGACY_STORAGE_MIGRATION_KEY) === true) {
       return false;
@@ -2137,6 +2144,7 @@
     renderCategoryOptions(state.categories);
     renderEditCategoryOptions(state.categories);
     state.products = sortProducts(await getAllProductsFromIndexedDb());
+    if (window.AnalyticsHistoryStore) await window.AnalyticsHistoryStore.reconcileExpired(state.products);
     renderCategoryFilterOptions();
     renderProducts();
     if (migratedLegacyFile) {
@@ -2337,6 +2345,7 @@
       }
       sortProducts(state.products);
       await persistCurrentProducts();
+      await recordAnalyticsEvents([{ type: addedCount > 0 ? "added" : "edited", product: addedCount > 0 ? product : duplicate }]);
       await rememberAddCategory(category);
       renderProducts();
       clearForm();
@@ -2359,12 +2368,14 @@
     }
     const prevProducts = state.products.slice();
     const prevSelected = new Set(state.selectedProductIds);
+    const removedProducts = state.products.filter((item) => idSet.has(item.id));
     try {
       state.products = state.products.filter((item) => !idSet.has(item.id));
       state.selectedProductIds = new Set(
         Array.from(state.selectedProductIds).filter((id) => !idSet.has(id))
       );
       await persistCurrentProducts();
+      await recordAnalyticsEvents(removedProducts.map((product) => ({ type: "deleted", product })));
       renderProducts();
       showToast("商品已刪除");
     } catch (error) {
@@ -2470,11 +2481,14 @@
         ? ui.editBarcodeInput.dataset.barcodeFormat
         : inferBarcodeFormat(barcode);
       target.expiryDate = expiryDate;
+      const historyEditedProducts = selectedIdSet.size > 1 ? state.products.filter((item) => selectedIdSet.has(item.id)) : [target];
+      const overwrittenProduct = overwriteDuplicateId ? state.products.find((item) => item.id === overwriteDuplicateId) : null;
       if (overwriteDuplicateId) {
         state.products = state.products.filter((item) => item.id !== overwriteDuplicateId);
         state.selectedProductIds.delete(overwriteDuplicateId);
       }
       await persistCurrentProducts();
+      await recordAnalyticsEvents(historyEditedProducts.map((product) => ({ type: "edited", product })).concat(overwrittenProduct ? [{ type: "deleted", product: overwrittenProduct }] : []));
       renderProducts();
       closeEditProductModal();
       await recordProductChangeForBackupStatus(selectedIdSet.size > 1 ? selectedIdSet.size : 1);

@@ -2763,6 +2763,12 @@ html[data-theme^="dark"] .toast {
   color: #fff;
 }
 
+/* Keep the neon toast cyan, with the same perceived depth as midnight oasis. */
+html[data-theme="dark-1"] .toast {
+  background: #00b8c5;
+  border-color: #00b8c5;
+}
+
 @media (max-width: 730px) {
   .back-to-top-btn {
     right: max(0.75rem, env(safe-area-inset-right));
@@ -3310,6 +3316,7 @@ html[data-theme] .release-history-section .release-history-entry {
 }
 
 .analytics-section .section-title-bar {
+  border-radius: 3px;
   line-height: 1.28;
 }
 
@@ -3328,9 +3335,56 @@ html[data-theme] .release-history-section .release-history-entry {
 .analytics-backup-summary {
   margin-top: 0.45rem;
   color: var(--muted);
-  font-size: 0.98rem;
+  font-size: 1.05rem;
 }
 
+.analytics-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.72rem;
+  margin-top: 0.85rem;
+}
+
+.analytics-overview-metric {
+  min-width: 0;
+  min-height: 6.25rem;
+  padding: 0.82rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--calendar-block-bg-soft);
+  box-shadow: var(--glass-shadow);
+}
+
+.analytics-overview-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.analytics-overview-value {
+  display: block;
+  margin-top: 0.58rem;
+  color: var(--text);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.analytics-overview-expired {
+  border-color: var(--danger);
+}
+
+.analytics-overview-expired .analytics-overview-value {
+  color: var(--danger);
+}
+
+.analytics-overview-warning {
+  border-color: var(--primary);
+}
+
+.analytics-overview-upcoming {
+  border-color: var(--calendar-mark-border);
+}
 .analytics-list-table-wrap {
   position: relative;
   margin-top: 0.75rem;
@@ -3399,6 +3453,11 @@ html[data-theme] .release-history-section .release-history-entry {
 .analytics-expired-ratio-table td:not(:first-child) {
   text-align: right;
 }
+.analytics-history-help { margin-top: 0; margin-bottom: 0.9rem; line-height: 1.8; }
+.analytics-history-table tr { grid-template-columns: minmax(0, 1fr) repeat(2, minmax(5rem, 0.7fr)); }
+.analytics-history-category-table tr { grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(4.5rem, 0.7fr)); }
+.analytics-history-table th:not(:first-child), .analytics-history-table td:not(:first-child),
+.analytics-history-category-table th:not(:first-child), .analytics-history-category-table td:not(:first-child) { text-align: right; }
 
 
 .analytics-heatmap {
@@ -3465,7 +3524,115 @@ html[data-theme] .release-history-section .release-history-entry {
   color: var(--primary);
 }
 
+.analytics-mobile-meter {
+  display: none;
+}
+
 @media (max-width: 730px) {
+
+  /* Keep the desktop tables intact, but turn the three category summaries into
+     compact, readable ranking cards on phone-width screens. */
+  .analytics-list-table tr.analytics-mobile-rank-row,
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row {
+    background: var(--calendar-block-bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--glass-shadow);
+    margin-bottom: 0.72rem;
+  }
+
+  .analytics-list-table tr.analytics-mobile-rank-row {
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto);
+    padding: 0.8rem 0.9rem 0.75rem;
+  }
+
+  .analytics-list-table tr.analytics-mobile-rank-row td {
+    padding: 0;
+  }
+
+  .analytics-list-table tr.analytics-mobile-rank-row td:last-child {
+    text-align: right;
+  }
+
+  .analytics-mobile-value {
+    display: block;
+    font-size: 1.1rem;
+    line-height: 1.25;
+  }
+
+  .analytics-mobile-meter {
+    display: block;
+    width: 100%;
+    height: 0.42rem;
+    margin-top: 0.48rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--line) 72%, transparent);
+  }
+
+  .analytics-mobile-meter > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primary);
+  }
+
+  .analytics-count-meter > span {
+    background: var(--calendar-mark-bg);
+  }
+
+  .analytics-expired-meter > span,
+  .analytics-average-row.risk-danger .analytics-average-meter > span {
+    background: var(--danger);
+  }
+
+  .analytics-average-row.risk-safe .analytics-average-meter > span {
+    background: var(--calendar-mark-border);
+  }
+
+  .analytics-expired-ratio-table thead {
+    display: none;
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row {
+    grid-template-columns: minmax(0, 1fr) minmax(5rem, auto);
+    padding: 0.82rem 0.9rem 0.78rem;
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:first-child {
+    grid-column: 1 / -1;
+    margin-bottom: 0.55rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(2),
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(3) {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(2)::before,
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(3)::before {
+    content: attr(data-label) " ";
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(4) {
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    margin-top: 0.6rem;
+  }
+
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(4) .analytics-mobile-value {
+    text-align: right;
+  }
 
   .analytics-expired-ratio-table tr {
     grid-template-columns: minmax(0, 1.15fr) repeat(3, minmax(4.2rem, 0.7fr));
@@ -3476,7 +3643,121 @@ html[data-theme] .release-history-section .release-history-entry {
     padding-right: 0.72rem;
     padding-left: 0.72rem;
   }
-  .analytics-heatmap {
+
+  .analytics-expired-ratio-table th {
+    padding-right: 0.2rem;
+    padding-left: 0.2rem;
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+  .analytics-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-overview-metric {
+    min-height: 5.7rem;
+    padding: 0.75rem;
+  }
+
+  .analytics-overview-value {
+    font-size: 1.75rem;
+  }
+
+  .analytics-history-table thead,
+  .analytics-history-category-table thead {
+    display: none;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row,
+  .analytics-history-category-table tr.analytics-mobile-history-category-row {
+    background: var(--calendar-block-bg-soft);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--glass-shadow);
+    margin-bottom: 0.72rem;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row {
+    grid-template-columns: minmax(0, 1fr) minmax(5rem, auto);
+    padding: 0.82rem 0.9rem 0.78rem;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row td {
+    padding: 0;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row td:first-child {
+    grid-column: 1 / -1;
+    margin-bottom: 0.55rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row td:nth-child(2) {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row td:nth-child(2)::before {
+    content: attr(data-label) " ";
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row td:nth-child(3) {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    margin-top: 0.6rem;
+  }
+
+  .analytics-history-table tr.analytics-mobile-history-row td:nth-child(3) .analytics-mobile-value {
+    text-align: right;
+  }
+
+  .analytics-history-meter > span {
+    background: var(--calendar-mark-bg);
+  }
+
+  .analytics-history-category-table tr.analytics-mobile-history-category-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 0.82rem 0.9rem 0.78rem;
+  }
+
+  .analytics-history-category-table tr.analytics-mobile-history-category-row td {
+    min-width: 0;
+    padding: 0;
+    text-align: center;
+  }
+
+  .analytics-history-category-table tr.analytics-mobile-history-category-row td:first-child {
+    grid-column: 1 / -1;
+    margin-bottom: 0.65rem;
+    text-align: left;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .analytics-history-category-table tr.analytics-mobile-history-category-row td:not(:first-child) {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .analytics-history-category-table tr.analytics-mobile-history-category-row td:not(:first-child)::before {
+    display: block;
+    margin-bottom: 0.16rem;
+    color: var(--text);
+    content: attr(data-label);
+    font-size: 0.82rem;
+  }
+
+  .analytics-history-category-table tr.analytics-mobile-history-category-row td:nth-child(3) {
+    color: var(--danger);
+  }
+
+  .analytics-history-table tr { grid-template-columns: minmax(0, 1fr) repeat(2, minmax(4.2rem, 0.7fr)); }
+  .analytics-history-category-table tr { grid-template-columns: minmax(0, 1.1fr) repeat(3, minmax(3.8rem, 0.7fr)); }
+  .analytics-history-table th, .analytics-history-category-table th { padding-right: 0.2rem; padding-left: 0.2rem; white-space: nowrap; word-break: keep-all; }  .analytics-heatmap {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

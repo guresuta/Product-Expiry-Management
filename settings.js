@@ -1154,7 +1154,7 @@
     return `${CSV_UTF8_BOM}${lines.join("\r\n")}`;
   }
 
-  function buildBackupJsonPayload(products) {
+  function buildBackupJsonPayload(products, analyticsHistory) {
     const now = new Date().toISOString();
     return {
       schema: "expiry-manager-backup",
@@ -1168,7 +1168,8 @@
         categories: Array.isArray(state.categories) ? state.categories : [],
         theme: localStorage.getItem(THEME_SETTING_KEY) || DEFAULT_THEME_KEY
       },
-      products: Array.isArray(products) ? products : []
+      products: Array.isArray(products) ? products : [],
+      analyticsHistory: analyticsHistory || null
     };
   }
 
@@ -1310,6 +1311,11 @@
     }
 
     await replaceAllProductsIndexedDb(mergedProducts);
+    if (window.AnalyticsHistoryStore) {
+      const localHistory = await window.AnalyticsHistoryStore.load();
+      await window.AnalyticsHistoryStore.save(window.AnalyticsHistoryStore.merge(localHistory, parsed.analyticsHistory));
+      await window.AnalyticsHistoryStore.snapshot(mergedProducts);
+    }
 
     const existingCategories = Array.isArray(state.categories) ? state.categories : [];
     const backupCategories = parsed.settings && Array.isArray(parsed.settings.categories)
@@ -1480,7 +1486,8 @@
       ui.exportJsonBtn.addEventListener("click", async () => {
         try {
           const products = await getAllProductsFromIndexedDb();
-          const payload = buildBackupJsonPayload(products);
+          const history = window.AnalyticsHistoryStore ? await window.AnalyticsHistoryStore.load() : null;
+          const payload = buildBackupJsonPayload(products, history);
           const today = new Date().toISOString().slice(0, 10);
           await downloadJson(`expiry-backup-${today}.json`, payload);
           await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
@@ -1506,6 +1513,7 @@
         const existingProducts = await getAllProductsFromIndexedDb();
         const products = mergeProductsKeepExisting(existingProducts, importedProducts);
         await replaceAllProductsIndexedDb(products);
+        if (window.AnalyticsHistoryStore) await window.AnalyticsHistoryStore.snapshot(products);
 
         const importedCategories = Array.from(new Set(products.map((p) => p.category)));
         state.categories = Array.from(new Set(state.categories.concat(importedCategories)));

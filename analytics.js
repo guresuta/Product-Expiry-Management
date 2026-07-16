@@ -22,18 +22,22 @@
     storageMode: DEFAULT_MODE,
     fileHandle: null,
     source: "indexeddb",
-    backupChangeCount: 0
+    backupChangeCount: 0,
+    history: null
   };
 
   var ui = {
     fallbackNotice: document.getElementById("analyticsFallbackNotice"),
     exportJsonBtn: document.getElementById("analyticsExportJsonBtn"),
     expiryOverview: document.getElementById("expiryOverview"),
+    overviewMetrics: document.getElementById("overviewMetrics"),
     backupOverview: document.getElementById("backupOverview"),
     categoryCountBody: document.getElementById("categoryCountBody"),
     expiryHeatmap: document.getElementById("expiryHeatmap"),
     categoryRiskBody: document.getElementById("categoryRiskBody"),
     averageDaysBody: document.getElementById("averageDaysBody"),
+    monthlyExpiryHistoryBody: document.getElementById("monthlyExpiryHistoryBody"),
+    categoryHistoryBody: document.getElementById("categoryHistoryBody"),
     errorModal: document.getElementById("errorModal"),
     errorModalMessage: document.getElementById("errorModalMessage"),
     closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
@@ -444,6 +448,30 @@
     return "目前共有" + overview.total + "筆商品紀錄，其中" + overview.expired + "筆已過期、" + overview.within30 + "筆 30 天內到期、" + overview.within60 + "筆 60 天內到期。";
   }
 
+  function renderOverviewMetrics(overview) {
+    if (!ui.overviewMetrics) return;
+    clearNode(ui.overviewMetrics);
+    [
+      { label: "總筆數", value: overview.total, tone: "total" },
+      { label: "已過期筆數", value: overview.expired, tone: "expired" },
+      { label: "30天內即期", value: overview.within30, tone: "warning" },
+      { label: "31-60天內到期", value: overview.within60, tone: "upcoming" }
+    ].forEach(function (metric) {
+      var card = document.createElement("div");
+      card.className = "analytics-overview-metric analytics-overview-" + metric.tone;
+      card.setAttribute("aria-label", t(metric.label) + " " + metric.value + t("筆"));
+      var label = document.createElement("span");
+      label.className = "analytics-overview-label";
+      label.textContent = t(metric.label);
+      var value = document.createElement("strong");
+      value.className = "analytics-overview-value";
+      value.textContent = String(metric.value);
+      card.appendChild(label);
+      card.appendChild(value);
+      ui.overviewMetrics.appendChild(card);
+    });
+  }
+
   function clearNode(node) {
     while (node && node.firstChild) {
       node.removeChild(node.firstChild);
@@ -452,10 +480,24 @@
 
   function appendCell(row, text, label) {
     var cell = document.createElement("td");
-    if (label) {
-      cell.setAttribute("data-label", t(label));
-    }
+    if (label) cell.setAttribute("data-label", t(label));
     cell.textContent = text;
+    row.appendChild(cell);
+  }
+
+  function appendMetricCell(row, text, ratio, meterClass, label) {
+    var cell = document.createElement("td");
+    if (label) cell.setAttribute("data-label", t(label));
+    var value = document.createElement("strong");
+    value.className = "analytics-mobile-value";
+    value.textContent = text;
+    var meter = document.createElement("span");
+    meter.className = "analytics-mobile-meter " + meterClass;
+    var fill = document.createElement("span");
+    fill.style.width = String(Math.max(0, Math.min(1, Number(ratio) || 0)) * 100) + "%";
+    meter.appendChild(fill);
+    cell.appendChild(value);
+    cell.appendChild(meter);
     row.appendChild(cell);
   }
 
@@ -495,7 +537,9 @@
   }
   function renderCategoryCounts(data) {
     clearNode(ui.categoryCountBody);
-    getCategoryStatsRows(data)
+    var categoryRows = getCategoryStatsRows(data);
+    var maxTotal = Math.max.apply(null, categoryRows.map(function (item) { return item.stats.total; }).concat([1]));
+    categoryRows
       .sort(function (a, b) {
         return compareWithEmptyLast(
           a,
@@ -507,8 +551,9 @@
       .forEach(function (item) {
         var row = document.createElement("tr");
         var stats = item.stats;
+        row.className = "analytics-mobile-rank-row analytics-category-count-row";
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
-        appendCell(row, String(stats.total) + t("筆"), "商品筆數");
+        appendMetricCell(row, String(stats.total) + t("筆"), stats.total / maxTotal, "analytics-count-meter", "商品筆數");
         ui.categoryCountBody.appendChild(row);
       });
   }
@@ -522,7 +567,8 @@
 
   function renderExpiredRatio(data) {
     clearNode(ui.categoryRiskBody);
-    getCategoryStatsRows(data)
+    var ratioRows = getCategoryStatsRows(data);
+    ratioRows
       .map(function (item) {
         item.expiredRatio = item.stats.total > 0 ? item.stats.expired / item.stats.total : null;
         return item;
@@ -540,17 +586,20 @@
       .forEach(function (item) {
         var row = document.createElement("tr");
         var stats = item.stats;
+        row.className = "analytics-mobile-ratio-row";
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品分類");
         appendCell(row, String(stats.total), "筆數");
         appendCell(row, String(stats.expired), "過期數");
-        appendCell(row, formatExpiredRatio(stats), "比例");
+        appendMetricCell(row, formatExpiredRatio(stats), item.expiredRatio || 0, "analytics-expired-meter", "比例");
         ui.categoryRiskBody.appendChild(row);
       });
   }
 
   function renderAverageDays(data) {
     clearNode(ui.averageDaysBody);
-    getCategoryStatsRows(data)
+    var averageRows = getCategoryStatsRows(data);
+    var maxDays = Math.max.apply(null, averageRows.map(function (item) { return item.stats.dated > 0 ? Math.round(item.stats.remainingSum / item.stats.dated) : 0; }).concat([1]));
+    averageRows
       .map(function (item) {
         item.averageDays = item.stats.dated > 0 ? Math.round(item.stats.remainingSum / item.stats.dated) : null;
         return item;
@@ -566,8 +615,10 @@
       .forEach(function (item) {
         var row = document.createElement("tr");
         var value = item.averageDays !== null ? String(item.averageDays) + t("天") : t("無資料");
+        var risk = item.averageDays === null ? "unknown" : (item.averageDays <= 0 ? "danger" : (item.averageDays <= 30 ? "warning" : "safe"));
+        row.className = "analytics-mobile-rank-row analytics-average-row risk-" + risk;
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
-        appendCell(row, value, "平均效期天數");
+        appendMetricCell(row, value, item.averageDays === null ? 0 : item.averageDays / maxDays, "analytics-average-meter", "平均效期天數");
         ui.averageDaysBody.appendChild(row);
       });
   }
@@ -607,7 +658,7 @@
     return "已新增或編輯" + count + "筆商品，" + status;
   }
 
-  function buildBackupJsonPayload(products) {
+  function buildBackupJsonPayload(products, analyticsHistory) {
     var now = new Date().toISOString();
     return {
       schema: "expiry-manager-backup",
@@ -621,7 +672,8 @@
         categories: Array.isArray(state.categories) ? state.categories : [],
         theme: localStorage.getItem("uiTheme") || "dark-1"
       },
-      products: Array.isArray(products) ? products : []
+      products: Array.isArray(products) ? products : [],
+      analyticsHistory: analyticsHistory || null
     };
   }
 
@@ -643,7 +695,7 @@
   }
 
   async function backupJsonFromAnalytics() {
-    var payload = buildBackupJsonPayload(state.products);
+    var payload = buildBackupJsonPayload(state.products, state.history);
     var today = new Date().toISOString().slice(0, 10);
     await downloadJson("expiry-backup-" + today + ".json", payload);
     await setSetting("indexedDbAddCountSinceBackup", 0);
@@ -654,9 +706,45 @@
     }
   }
 
+  function renderHistoryTables() {
+    var rows = window.AnalyticsHistoryStore ? window.AnalyticsHistoryStore.monthRows(state.history || {}) : [];
+    clearNode(ui.monthlyExpiryHistoryBody);
+    clearNode(ui.categoryHistoryBody);
+    var recent = rows.slice(-12);
+    if (!recent.length) {
+      var empty = document.createElement("tr"); appendCell(empty, t("尚無歷史紀錄"), "月份"); appendCell(empty, "-", "過期數"); appendCell(empty, "-", "過期率"); ui.monthlyExpiryHistoryBody.appendChild(empty);
+      return;
+    }
+    recent.forEach(function (month) {
+      var total = Object.keys(month.distribution || {}).reduce(function (sum, key) { return sum + (Number(month.distribution[key]) || 0); }, 0);
+      var rateValue = total > 0 ? (Number(month.expired) || 0) / total : 0;
+      var rate = total > 0 ? String(Math.round(rateValue * 100)) + "%" : t("無資料");
+      var row = document.createElement("tr");
+      row.className = "analytics-mobile-history-row";
+      appendCell(row, month.monthKey, "月份");
+      appendCell(row, String(month.expired || 0), "過期數");
+      appendMetricCell(row, rate, rateValue, "analytics-history-meter", "過期率");
+      ui.monthlyExpiryHistoryBody.appendChild(row);
+    });
+    var categories = {};
+    rows.forEach(function (month) { Object.keys(month.categories || {}).forEach(function (key) { var source = month.categories[key] || {}; if (!categories[key]) categories[key] = { added: 0, expired: 0, deleted: 0 }; categories[key].added += Number(source.added) || 0; categories[key].expired += Number(source.expired) || 0; categories[key].deleted += Number(source.deleted) || 0; }); });
+    Object.keys(categories).sort(function (a, b) { return categories[b].expired - categories[a].expired || String(a).localeCompare(String(b)); }).forEach(function (key) {
+      var item = categories[key];
+      var row = document.createElement("tr");
+      row.className = "analytics-mobile-history-category-row";
+      appendCell(row, key === "未分類" ? t("未分類") : key, "分類");
+      appendCell(row, String(item.added), "新增數");
+      appendCell(row, String(item.expired), "過期數");
+      appendCell(row, String(item.deleted), "刪除數");
+      ui.categoryHistoryBody.appendChild(row);
+    });
+  }
   function renderAnalytics() {
     var data = buildAnalytics(state.products, state.categories);
-    ui.expiryOverview.textContent = formatOverview(data.overview);
+    if (ui.expiryOverview) {
+      ui.expiryOverview.textContent = formatOverview(data.overview);
+    }
+    renderOverviewMetrics(data.overview);
     if (ui.backupOverview) {
       ui.backupOverview.textContent = formatBackupOverview();
     }
@@ -664,6 +752,7 @@
     renderHeatmap(data);
     renderExpiredRatio(data);
     renderAverageDays(data);
+    renderHistoryTables();
   }
 
   async function loadData() {
@@ -678,6 +767,7 @@
     });
     state.products = Array.isArray(result.products) ? result.products : [];
     state.source = result.source;
+    state.history = window.AnalyticsHistoryStore ? await window.AnalyticsHistoryStore.load() : null;
     if (ui.fallbackNotice) {
       ui.fallbackNotice.classList.toggle("hidden", result.source !== "indexeddb-fallback");
     }

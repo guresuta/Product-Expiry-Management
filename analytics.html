@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#1f6feb">
   <title>商品效期趨勢分析 | 商品終期電馭監管裝置</title>
   <script src="./legacy-webview.js"></script>
+  <script src="./analytics-history.js"></script>
   <script>
     (() => {
       const root = document.documentElement;
@@ -161,8 +162,8 @@ const waitForFinish = () => {
     <section class="panel settings-section analytics-section">
       <h2 class="section-title-bar">商品效期概況</h2>
       <p id="analyticsFallbackNotice" class="help-text analytics-warning hidden">目前無法讀取本機 JSON 檔案，已暫時使用 IndexedDB 備援資料。請回設定頁重新選擇資料檔。</p>
-      <p id="expiryOverview" class="analytics-summary">讀取中</p>
       <p id="backupOverview" class="analytics-summary analytics-backup-summary">讀取中</p>
+      <div id="overviewMetrics" class="analytics-overview-grid" aria-live="polite"></div>
     </section>
 
     <section class="panel settings-section analytics-section">
@@ -191,7 +192,7 @@ const waitForFinish = () => {
         <table class="analytics-list-table analytics-expired-ratio-table">
           <thead>
             <tr>
-              <th>商品分類</th>
+              <th>分類</th>
               <th>筆數</th>
               <th>過期數</th>
               <th>比例</th>
@@ -202,6 +203,26 @@ const waitForFinish = () => {
       </div>
     </section>
 
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">歷史過期趨勢</h2>
+      <p class="help-text analytics-history-help">歷史資料會保留商品異動與到期的每月彙總；刪除商品不會清除既有統計。</p>
+      <div class="analytics-list-table-wrap">
+        <table class="analytics-list-table analytics-history-table">
+          <thead><tr><th>月份</th><th>過期數</th><th>過期率</th></tr></thead>
+          <tbody id="monthlyExpiryHistoryBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel settings-section analytics-section">
+      <h2 class="section-title-bar">分類歷史過期統計</h2>
+      <div class="analytics-list-table-wrap">
+        <table class="analytics-list-table analytics-history-category-table">
+          <thead><tr><th>分類</th><th>新增數</th><th>過期數</th><th>刪除數</th></tr></thead>
+          <tbody id="categoryHistoryBody"></tbody>
+        </table>
+      </div>
+    </section>
     <section class="panel settings-section analytics-section">
       <h2 class="section-title-bar">平均剩餘效期分析</h2>
       <div class="analytics-list-table-wrap">
