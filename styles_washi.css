@@ -210,6 +210,17 @@ html.app-background-ready .app-background-layer::after {
   opacity: 1;
 }
 
+/* Once the full background has faded in, remove the blurred preview layer from
+   composition. Keeping a full-screen CSS blur alive makes Android scrolling
+   noticeably less responsive on long analytics pages. */
+html.app-background-settled .app-background-layer::before {
+  display: none;
+}
+
+html.app-background-settled .app-background-layer::after {
+  will-change: auto;
+}
+
 .app-boot-screen {
   position: fixed;
   top: 0;
@@ -3683,6 +3694,12 @@ html[data-theme] .release-history-section .release-history-entry {
 @media (max-width: 730px) {
 
   /* Mobile layout adjustments only. */
+
+  /* The card outline remains, but avoid dozens of blurred shadows while the
+     analysis page is being touch-scrolled in Android WebView. */
+  .analytics-data-card::before {
+    box-shadow: none;
+  }
 
   .analytics-list-table tr.analytics-mobile-rank-row {
     grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto);

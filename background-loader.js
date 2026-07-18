@@ -88,8 +88,16 @@
     var key = setPreview(root, themeKey);
     var source = getSource(key);
     root.classList.remove("app-background-ready");
+    root.classList.remove("app-background-settled");
     preloadSource(source, function (loaded) {
-      if (loaded && root.getAttribute("data-background-theme") === key) root.classList.add("app-background-ready");
+      if (loaded && root.getAttribute("data-background-theme") === key) {
+        root.classList.add("app-background-ready");
+        window.setTimeout(function () {
+          if (root.getAttribute("data-background-theme") === key && root.classList.contains("app-background-ready")) {
+            root.classList.add("app-background-settled");
+          }
+        }, 300);
+      }
     });
     return key;
   }
@@ -107,8 +115,14 @@
     var source = getSource(key);
     preloadSource(source, function (loaded) {
       setPreview(root, key);
+      root.classList.remove("app-background-settled");
       if (loaded) {
         root.classList.add("app-background-ready");
+        window.setTimeout(function () {
+          if (root.getAttribute("data-background-theme") === key && root.classList.contains("app-background-ready")) {
+            root.classList.add("app-background-settled");
+          }
+        }, 300);
       } else {
         root.classList.remove("app-background-ready");
       }
