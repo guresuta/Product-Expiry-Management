@@ -2,6 +2,10 @@
   "use strict";
 
   var root = document.documentElement;
+  var supportsFineHover = !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  if (supportsFineHover) {
+    root.classList.add("can-hover");
+  }
   var supportsInset = window.CSS
     && typeof window.CSS.supports === "function"
     && window.CSS.supports("inset", "0");
@@ -138,9 +142,10 @@
   function installPressFeedback() {
     var pressSelector = "button, a[href], .nav-link, [role='button'], .custom-select-button, .custom-select-option, .calendar-day, .custom-date-day, .category-chip, .chip-delete, .health-check-btn, .theme-option-btn";
     var activeTarget = null;
+    var pendingPointerFocusTarget = null;
     var pressedAt = 0;
     var releaseTimer = null;
-    var minimumVisibleMs = 120;
+    var minimumVisibleMs = 180;
 
     function findPressTarget(target) {
       if (!target || !target.closest) {
@@ -212,9 +217,33 @@
         releasePressFeedback();
       }
     }, true);
-    document.addEventListener("pointerup", releasePressFeedback, true);
-    document.addEventListener("pointercancel", releasePressFeedback, true);
+    function clearPointerFocus(target) {
+      if (!target || typeof target.blur !== "function") {
+        return;
+      }
+      // Pointer activation should return a control to its resting color. Keyboard focus
+      // is unchanged because it does not use this pointerup path.
+      window.setTimeout(function () {
+        if (document.activeElement === target) {
+          target.blur();
+        }
+      }, 0);
+    }
+
+    document.addEventListener("pointerup", function () {
+      pendingPointerFocusTarget = activeTarget;
+      releasePressFeedback();
+    }, true);
+    document.addEventListener("pointercancel", function () {
+      pendingPointerFocusTarget = null;
+      releasePressFeedback();
+    }, true);
     document.addEventListener("pointerleave", releasePressFeedback, true);
+    document.addEventListener("click", function () {
+      var target = pendingPointerFocusTarget;
+      pendingPointerFocusTarget = null;
+      clearPointerFocus(target);
+    }, false);
   }
   installPressFeedback();
 

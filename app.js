@@ -87,6 +87,7 @@
     noteInput: document.getElementById("noteInput"),
     barcodeInput: document.getElementById("barcodeInput"),
     expiryInput: document.getElementById("expiryInput"),
+    inventoryInput: document.getElementById("inventoryInput"),
     pickDateBtn: document.getElementById("pickDateBtn"),
     calendarPrevBtn: document.getElementById("calendarPrevBtn"),
     calendarNextBtn: document.getElementById("calendarNextBtn"),
@@ -113,6 +114,7 @@
     editNoteInput: document.getElementById("editNoteInput"),
     editBarcodeInput: document.getElementById("editBarcodeInput"),
     editExpiryInput: document.getElementById("editExpiryInput"),
+    editInventoryInput: document.getElementById("editInventoryInput"),
     editPickDateBtn: document.getElementById("editPickDateBtn"),
     editHiddenDatePicker: document.getElementById("editHiddenDatePicker"),
     editScanBtn: document.getElementById("editScanBtn"),
@@ -928,7 +930,7 @@
       history.back();
       setTimeout(() => {
         customSelectHistory.ignoreNextPop = false;
-      }, 0);
+      }, 600);
     }
     customSelectHistory.key = "";
     return true;
@@ -1262,7 +1264,12 @@
   }
 
   function compareDate(a, b) {
-    return new Date(`${a}T00:00:00`).getTime() - new Date(`${b}T00:00:00`).getTime();
+    const left = normalizeDateInput(a);
+    const right = normalizeDateInput(b);
+    if (left && right) return left.localeCompare(right);
+    if (left) return -1;
+    if (right) return 1;
+    return 0;
   }
 
   function getStatusRank(expiryDate) {
@@ -1377,11 +1384,29 @@
     return products.sort((a, b) => compareDate(a.expiryDate, b.expiryDate));
   }
 
+  function compareProductText(a, b, field) {
+    const left = String(a[field] || "").trim();
+    const right = String(b[field] || "").trim();
+    if (left && right) {
+      const textOrder = left.localeCompare(right, "zh-Hant");
+      return textOrder || compareDate(a.expiryDate, b.expiryDate);
+    }
+    if (left) return -1;
+    if (right) return 1;
+    return compareDate(a.expiryDate, b.expiryDate);
+  }
+
   function sortForView(products) {
     const by = ui.sortSelect ? ui.sortSelect.value : "default";
     const cloned = products.slice();
     if (by === "category") {
       return cloned.sort((a, b) => a.category.localeCompare(b.category, "zh-Hant"));
+    }
+    if (by === "name") {
+      return cloned.sort((a, b) => compareProductText(a, b, "name"));
+    }
+    if (by === "barcode") {
+      return cloned.sort((a, b) => compareProductText(a, b, "barcode"));
     }
     if (by === "expiry") {
       return cloned.sort((a, b) => compareDate(a.expiryDate, b.expiryDate));
@@ -1807,50 +1832,73 @@
     });
   }
   function createProductRow(product) {
-    const status = getStatus(product.expiryDate);
+    const hasExpiryDate = !!String(product.expiryDate || "").trim();
+    const status = hasExpiryDate ? getStatus(product.expiryDate) : null;
     const note = String(product.note || "").trim();
-    const noteClass = note ? "note-cell" : "note-cell is-empty";
+    const inventory = product.inventory === undefined || product.inventory === null ? "" : String(product.inventory).trim();
+    const getDetailClass = (value, extraClass) => {
+      const classes = ["product-detail-cell"];
+      if (extraClass) {
+        classes.push(extraClass);
+      }
+      if (!String(value || "").trim()) {
+        classes.push("is-empty");
+      }
+      return classes.join(" ");
+    };
     const tr = document.createElement("tr");
     tr.setAttribute("data-product-id", product.id);
     tr.setAttribute("data-barcode", product.barcode || "");
 
     const categoryCell = document.createElement("td");
-    categoryCell.setAttribute("data-label", "分類");
+    categoryCell.className = getDetailClass(product.category);
+    categoryCell.setAttribute("data-label", t("分類"));
     categoryCell.textContent = product.category || "";
 
     const nameCell = document.createElement("td");
-    nameCell.setAttribute("data-label", "商品名稱");
+    nameCell.className = getDetailClass(product.name);
+    nameCell.setAttribute("data-label", t("商品名稱"));
     const nameWrap = document.createElement("span");
     nameWrap.className = "product-text-wrap";
     nameWrap.textContent = product.name || "";
     nameCell.appendChild(nameWrap);
 
     const barcodeCell = document.createElement("td");
-    barcodeCell.setAttribute("data-label", "條碼");
+    barcodeCell.className = getDetailClass(product.barcode);
+    barcodeCell.setAttribute("data-label", t("條碼"));
     barcodeCell.textContent = product.barcode || "";
 
     const expiryCell = document.createElement("td");
-    expiryCell.setAttribute("data-label", "有效日期");
+    expiryCell.className = getDetailClass(product.expiryDate);
+    expiryCell.setAttribute("data-label", t("有效日期"));
     expiryCell.textContent = product.expiryDate || "";
 
+    const inventoryCell = document.createElement("td");
+    inventoryCell.className = getDetailClass(inventory);
+    inventoryCell.setAttribute("data-label", t("庫存"));
+    inventoryCell.textContent = inventory;
+
     const noteCell = document.createElement("td");
-    noteCell.className = noteClass;
-    noteCell.setAttribute("data-label", "備註");
+    noteCell.className = getDetailClass(note, "note-cell");
+    noteCell.setAttribute("data-label", t("備註"));
     const noteWrap = document.createElement("span");
     noteWrap.className = "product-text-wrap";
     noteWrap.textContent = note;
     noteCell.appendChild(noteWrap);
 
     const statusCell = document.createElement("td");
-    statusCell.setAttribute("data-label", "狀態");
-    const statusBadge = document.createElement("span");
-    statusBadge.className = `badge ${status.badgeClass}`;
-    statusBadge.textContent = status.label;
-    statusCell.appendChild(statusBadge);
+    statusCell.className = getDetailClass(hasExpiryDate ? "1" : "");
+    statusCell.setAttribute("data-label", t("狀態"));
+    if (status) {
+      const statusBadge = document.createElement("span");
+      statusBadge.className = `badge ${status.badgeClass}`;
+      statusBadge.textContent = status.label;
+      statusCell.appendChild(statusBadge);
+    }
 
     const actionCell = document.createElement("td");
     actionCell.className = "action-cell";
-    actionCell.setAttribute("data-label", "操作");
+    actionCell.setAttribute("data-label", t("操作"));
     const actionStack = document.createElement("div");
     actionStack.className = "action-stack";
     const editButton = document.createElement("button");
@@ -1869,7 +1917,7 @@
 
     const selectCell = document.createElement("td");
     selectCell.className = "select-col";
-    selectCell.setAttribute("data-label", "選取");
+    selectCell.setAttribute("data-label", t("選取"));
     const selectLabel = document.createElement("label");
     selectLabel.className = "checkbox-touch-target";
     selectLabel.setAttribute("aria-label", "選取商品");
@@ -1885,13 +1933,13 @@
     tr.appendChild(nameCell);
     tr.appendChild(barcodeCell);
     tr.appendChild(expiryCell);
+    tr.appendChild(inventoryCell);
     tr.appendChild(noteCell);
     tr.appendChild(statusCell);
     tr.appendChild(actionCell);
     tr.appendChild(selectCell);
     return tr;
   }
-
   function createProductRowsFragment(products) {
     const fragment = document.createDocumentFragment();
     products.forEach((product) => fragment.appendChild(createProductRow(product)));
@@ -2215,14 +2263,8 @@
   function getProductDateFromForm() {
     const raw = ui.expiryInput.value.trim();
     if (!raw) {
-      const today = new Date();
-      const yyyy = String(today.getFullYear());
-      const mm = String(today.getMonth() + 1).padStart(2, "0");
-      const dd = String(today.getDate()).padStart(2, "0");
-      const fallback = `${yyyy}-${mm}-${dd}`;
-      ui.expiryInput.value = fallback;
-      ui.hiddenDatePicker.value = fallback;
-      return fallback;
+      ui.hiddenDatePicker.value = "";
+      return "";
     }
     const parsed = normalizeDateInput(raw);
     if (!parsed) {
@@ -2233,6 +2275,20 @@
     return parsed;
   }
 
+  function normalizeInventoryValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+    if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(raw)) {
+      throw new Error("庫存請輸入 0 或正數");
+    }
+    return raw;
+  }
+
+  function hasProductIdentity(name, barcode) {
+    return !!(String(name || "").trim() || String(barcode || "").trim());
+  }
   function clearForm() {
     ui.productForm.reset();
     syncCustomSelect(ui.categoryInput);
@@ -2292,10 +2348,14 @@
     event.preventDefault();
 
     const category = ui.categoryInput.value.trim() || "未分類";
-    const name = ui.nameInput.value.trim() || "未命名商品";
+    const name = ui.nameInput.value.trim();
     const note = ui.noteInput ? ui.noteInput.value.trim() : "";
     const barcode = ui.barcodeInput.value.trim();
     const expiryDate = getProductDateFromForm();
+    const inventory = normalizeInventoryValue(ui.inventoryInput ? ui.inventoryInput.value : "");
+    if (!hasProductIdentity(name, barcode)) {
+      throw new Error("必須要有名稱或條碼才能建立商品資訊卡。");
+    }
 
     const id = typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
@@ -2311,6 +2371,7 @@
         ? ui.barcodeInput.dataset.barcodeFormat
         : inferBarcodeFormat(barcode),
       expiryDate,
+      inventory,
       createdAt: new Date().toISOString()
     };
 
@@ -2334,7 +2395,8 @@
             note,
             barcode,
             barcodeFormat: product.barcodeFormat,
-            expiryDate
+            expiryDate,
+            inventory
           });
           addedCount = 0;
         } else {
@@ -2360,7 +2422,6 @@
       throw error;
     }
   }
-
   async function deleteProductsByIds(ids) {
     const idSet = new Set((ids || []).filter(Boolean));
     if (idSet.size === 0) {
@@ -2416,12 +2477,14 @@
     ui.editBarcodeInput.value = target.barcode || "";
     ui.editBarcodeInput.dataset.barcodeFormat = target.barcodeFormat || inferBarcodeFormat(target.barcode || "");
     ui.editExpiryInput.value = target.expiryDate || "";
+    if (ui.editInventoryInput) {
+      ui.editInventoryInput.value = target.inventory === undefined || target.inventory === null ? "" : String(target.inventory);
+    }
     if (ui.editHiddenDatePicker) {
       ui.editHiddenDatePicker.value = normalizeDateInput(target.expiryDate || "") || "";
     }
     openManagedModal("edit", ui.editProductModal);
   }
-
   function closeEditProductModal(options = {}) {
     state.editingProductId = null;
     closeManagedModal("edit", ui.editProductModal, options);
@@ -2439,6 +2502,10 @@
     const barcode = (ui.editBarcodeInput.value || "").trim();
     const expiryRaw = (ui.editExpiryInput.value || "").trim();
     const expiryDate = expiryRaw ? normalizeDateInput(expiryRaw) : "";
+    const inventory = normalizeInventoryValue(ui.editInventoryInput ? ui.editInventoryInput.value : "");
+    if (!hasProductIdentity(name, barcode)) {
+      throw new Error("必須要有名稱或條碼才能建立商品資訊卡。");
+    }
     if (expiryRaw && !expiryDate) {
       throw new Error("有效日期格式錯誤，請使用 YYYY-MM-DD");
     }
@@ -2481,6 +2548,7 @@
         ? ui.editBarcodeInput.dataset.barcodeFormat
         : inferBarcodeFormat(barcode);
       target.expiryDate = expiryDate;
+      target.inventory = inventory;
       const historyEditedProducts = selectedIdSet.size > 1 ? state.products.filter((item) => selectedIdSet.has(item.id)) : [target];
       const overwrittenProduct = overwriteDuplicateId ? state.products.find((item) => item.id === overwriteDuplicateId) : null;
       if (overwriteDuplicateId) {
@@ -2502,7 +2570,6 @@
       throw error;
     }
   }
-
   function computeEan13CheckDigit(first12) {
     if (!/^\d{12}$/.test(first12)) {
       return null;

@@ -47,30 +47,13 @@
   var nativeBridge = createNativeBridge();
 
   function createNativeBridge() {
-    if (!window.AndroidBridge) {
+    if (!window.AndroidBridge || typeof window.AndroidBridge.requestExportJsonFile !== "function") {
       return null;
     }
     var bridge = window.AndroidBridge;
-    if (typeof bridge.hasSelectedDbFile !== "function" || typeof bridge.readDatabaseFile !== "function") {
-      return null;
-    }
     return {
-      hasFile: function () {
-        try {
-          return !!bridge.hasSelectedDbFile();
-        } catch (_error) {
-          return false;
-        }
-      },
-      readFileText: async function () {
-        return String(bridge.readDatabaseFile() || "");
-      },
       exportJson: function (filename, content) {
         return new Promise(function (resolve, reject) {
-          if (typeof bridge.requestExportJsonFile !== "function") {
-            reject(new Error("裝置不支援原生 JSON 備份"));
-            return;
-          }
           var handler = function (event) {
             window.removeEventListener("android-json-exported", handler);
             var detail = event.detail || {};
@@ -185,16 +168,14 @@
   }
 
   async function hasSelectedFile(fileHandle) {
-    if (nativeBridge) {
-      return nativeBridge.hasFile();
+    // Android now stores product data only in IndexedDB; local browser file handles are not reusable there.
+    if (window.AndroidBridge) {
+      return false;
     }
     return !!fileHandle;
   }
 
   async function readProductsFromSelectedFile(fileHandle) {
-    if (nativeBridge) {
-      return parseProductsPayload(await nativeBridge.readFileText());
-    }
     var file = await fileHandle.getFile();
     return parseProductsPayload(await file.text());
   }
@@ -489,10 +470,10 @@
     var cell = document.createElement("td");
     if (label) cell.setAttribute("data-label", t(label));
     var value = document.createElement("strong");
-    value.className = "analytics-mobile-value";
+    value.className = "analytics-value";
     value.textContent = text;
     var meter = document.createElement("span");
-    meter.className = "analytics-mobile-meter " + meterClass;
+    meter.className = "analytics-value-meter " + meterClass;
     var fill = document.createElement("span");
     fill.style.width = String(Math.max(0, Math.min(1, Number(ratio) || 0)) * 100) + "%";
     meter.appendChild(fill);
@@ -551,7 +532,7 @@
       .forEach(function (item) {
         var row = document.createElement("tr");
         var stats = item.stats;
-        row.className = "analytics-mobile-rank-row analytics-category-count-row";
+        row.className = "analytics-data-card analytics-rank-card analytics-mobile-rank-row analytics-category-count-row";
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
         appendMetricCell(row, String(stats.total) + t("筆"), stats.total / maxTotal, "analytics-count-meter", "商品筆數");
         ui.categoryCountBody.appendChild(row);
@@ -586,7 +567,7 @@
       .forEach(function (item) {
         var row = document.createElement("tr");
         var stats = item.stats;
-        row.className = "analytics-mobile-ratio-row";
+        row.className = "analytics-data-card analytics-ratio-card analytics-mobile-ratio-row";
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品分類");
         appendCell(row, String(stats.total), "筆數");
         appendCell(row, String(stats.expired), "過期數");
@@ -616,7 +597,7 @@
         var row = document.createElement("tr");
         var value = item.averageDays !== null ? String(item.averageDays) + t("天") : t("無資料");
         var risk = item.averageDays === null ? "unknown" : (item.averageDays <= 0 ? "danger" : (item.averageDays <= 30 ? "warning" : "safe"));
-        row.className = "analytics-mobile-rank-row analytics-average-row risk-" + risk;
+        row.className = "analytics-data-card analytics-rank-card analytics-mobile-rank-row analytics-average-row risk-" + risk;
         appendCell(row, item.category === "未分類" ? t("未分類") : item.category, "商品類別");
         appendMetricCell(row, value, item.averageDays === null ? 0 : item.averageDays / maxDays, "analytics-average-meter", "平均效期天數");
         ui.averageDaysBody.appendChild(row);
@@ -720,7 +701,7 @@
       var rateValue = total > 0 ? (Number(month.expired) || 0) / total : 0;
       var rate = total > 0 ? String(Math.round(rateValue * 100)) + "%" : t("無資料");
       var row = document.createElement("tr");
-      row.className = "analytics-mobile-history-row";
+      row.className = "analytics-data-card analytics-history-card analytics-mobile-history-row";
       appendCell(row, month.monthKey, "月份");
       appendCell(row, String(month.expired || 0), "過期數");
       appendMetricCell(row, rate, rateValue, "analytics-history-meter", "過期率");
@@ -731,7 +712,7 @@
     Object.keys(categories).sort(function (a, b) { return categories[b].expired - categories[a].expired || String(a).localeCompare(String(b)); }).forEach(function (key) {
       var item = categories[key];
       var row = document.createElement("tr");
-      row.className = "analytics-mobile-history-category-row";
+      row.className = "analytics-data-card analytics-history-category-card analytics-mobile-history-category-row";
       appendCell(row, key === "未分類" ? t("未分類") : key, "分類");
       appendCell(row, String(item.added), "新增數");
       appendCell(row, String(item.expired), "過期數");

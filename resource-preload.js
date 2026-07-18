@@ -26,24 +26,12 @@
       "./fonts/GenSekiGothic2TC-H.woff2",
       "./fonts/GenSekiGothic2TC-R.woff2"
     ];
-  var backgroundAssets = [
-    "./key-visuals/background-neon-cyber.png",
-    "./key-visuals/background-daylight-cyber.png",
-    "./key-visuals/background-vibrant-oasis.png",
-    "./key-visuals/background-midnight-oasis.png"
-  ];
-function getCurrentBackgroundAsset() {
+  function getCurrentThemeKey() {
     var themeAliases = {
       "dark-7": "dark-1",
       "light-7": "light-1",
       "light-8": "light-2",
       "dark-8": "dark-2"
-    };
-    var themeBackgrounds = {
-      "dark-1": "./key-visuals/background-neon-cyber.png",
-      "light-1": "./key-visuals/background-daylight-cyber.png",
-      "light-2": "./key-visuals/background-vibrant-oasis.png",
-      "dark-2": "./key-visuals/background-midnight-oasis.png"
     };
     var savedTheme = "dark-1";
     try {
@@ -51,10 +39,17 @@ function getCurrentBackgroundAsset() {
     } catch (_error) {
     }
     var themeKey = themeAliases[savedTheme] || savedTheme;
-    return themeBackgrounds[themeKey] || themeBackgrounds["dark-1"];
+    return ["dark-1", "light-1", "light-2", "dark-2"].indexOf(themeKey) !== -1 ? themeKey : "dark-1";
   }
 
-  var assets = baseAssets.concat(isAndroidWebView || isSmallViewport ? [getCurrentBackgroundAsset()] : backgroundAssets);
+  function getCurrentBackgroundAsset() {
+    if (window.AppBackground && typeof window.AppBackground.getCurrentSource === "function") {
+      return window.AppBackground.getCurrentSource(getCurrentThemeKey());
+    }
+    return "./key-visuals/background-neon-cyber.png";
+  }
+
+  var assets = baseAssets.concat([getCurrentBackgroundAsset()]);
 
   function schedule(task) {
     if (typeof window.requestIdleCallback === "function") {

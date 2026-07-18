@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#1f6feb">
   <title>商品效期趨勢分析 | 商品終期電馭監管裝置</title>
   <script src="./legacy-webview.js"></script>
+  <script src="./background-loader.js"></script>
   <script src="./analytics-history.js"></script>
   <script>
     (() => {
@@ -24,12 +25,6 @@
       if (themeKey !== savedTheme) {
         localStorage.setItem("uiTheme", themeKey);
       }
-      const bootBackgrounds = {
-        "dark-1": "./key-visuals/background-neon-cyber.png",
-        "light-1": "./key-visuals/background-daylight-cyber.png",
-        "light-2": "./key-visuals/background-vibrant-oasis.png",
-        "dark-2": "./key-visuals/background-midnight-oasis.png"
-      };
       const statusBarColors = {
         "dark-1": "#050505",
         "light-1": "#fafafa",
@@ -49,8 +44,8 @@
       const savedLanguage = localStorage.getItem("appLanguage");
       const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
       const bootStartedAt = Date.now();
-      const minBootDurationMs = window.AndroidBridge ? 700 : 1800;
-      const maxBootDurationMs = window.AndroidBridge ? 1400 : 2600;
+      const minBootDurationMs = window.AndroidBridge ? 280 : 360;
+      const maxBootDurationMs = window.AndroidBridge ? 1500 : 2000;
       let ready = false;
       let bootVisualReady = false;
       let androidNavigationPending = false;
@@ -91,11 +86,10 @@
         bootVisualReady = true;
         root.classList.add("app-boot-visual-ready");
       };
-      const bootImage = new Image();
-      bootImage.onload = markBootVisualReady;
-      bootImage.onerror = markBootVisualReady;
-      bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
-      setTimeout(markBootVisualReady, 1200);
+      if (window.AppBackground && typeof window.AppBackground.start === "function") {
+        window.AppBackground.start(themeKey);
+      }
+      markBootVisualReady();
       window.AppBoot = {
         ready() {
           if (ready) return;
@@ -142,6 +136,7 @@ const waitForFinish = () => {
   <script src="./resource-preload.js" defer></script>
 </head>
 <body>
+  <div class="app-background-layer" aria-hidden="true"></div>
   <div class="app-boot-screen" aria-hidden="true">
     <div class="app-boot-spinner"></div>
   </div>

@@ -41,6 +41,7 @@
   --product-card-bg: var(--calendar-block-bg-soft);
   --product-card-bg-mobile: rgba(0, 0, 0, 0.2);
   --app-bg-image: url("./key-visuals/background-neon-cyber.png");
+  --app-bg-placeholder-image: url("./key-visuals/background-neon-cyber.png");
   --boot-bg: #000824;
   --boot-glow: rgba(0, 210, 255, 0.14);
   --boot-spinner-muted: rgba(120, 220, 255, 0.2);
@@ -76,6 +77,7 @@ html[data-theme="light-1"] {
   --product-card-bg: var(--calendar-block-bg-soft);
   --product-card-bg-mobile: rgba(255, 255, 255, 0.2);
   --app-bg-image: url("./key-visuals/background-daylight-cyber.png");
+  --app-bg-placeholder-image: url("./key-visuals/background-daylight-cyber.png");
   --boot-bg: #fafafa;
   --boot-glow: rgba(255, 176, 0, 0.18);
   --boot-spinner-muted: rgba(255, 176, 0, 0.22);
@@ -104,6 +106,7 @@ html[data-theme="light-2"] {
   --product-card-bg: var(--calendar-block-bg-soft);
   --product-card-bg-mobile: rgba(255, 255, 255, 0.2);
   --app-bg-image: url("./key-visuals/background-vibrant-oasis.png");
+  --app-bg-placeholder-image: url("./key-visuals/background-vibrant-oasis.png");
   --boot-bg: #f4f7f5;
   --boot-glow: rgba(47, 194, 116, 0.18);
   --boot-spinner-muted: rgba(47, 194, 116, 0.22);
@@ -132,6 +135,7 @@ html[data-theme="dark-2"] {
   --product-card-bg: var(--calendar-block-bg-soft);
   --product-card-bg-mobile: rgba(20, 31, 25, 0.2);
   --app-bg-image: url("./key-visuals/background-midnight-oasis.png");
+  --app-bg-placeholder-image: url("./key-visuals/background-midnight-oasis.png");
   --boot-bg: #101814;
   --boot-glow: rgba(47, 194, 116, 0.16);
   --boot-spinner-muted: rgba(47, 194, 116, 0.22);
@@ -154,8 +158,56 @@ html.app-booting body {
   background: var(--boot-bg);
 }
 
-html.app-booting body > :not(.app-boot-screen) {
+html.app-booting body > :not(.app-boot-screen):not(.app-background-layer) {
   opacity: 0;
+}
+
+html.app-background-layer-active body {
+  background-color: transparent;
+  background-image: none;
+  isolation: isolate;
+}
+
+.app-background-layer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background-color: var(--boot-bg);
+}
+
+.app-background-layer::before,
+.app-background-layer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.app-background-layer::before {
+  background-image: var(--app-bg-placeholder-image);
+  filter: blur(4px);
+}
+
+.app-background-layer::after {
+  background-image: var(--app-bg-image);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  will-change: opacity;
+}
+
+html.app-background-ready .app-background-layer::after {
+  opacity: 1;
 }
 
 .app-boot-screen {
@@ -171,7 +223,7 @@ html.app-booting body > :not(.app-boot-screen) {
   opacity: 1;
   background-image:
     radial-gradient(circle at center, var(--boot-glow), transparent 34%),
-    var(--app-bg-image);
+    var(--app-bg-placeholder-image);
   background-color: var(--boot-bg);
   background-size: auto, cover;
   background-position: center, center top;
@@ -183,6 +235,11 @@ html.legacy-webview .app-boot-screen {
   align-items: center;
   justify-content: center;
   background-size: auto, 100% auto;
+}
+
+/* Android keeps the system app-icon splash visible until the WebView reports a fully rendered page. */
+html.android-webview .app-boot-screen {
+  display: none;
 }
 
 html.app-boot-visual-ready .app-boot-screen {
@@ -199,7 +256,7 @@ html.app-boot-visual-ready .app-boot-screen {
   animation: appBootSpin 780ms linear infinite;
 }
 
-html.app-ready body > :not(.app-boot-screen) {
+html.app-ready body > :not(.app-boot-screen):not(.app-background-layer) {
   opacity: 1;
   transition: opacity 220ms ease;
 }
@@ -226,12 +283,37 @@ textarea,
 .btn,
 .calendar-day,
 .custom-select-button,
+button,
+a[href],
+.nav-link,
+[role="button"],
+.custom-select-button,
 .custom-select-option,
+.calendar-day,
 .custom-date-day,
 .category-chip,
 .chip-delete,
-.health-check-btn {
+.health-check-btn,
+.theme-option-btn,
+.back-to-top-btn {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch controls switch between resting and pressed colors directly. Desktop hover transitions remain available through .can-hover. */
+html:not(.can-hover) button,
+html:not(.can-hover) a[href],
+html:not(.can-hover) .nav-link,
+html:not(.can-hover) [role="button"],
+html:not(.can-hover) .custom-select-button,
+html:not(.can-hover) .custom-select-option,
+html:not(.can-hover) .calendar-day,
+html:not(.can-hover) .custom-date-day,
+html:not(.can-hover) .category-chip,
+html:not(.can-hover) .chip-delete,
+html:not(.can-hover) .health-check-btn,
+html:not(.can-hover) .theme-option-btn,
+html:not(.can-hover) .back-to-top-btn {
+  transition: none;
 }
 
 button,
@@ -270,10 +352,10 @@ button.is-pressed,
 .health-check-btn.is-pressed,
 .theme-option-btn:active,
 .theme-option-btn.is-pressed {
-  -webkit-filter: brightness(0.78) saturate(1.08);
-  filter: brightness(0.78) saturate(1.08);
+  -webkit-filter: none;
+  filter: none;
   transform: translateY(1px) scale(0.985);
-  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
   transition: none;
 }
 
@@ -452,14 +534,14 @@ html.android-webview .topbar-inner {
   cursor: pointer;
 }
 
-.nav-link:hover {
+html.can-hover .nav-link:hover {
   background: #fff;
   transform: translateY(-1px);
   box-shadow: 2px 4px 8px rgba(0,0,0,0.1);
   color: var(--primary);
 }
 
-.transient-nav-btn:hover,
+html.can-hover .transient-nav-btn:hover,
 .transient-nav-btn:focus {
   background: var(--bg-accent);
   transform: none;
@@ -546,11 +628,7 @@ html.legacy-webview .layout > * + * {
     --topbar-fixed-offset: calc(8.2rem + var(--safe-area-top));
   }
   html.android-webview {
-    --topbar-fixed-offset: calc(7.6rem + var(--safe-area-top));
-  }
-
-  html.android-webview .topbar-inner {
-    padding-top: calc(0.25rem + var(--safe-area-top));
+    --topbar-fixed-offset: calc(8.4rem + var(--safe-area-top));
   }
 
   .topbar {
@@ -627,15 +705,6 @@ html.android-webview .topbar-inner {
   padding-top: calc(var(--safe-area-top) + 0.25rem);
 }
 
-@media (max-width: 730px) {
-  html.android-webview {
-    --topbar-fixed-offset: calc(8.4rem + var(--safe-area-top));
-  }
-
-  html.android-webview .topbar-inner {
-    padding-top: calc(var(--safe-area-top) + 0.25rem);
-  }
-}
 /* 針對直式手機的微調 */
 @media (max-width: 730px) {
   .topbar-inner h1 { font-size: 1.35rem; }
@@ -972,7 +1041,7 @@ html[lang="ja"] .search-input-shell .text-input-mirror {
   transition: all 0.2s;
 }
 
-.custom-select-button:hover,
+html.can-hover .custom-select-button:hover,
 .custom-select-button:focus {
   background: #fff;
   color: var(--primary);
@@ -1033,7 +1102,7 @@ html[lang="ja"] .search-input-shell .text-input-mirror {
   cursor: pointer;
 }
 
-.custom-select-option:hover,
+html.can-hover .custom-select-option:hover,
 .custom-select-option:focus,
 .custom-select-option[aria-selected="true"] {
   border-color: var(--calendar-mark-border);
@@ -1095,7 +1164,7 @@ textarea {
   color: #fff;
 }
 
-.btn:hover,
+html.can-hover .btn:hover,
 .btn:focus {
   background: #fff;
   color: var(--primary);
@@ -1103,15 +1172,15 @@ textarea {
   box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.btn.primary:hover,
+html.can-hover .btn.primary:hover,
 .btn.primary:focus {
   background: var(--bg-accent);
   color: var(--primary);
 }
 
-.btn.danger-btn:hover,
+html.can-hover .btn.danger-btn:hover,
 .btn.danger-btn:focus,
-.danger-btn:hover,
+html.can-hover .danger-btn:hover,
 .danger-btn:focus {
   background: var(--bg-accent);
   border-color: var(--danger);
@@ -1123,7 +1192,7 @@ textarea {
   opacity: 0.55;
 }
 
-.transient-nav-btn:hover,
+html.can-hover .transient-nav-btn:hover,
 .transient-nav-btn:focus {
   background: var(--bg-accent);
   border-color: var(--line);
@@ -1229,12 +1298,6 @@ html.legacy-webview .barcode-input-row > * + * {
   display: flex;
   align-items: center;
   margin-bottom: 0.85rem;
-}
-
-@media (max-width: 730px) {
-  .calendar-toolbar {
-    align-items: center;
-  }
 }
 
 .calendar-head {
@@ -1405,7 +1468,7 @@ html[data-theme^="dark"] .calendar-help {
   pointer-events: none;
 }
 
-.custom-date-day:hover,
+html.can-hover .custom-date-day:hover,
 .custom-date-day:focus,
 .custom-date-day.is-today {
   border-color: var(--calendar-mark-border);
@@ -1630,19 +1693,23 @@ table-layout: automatic;
   }
 
   .table-wrap th:nth-child(1),
-  .table-wrap td:nth-child(1) { width: 11%; }
+  .table-wrap td:nth-child(1) { width: 10%; }
   .table-wrap th:nth-child(2),
-  .table-wrap td:nth-child(2) { width: 18%; }
+  .table-wrap td:nth-child(2) { width: 17%; }
   .table-wrap th:nth-child(3),
-  .table-wrap td:nth-child(3) { width: 15%; }
+  .table-wrap td:nth-child(3) { width: 14%; }
   .table-wrap th:nth-child(4),
-  .table-wrap td:nth-child(4) { width: 12%; }
+  .table-wrap td:nth-child(4) { width: 11%; }
   .table-wrap th:nth-child(5),
-  .table-wrap td:nth-child(5) { width: 18%; }
+  .table-wrap td:nth-child(5) { width: 7%; }
   .table-wrap th:nth-child(6),
-  .table-wrap td:nth-child(6) { width: 8%; }
+  .table-wrap td:nth-child(6) { width: 15%; }
   .table-wrap th:nth-child(7),
-  .table-wrap td:nth-child(7) { width: 14%; }
+  .table-wrap td:nth-child(7) { width: 8%; }
+  .table-wrap th:nth-child(8),
+  .table-wrap td:nth-child(8) { width: 13%; }
+  .table-wrap th:nth-child(9),
+  .table-wrap td:nth-child(9) { width: 5%; }
 }
 
 th, td {
@@ -1853,7 +1920,7 @@ gap: 2rem; /* 增加系統設定頁各區塊間的間隔 */
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 24%, transparent);
 }
 
-.language-select-row .custom-select-button:hover,
+html.can-hover .language-select-row .custom-select-button:hover,
 .language-select-row .custom-select-button:focus {
   color: var(--text);
   border-color: var(--primary);
@@ -2092,11 +2159,11 @@ html[data-theme="dark-1"] .danger-btn {
   color: #ffffff;
 }
 
-html[data-theme="dark-1"] .btn:hover,
+html.can-hover[data-theme="dark-1"] .btn:hover,
 html[data-theme="dark-1"] .btn:focus,
-html[data-theme="dark-1"] .nav-link:hover,
+html.can-hover[data-theme="dark-1"] .nav-link:hover,
 html[data-theme="dark-1"] .nav-link:focus,
-html[data-theme="dark-1"] .theme-option-btn:hover,
+html.can-hover[data-theme="dark-1"] .theme-option-btn:hover,
 html[data-theme="dark-1"] .theme-option-btn:focus {
   background: #ffffff;
   border-color: #00f0ff;
@@ -2223,11 +2290,11 @@ html[data-theme="light-1"] .danger-btn {
   color: #050505;
 }
 
-html[data-theme="light-1"] .btn:hover,
+html.can-hover[data-theme="light-1"] .btn:hover,
 html[data-theme="light-1"] .btn:focus,
-html[data-theme="light-1"] .nav-link:hover,
+html.can-hover[data-theme="light-1"] .nav-link:hover,
 html[data-theme="light-1"] .nav-link:focus,
-html[data-theme="light-1"] .theme-option-btn:hover,
+html.can-hover[data-theme="light-1"] .theme-option-btn:hover,
 html[data-theme="light-1"] .theme-option-btn:focus {
   background: #050505;
   border-color: #ffb000;
@@ -2269,13 +2336,13 @@ html[data-theme="dark-2"] .calendar-nav .btn {
 }
 
 html[data-theme="dark-1"] .calendar-nav .btn,
-html[data-theme="dark-1"] .calendar-nav .btn:hover,
+html.can-hover[data-theme="dark-1"] .calendar-nav .btn:hover,
 html[data-theme="dark-1"] .calendar-nav .btn:focus,
 html[data-theme="dark-2"] .calendar-nav .btn,
-html[data-theme="dark-2"] .calendar-nav .btn:hover,
+html.can-hover[data-theme="dark-2"] .calendar-nav .btn:hover,
 html[data-theme="dark-2"] .calendar-nav .btn:focus,
 html[data-theme="light-2"] .calendar-nav .btn,
-html[data-theme="light-2"] .calendar-nav .btn:hover,
+html.can-hover[data-theme="light-2"] .calendar-nav .btn:hover,
 html[data-theme="light-2"] .calendar-nav .btn:focus {
   background: transparent;
   border-color: transparent !important;
@@ -2347,11 +2414,11 @@ html[data-theme="light-2"] .danger-btn {
   color: #ffffff;
 }
 
-html[data-theme="light-2"] .btn:hover,
+html.can-hover[data-theme="light-2"] .btn:hover,
 html[data-theme="light-2"] .btn:focus,
-html[data-theme="light-2"] .nav-link:hover,
+html.can-hover[data-theme="light-2"] .nav-link:hover,
 html[data-theme="light-2"] .nav-link:focus,
-html[data-theme="light-2"] .theme-option-btn:hover,
+html.can-hover[data-theme="light-2"] .theme-option-btn:hover,
 html[data-theme="light-2"] .theme-option-btn:focus {
   background: #edf6f0;
   border-color: #168a4a;
@@ -2484,11 +2551,11 @@ html[data-theme="dark-2"] .danger-btn {
   color: #1b0d0d;
 }
 
-html[data-theme="dark-2"] .btn:hover,
+html.can-hover[data-theme="dark-2"] .btn:hover,
 html[data-theme="dark-2"] .btn:focus,
-html[data-theme="dark-2"] .nav-link:hover,
+html.can-hover[data-theme="dark-2"] .nav-link:hover,
 html[data-theme="dark-2"] .nav-link:focus,
-html[data-theme="dark-2"] .theme-option-btn:hover,
+html.can-hover[data-theme="dark-2"] .theme-option-btn:hover,
 html[data-theme="dark-2"] .theme-option-btn:focus {
   background: #203329;
   border-color: #2fc274;
@@ -2542,14 +2609,14 @@ html[data-theme="dark-2"] .filter-row .custom-select-button {
   background: transparent;
 }
 
-html[data-theme="dark-1"] .filter-row .custom-select-button:hover,
+html.can-hover[data-theme="dark-1"] .filter-row .custom-select-button:hover,
 html[data-theme="dark-1"] .filter-row .custom-select-button:focus {
   background: #ffffff;
   border-color: #00f0ff;
   color: #050505;
 }
 
-html[data-theme="dark-2"] .filter-row .custom-select-button:hover,
+html.can-hover[data-theme="dark-2"] .filter-row .custom-select-button:hover,
 html[data-theme="dark-2"] .filter-row .custom-select-button:focus {
   background: #203329;
   border-color: #2fc274;
@@ -2733,7 +2800,7 @@ html[lang="en"] .action-cell .btn {
   opacity: 0.94;
 }
 
-.back-to-top-btn:hover,
+html.can-hover .back-to-top-btn:hover,
 .back-to-top-btn:focus {
   background: #fff;
   color: var(--primary);
@@ -2763,10 +2830,11 @@ html[data-theme^="dark"] .toast {
   color: #fff;
 }
 
-/* Keep the neon toast cyan, with the same perceived depth as midnight oasis. */
+/* Match the neon theme's primary product-add button. */
 html[data-theme="dark-1"] .toast {
-  background: #00b8c5;
-  border-color: #00b8c5;
+  background: #00f0ff;
+  border-color: #ffffff;
+  color: #050505;
 }
 
 @media (max-width: 730px) {
@@ -2932,7 +3000,7 @@ html[data-theme="dark-1"] .toast {
     display: none;
   }
 
-  .table-wrap tbody td.note-cell.is-empty {
+  .table-wrap tbody td.product-detail-cell.is-empty {
     display: none;
   }
 
@@ -3349,10 +3417,8 @@ html[data-theme] .release-history-section .release-history-entry {
   min-width: 0;
   min-height: 6.25rem;
   padding: 0.82rem;
-  border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--calendar-block-bg-soft);
-  box-shadow: var(--glass-shadow);
 }
 
 .analytics-overview-label {
@@ -3370,21 +3436,13 @@ html[data-theme] .release-history-section .release-history-entry {
   line-height: 1;
 }
 
-.analytics-overview-expired {
-  border-color: var(--danger);
-}
 
 .analytics-overview-expired .analytics-overview-value {
   color: var(--danger);
 }
 
-.analytics-overview-warning {
-  border-color: var(--primary);
-}
 
-.analytics-overview-upcoming {
-  border-color: var(--calendar-mark-border);
-}
+
 .analytics-list-table-wrap {
   position: relative;
   margin-top: 0.75rem;
@@ -3524,22 +3582,107 @@ html[data-theme] .release-history-section .release-history-entry {
   color: var(--primary);
 }
 
-.analytics-mobile-meter {
-  display: none;
+/* Shared card surface and value bar for desktop and mobile analytics. */
+.analytics-data-card {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border: 0 !important;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+  margin-bottom: 0.72rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.analytics-data-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--calendar-block-bg-soft);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+}
+
+.analytics-data-card > td {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 0;
+}
+
+.analytics-list-table thead tr {
+  border-bottom: 0;
+}
+
+.analytics-rank-card {
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 0.55fr);
+}
+
+.analytics-expired-ratio-table .analytics-ratio-card {
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(6.5rem, 0.4fr)) minmax(14rem, 0.85fr);
+}
+
+.analytics-history-table .analytics-history-card {
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.4fr) minmax(14rem, 0.85fr);
+}
+
+.analytics-history-category-table .analytics-history-category-card {
+  grid-template-columns: minmax(0, 1.2fr) repeat(3, minmax(7rem, 0.5fr));
+}
+
+.analytics-rank-card > td:last-child,
+.analytics-ratio-card > td:last-child,
+.analytics-history-card > td:last-child {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.analytics-value {
+  display: block;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.analytics-value-meter {
+  display: block;
+  width: 100%;
+  height: 0.42rem;
+  margin-top: 0.48rem;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.analytics-value-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.analytics-count-meter > span,
+.analytics-history-meter > span {
+  background: var(--calendar-mark-bg);
+}
+
+.analytics-expired-meter > span,
+.analytics-average-row.risk-danger .analytics-average-meter > span {
+  background: var(--danger);
+}
+
+.analytics-average-row.risk-safe .analytics-average-meter > span {
+  background: var(--calendar-mark-border);
 }
 
 @media (max-width: 730px) {
 
-  /* Keep the desktop tables intact, but turn the three category summaries into
-     compact, readable ranking cards on phone-width screens. */
-  .analytics-list-table tr.analytics-mobile-rank-row,
-  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row {
-    background: var(--calendar-block-bg-soft);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    box-shadow: var(--glass-shadow);
-    margin-bottom: 0.72rem;
-  }
+  /* Mobile layout adjustments only. */
 
   .analytics-list-table tr.analytics-mobile-rank-row {
     grid-template-columns: minmax(0, 1fr) minmax(7.5rem, auto);
@@ -3552,42 +3695,6 @@ html[data-theme] .release-history-section .release-history-entry {
 
   .analytics-list-table tr.analytics-mobile-rank-row td:last-child {
     text-align: right;
-  }
-
-  .analytics-mobile-value {
-    display: block;
-    font-size: 1.1rem;
-    line-height: 1.25;
-  }
-
-  .analytics-mobile-meter {
-    display: block;
-    width: 100%;
-    height: 0.42rem;
-    margin-top: 0.48rem;
-    overflow: hidden;
-    border-radius: 1px;
-    background: color-mix(in srgb, var(--line) 72%, transparent);
-  }
-
-  .analytics-mobile-meter > span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--primary);
-  }
-
-  .analytics-count-meter > span {
-    background: var(--calendar-mark-bg);
-  }
-
-  .analytics-expired-meter > span,
-  .analytics-average-row.risk-danger .analytics-average-meter > span {
-    background: var(--danger);
-  }
-
-  .analytics-average-row.risk-safe .analytics-average-meter > span {
-    background: var(--calendar-mark-border);
   }
 
   .analytics-expired-ratio-table thead {
@@ -3630,7 +3737,7 @@ html[data-theme] .release-history-section .release-history-entry {
     margin-top: 0.6rem;
   }
 
-  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(4) .analytics-mobile-value {
+  .analytics-expired-ratio-table tr.analytics-mobile-ratio-row td:nth-child(4) .analytics-value {
     text-align: right;
   }
 
@@ -3668,14 +3775,6 @@ html[data-theme] .release-history-section .release-history-entry {
     display: none;
   }
 
-  .analytics-history-table tr.analytics-mobile-history-row,
-  .analytics-history-category-table tr.analytics-mobile-history-category-row {
-    background: var(--calendar-block-bg-soft);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    box-shadow: var(--glass-shadow);
-    margin-bottom: 0.72rem;
-  }
 
   .analytics-history-table tr.analytics-mobile-history-row {
     grid-template-columns: minmax(0, 1fr) minmax(5rem, auto);
@@ -3711,7 +3810,7 @@ html[data-theme] .release-history-section .release-history-entry {
     margin-top: 0.6rem;
   }
 
-  .analytics-history-table tr.analytics-mobile-history-row td:nth-child(3) .analytics-mobile-value {
+  .analytics-history-table tr.analytics-mobile-history-row td:nth-child(3) .analytics-value {
     text-align: right;
   }
 
@@ -3816,10 +3915,10 @@ html.legacy-webview .analytics-heat-cell.heat-level-3 {
 }
 
 html:not(.android-webview) .privacy-app-info-btn,
-html:not(.android-webview) .privacy-app-info-btn:hover,
+html.can-hover:not(.android-webview) .privacy-app-info-btn:hover,
 html:not(.android-webview) .privacy-app-info-btn:focus,
 html[data-theme] .privacy-app-info-btn.app-info-unavailable,
-html[data-theme] .privacy-app-info-btn.app-info-unavailable:hover,
+html.can-hover[data-theme] .privacy-app-info-btn.app-info-unavailable:hover,
 html[data-theme] .privacy-app-info-btn.app-info-unavailable:focus {
   color: transparent !important;
   -webkit-text-fill-color: transparent !important;
@@ -3934,6 +4033,34 @@ html.android-webview .toast {
   }
 }
 
+/* Pointer presses use a single, high-contrast state.  Android has no hover state here. */
+html[data-theme="dark-1"] .is-pressed {
+  background: #ffffff !important;
+  border-color: #00f0ff !important;
+  color: #050505 !important;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.45) !important;
+}
+
+html[data-theme="light-1"] .is-pressed {
+  background: #050505 !important;
+  border-color: #ffb000 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(255, 176, 0, 0.36) !important;
+}
+
+html[data-theme="light-2"] .is-pressed {
+  background: #edf6f0 !important;
+  border-color: #168a4a !important;
+  color: #125c33 !important;
+  box-shadow: 0 6px 14px rgba(22, 138, 74, 0.16) !important;
+}
+
+html[data-theme="dark-2"] .is-pressed {
+  background: #203329 !important;
+  border-color: #2fc274 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(47, 194, 116, 0.18) !important;
+}
 /* Product fields keep their normal border until focus, then use the active theme color. */
 #customAppTitleInput:focus,
 #productForm input:focus,
@@ -4060,6 +4187,16 @@ html.android-webview .product-editor-modal .modal-content {
   .product-editor-modal .modal-content {
     max-height: calc(var(--visual-viewport-height) - var(--safe-area-top) - var(--safe-area-bottom) - 1.3rem);
   }
+}
+/* Keep multi-line messages in error, notice, and confirmation dialogs easy to scan in every locale. */
+.modal-content p,
+.modal-content .help-text {
+  line-height: 1.72;
+}
+
+.error-modal .modal-content .help-text {
+  margin: 1.05rem 0 1.3rem;
+  line-height: 1.78;
 }
 /* Give the one-time storage-transition notice enough breathing room for its long backup guidance. */
 #storageTransitionNoticeModal .help-text {

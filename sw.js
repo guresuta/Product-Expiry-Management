@@ -1,4 +1,4 @@
-const CACHE_NAME = "expiry-manager-cache-v392";
+const CACHE_NAME = "expiry-manager-cache-v412";
 const APP_SHELL_FILES = [
   "./",
   "./inventory-management-app.html",
@@ -6,6 +6,7 @@ const APP_SHELL_FILES = [
   "./privacy-policy.html",
   "./analytics.html",
   "./styles_washi.css",
+  "./background-loader.js",
   "./resource-preload.js",
   "./home-subtitles.js",
   "./legacy-webview.js",
@@ -23,10 +24,10 @@ const APP_SHELL_FILES = [
   "./icons/icon-app-maskable-512.png",
   "./fonts/GenSekiGothic2TC-H.woff2",
   "./fonts/GenSekiGothic2TC-R.woff2",
-  "./key-visuals/background-neon-cyber.png",
-  "./key-visuals/background-daylight-cyber.png",
-  "./key-visuals/background-vibrant-oasis.png",
-  "./key-visuals/background-midnight-oasis.png"
+  "./key-visuals/background-neon-cyber-preview.png",
+  "./key-visuals/background-daylight-cyber-preview.png",
+  "./key-visuals/background-vibrant-oasis-preview.png",
+  "./key-visuals/background-midnight-oasis-preview.png"
 ];
 
 self.addEventListener("install", (event) => {

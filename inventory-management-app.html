@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#1f6feb">
   <title>商品終期電馭監管裝置</title>
   <script src="./legacy-webview.js"></script>
+  <script src="./background-loader.js"></script>
   <script src="./analytics-history.js"></script>
   <script>
     (() => {
@@ -24,12 +25,6 @@
       if (themeKey !== savedTheme) {
         localStorage.setItem("uiTheme", themeKey);
       }
-      const bootBackgrounds = {
-        "dark-1": "./key-visuals/background-neon-cyber.png",
-        "light-1": "./key-visuals/background-daylight-cyber.png",
-        "light-2": "./key-visuals/background-vibrant-oasis.png",
-        "dark-2": "./key-visuals/background-midnight-oasis.png"
-      };
       const statusBarColors = {
         "dark-1": "#050505",
         "light-1": "#fafafa",
@@ -49,8 +44,8 @@
       const savedLanguage = localStorage.getItem("appLanguage");
       const language = savedLanguage && languageKeys.has(savedLanguage) ? savedLanguage : inferSystemLanguage();
       const bootStartedAt = Date.now();
-      const minBootDurationMs = window.AndroidBridge ? 700 : 1800;
-      const maxBootDurationMs = window.AndroidBridge ? 1400 : 2600;
+      const minBootDurationMs = window.AndroidBridge ? 280 : 360;
+      const maxBootDurationMs = window.AndroidBridge ? 1500 : 2000;
       let ready = false;
       let bootVisualReady = false;
       let androidNavigationPending = false;
@@ -91,11 +86,10 @@
         bootVisualReady = true;
         root.classList.add("app-boot-visual-ready");
       };
-      const bootImage = new Image();
-      bootImage.onload = markBootVisualReady;
-      bootImage.onerror = markBootVisualReady;
-      bootImage.src = bootBackgrounds[themeKey] || bootBackgrounds[defaultThemeKey];
-      setTimeout(markBootVisualReady, 1200);
+      if (window.AppBackground && typeof window.AppBackground.start === "function") {
+        window.AppBackground.start(themeKey);
+      }
+      markBootVisualReady();
       window.AppBoot = {
         ready() {
           if (ready) return;
@@ -142,6 +136,7 @@ const waitForFinish = () => {
   <script src="./resource-preload.js" defer></script>
 </head>
 <body>
+  <div class="app-background-layer" aria-hidden="true"></div>
   <div class="app-boot-screen" aria-hidden="true">
     <div class="app-boot-spinner"></div>
   </div>
@@ -206,6 +201,8 @@ const waitForFinish = () => {
             <select id="sortSelect" class="search-input">
               <option value="expiry" selected>排序: 有效日期</option>
               <option value="category">排序: 分類</option>
+              <option value="name">排序: 商品名稱</option>
+              <option value="barcode">排序: 條碼</option>
               <option value="status">排序: 狀態</option>
             </select>
           </div>
@@ -226,6 +223,7 @@ const waitForFinish = () => {
               <th>商品名稱</th>
               <th>條碼</th>
               <th>有效日期</th>
+              <th>庫存</th>
               <th class="note-col">備註</th>
               <th>狀態</th>
               <th>操作</th>
@@ -301,6 +299,10 @@ const waitForFinish = () => {
           <input id="hiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
         </label>
         <label>
+          庫存
+          <input id="inventoryInput" name="inventory" type="number" inputmode="numeric" min="0" step="any" placeholder="輸入庫存">
+        </label>
+        <label>
           備註
           <textarea id="noteInput" name="note" class="note-input" rows="3" placeholder="可輸入商品備註"></textarea>
         </label>
@@ -344,26 +346,30 @@ const waitForFinish = () => {
       <form id="editProductForm" class="form-stack">
         <label>
           商品分類
-          <select id="editCategorySelect" required></select>
+          <select id="editCategorySelect"></select>
         </label>
         <label>
           商品名稱
-          <input id="editNameInput" required>
+          <input id="editNameInput">
         </label>
         <label>
           商品條碼
           <div class="barcode-input-row">
-            <input id="editBarcodeInput" required inputmode="numeric">
+            <input id="editBarcodeInput" inputmode="numeric">
             <button id="editScanBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span class="scan-camera-label">鏡頭</span><span>掃描</span></span></button>
           </div>
         </label>
         <label>
           有效日期
           <div class="barcode-input-row">
-            <input id="editExpiryInput" required inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
+            <input id="editExpiryInput" inputmode="numeric" pattern="[0-9-]*" placeholder="YYYY-MM-DD">
             <button id="editPickDateBtn" class="btn secondary" type="button"><span class="stacked-btn-text"><span>選擇</span><span>日期</span></span></button>
           </div>
           <input id="editHiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
+        </label>
+        <label>
+          庫存
+          <input id="editInventoryInput" type="number" inputmode="numeric" min="0" step="any" placeholder="輸入庫存">
         </label>
         <label>
           備註

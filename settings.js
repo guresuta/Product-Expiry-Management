@@ -420,12 +420,24 @@
     ui.themeCurrentLabel.textContent = t(`目前主題：${preset.label}`);
   }
 
-  function applyTheme(themeKey) {
+  function applyTheme(themeKey, callback) {
     const preset = findThemePreset(themeKey);
-    document.documentElement.setAttribute("data-theme", preset.key);
-    localStorage.setItem(THEME_SETTING_KEY, preset.key);
-    updateThemeCurrentLabel(preset.key);
-    syncThemeColorMeta();
+    const finish = () => {
+      document.documentElement.setAttribute("data-theme", preset.key);
+      localStorage.setItem(THEME_SETTING_KEY, preset.key);
+      updateThemeCurrentLabel(preset.key);
+      syncThemeColorMeta();
+      if (typeof callback === "function") {
+        callback();
+      }
+    };
+    if (window.AppBackground
+      && typeof window.AppBackground.activateTheme === "function"
+      && document.documentElement.getAttribute("data-theme") !== preset.key) {
+      window.AppBackground.activateTheme(preset.key, finish);
+      return;
+    }
+    finish();
   }
 
   function loadTheme() {
@@ -478,9 +490,10 @@
     if (!target || target.mode !== themePickerMode) {
       return;
     }
-    applyTheme(target.key);
+    applyTheme(target.key, () => {
     closeThemePicker();
     showToast(`已套用 ${target.label}`);
+    });
   }
 
   function getSelectLabel(selectEl) {
@@ -999,6 +1012,7 @@
       name: header.findIndex((h) => h === "商品名稱" || h === "name"),
       barcode: header.findIndex((h) => h === "條碼" || h === "barcode"),
       expiryDate: header.findIndex((h) => h === "有效日期" || h === "expirydate" || h === "expiry_date"),
+      inventory: header.findIndex((h) => h === "庫存" || h === "inventory" || h === "stock"),
       note: header.findIndex((h) => h === "備註" || h === "note" || h === "memo")
     };
     if (idx.category < 0 || idx.name < 0 || idx.barcode < 0 || idx.expiryDate < 0) {
@@ -1011,10 +1025,11 @@
       const name = (row[idx.name] || "").trim();
       const barcode = (row[idx.barcode] || "").trim();
       const expiryRaw = (row[idx.expiryDate] || "").trim();
+      const inventory = idx.inventory >= 0 ? (row[idx.inventory] || "").trim() : "";
       const note = idx.note >= 0 ? (row[idx.note] || "").trim() : "";
       const expiryDate = normalizeCsvDateInput(expiryRaw);
-      const hasAnyField = !!(category || name || barcode || expiryRaw || note);
-      if (!hasAnyField) {
+      const hasAnyField = !!(category || name || barcode || expiryRaw || inventory || note);
+      if (!hasAnyField || (!name && !barcode)) {
         return;
       }
       output.push({
@@ -1024,6 +1039,7 @@
         category,
         name,
         barcode,
+        inventory,
         note,
         expiryDate,
         createdAt: new Date().toISOString()
@@ -1137,8 +1153,8 @@
   }
 
   function toCsv(products) {
-    const escapeCsvCell = (value) => `"${String(value || "").replace(/"/g, "\"\"")}"`;
-    const header = ["分類", "商品名稱", "條碼", "有效日期", "備註", "狀態"];
+    const escapeCsvCell = (value) => `"${String(value === undefined || value === null ? "" : value).replace(/"/g, "\"\"")}"`;
+    const header = ["分類", "商品名稱", "條碼", "有效日期", "庫存", "備註", "狀態"];
     const lines = [header.map(escapeCsvCell).join(",")];
     products.forEach((item) => {
       const escaped = [
@@ -1146,6 +1162,7 @@
         item.name,
         item.barcode,
         item.expiryDate,
+        item.inventory,
         item.note,
         getStatusLabel(item.expiryDate)
       ].map(escapeCsvCell);
@@ -1262,9 +1279,10 @@
       const name = String(pickFirstValue(item, ["name", "商品名稱", "productName", "title"])).trim();
       const barcode = String(pickFirstValue(item, ["barcode", "條碼", "code", "ean", "upc", "sku"])).trim();
       const expiryRaw = String(pickFirstValue(item, ["expiryDate", "有效日期", "expiry", "expiry_date", "expireDate", "date"])).trim();
+      const inventory = String(pickFirstValue(item, ["inventory", "庫存", "stock"])).trim();
       const expiryDate = normalizeCsvDateInput(expiryRaw);
-      const hasAnyField = !!(category || name || barcode || expiryRaw);
-      if (!hasAnyField) {
+      const hasAnyField = !!(category || name || barcode || expiryRaw || inventory);
+      if (!hasAnyField || (!name && !barcode)) {
         return;
       }
       output.push({
@@ -1276,6 +1294,7 @@
         category,
         name,
         barcode,
+        inventory,
         expiryDate,
         createdAt: item.createdAt ? String(item.createdAt) : new Date().toISOString()
       });
