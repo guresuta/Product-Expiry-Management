@@ -457,12 +457,42 @@
       return;
     }
     window.setTimeout(() => {
-      try {
-        field.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      } catch (_error) {
-        field.scrollIntoView(false);
+      const modal = field.closest(".product-editor-modal");
+      if (!modal) {
+        return;
       }
-    }, 180);
+      const formActions = modal.querySelector(".form-actions");
+      const anchor = formActions || field;
+      const modalRect = modal.getBoundingClientRect();
+      const anchorRect = anchor.getBoundingClientRect();
+      const fieldRect = field.getBoundingClientRect();
+      const edgeInset = 16;
+      const visibleTop = modalRect.top + edgeInset;
+      const visibleBottom = modalRect.bottom - edgeInset;
+      let offset = 0;
+
+      if (anchorRect.bottom > visibleBottom) {
+        offset = anchorRect.bottom - visibleBottom;
+      } else if (fieldRect.top < visibleTop) {
+        offset = fieldRect.top - visibleTop;
+      }
+      if (offset) {
+        try {
+          modal.scrollBy({ top: Math.ceil(offset), behavior: "smooth" });
+        } catch (_error) {
+          modal.scrollTop += Math.ceil(offset);
+        }
+      }
+    }, 220);
+  }
+
+  function resetProductEditorScroll(modal) {
+    if (!modal) {
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      modal.scrollTop = 0;
+    });
   }
 
   function setupResponsiveLayout() {
@@ -557,7 +587,8 @@
 
   function bindHomeSubtitleRotation() {
     if (window.AndroidBridge) {
-      window.addEventListener("android-app-resumed", applyRandomHomeSubtitle);
+      // Android task switching can resume repeatedly while the gesture animation is still
+      // settling. Keep the already rendered subtitle so the fixed top bar never reflows.
       return;
     }
     let wasHidden = document.hidden;
@@ -1385,17 +1416,28 @@
     return compareDate(a.expiryDate, b.expiryDate);
   }
 
+  function compareShelfLevel(a, b) {
+    const leftRaw = String(a.shelfLevel || "").trim();
+    const rightRaw = String(b.shelfLevel || "").trim();
+    const left = /^[1-9]\d*$/.test(leftRaw) ? Number(leftRaw) : Number.POSITIVE_INFINITY;
+    const right = /^[1-9]\d*$/.test(rightRaw) ? Number(rightRaw) : Number.POSITIVE_INFINITY;
+    if (left !== right) {
+      return left - right;
+    }
+    return compareDate(a.expiryDate, b.expiryDate) || compareProductText(a, b, "name");
+  }
+
   function sortForView(products) {
     const by = ui.sortSelect ? ui.sortSelect.value : "default";
     const cloned = products.slice();
-    if (by === "category") {
-      return cloned.sort((a, b) => a.category.localeCompare(b.category, "zh-Hant"));
-    }
     if (by === "name") {
       return cloned.sort((a, b) => compareProductText(a, b, "name"));
     }
     if (by === "barcode") {
       return cloned.sort((a, b) => compareProductText(a, b, "barcode"));
+    }
+    if (by === "shelfLevel") {
+      return cloned.sort(compareShelfLevel);
     }
     if (by === "expiry") {
       return cloned.sort((a, b) => compareDate(a.expiryDate, b.expiryDate));
@@ -2309,6 +2351,7 @@
     applyRememberedAddCategory();
     syncCustomSelect(ui.categoryInput);
     openManagedModal("add", ui.addProductModal);
+    resetProductEditorScroll(ui.addProductModal);
   }
 
   function closeAddProductModal(options = {}) {
@@ -2497,6 +2540,7 @@
       ui.editHiddenDatePicker.value = normalizeDateInput(target.expiryDate || "") || "";
     }
     openManagedModal("edit", ui.editProductModal);
+    resetProductEditorScroll(ui.editProductModal);
   }
   function closeEditProductModal(options = {}) {
     state.editingProductId = null;

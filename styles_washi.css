@@ -4212,6 +4212,8 @@ html[data-theme="dark-2"] .is-pressed {
 :root {
   --visual-viewport-height: 100vh;
   --android-ime-height: 0px;
+  --product-editor-scroll-reserve: 40vh;
+  --product-editor-active-scroll-reserve: var(--product-editor-scroll-reserve);
 }
 
 .topbar-inner h1 {
@@ -4226,9 +4228,14 @@ html[data-theme="dark-2"] .is-pressed {
   height: var(--visual-viewport-height);
   min-height: 0;
   align-items: flex-start;
+  justify-content: flex-start;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scroll-padding-top: max(0.65rem, calc(var(--safe-area-top) + 0.35rem));
+  scroll-padding-bottom: max(1rem, calc(var(--safe-area-bottom) + 1rem));
+  padding-bottom: calc(max(5rem, calc(var(--safe-area-bottom) + 1rem)) + var(--product-editor-scroll-reserve));
 }
 
 .product-editor-modal .modal-content {
@@ -4244,13 +4251,17 @@ html.android-webview .product-editor-modal {
   bottom: var(--android-ime-height);
   height: auto;
   padding-top: max(0.65rem, calc(var(--safe-area-top) + 0.35rem));
-  padding-bottom: max(0.85rem, calc(var(--safe-area-bottom) + 0.5rem));
+  padding-bottom: calc(max(5rem, calc(var(--safe-area-bottom) + 1rem)) + var(--product-editor-active-scroll-reserve));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
 }
 
 html.android-webview .product-editor-modal .modal-content {
   max-height: none;
   overflow: visible;
   margin: 0 auto;
+  flex: 0 0 auto;
 }
 
 @supports (height: 100dvh) {
