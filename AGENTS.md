@@ -646,3 +646,19 @@
 - 正式 AAB 與 APK 使用同一份 `app/src/main/assets/` 輸入；目前重複資料夾已移除，因此重新產生 AAB 不會再帶入該巢狀重複。正式上架仍需使用者於 Android Studio 以自己的 release keystore 產生 signed AAB。
 - 本輪尚待人工驗證：依序選擇 `light-1`、`light-2`、`dark-2` 後完全關閉並重啟 App，確認狀態列在完整 Splash 過程維持黑色，首頁出現後才切換為儲存的主題色。
 - 前端 Git repo 本輪尚未提交／推送；目前變更包含 `CHANGELOG.md` 的狀態列與雙 Logo Splash 說明。`pixel7-current.png` 與 `tmp/` 為測試／使用者工作檔，保持未追蹤且不可納入提交。
+
+### 9.54 v2.2.0 多工返回保護與 GitHub 同步（2026-07-25）
+- 前端 Git 已提交並推送至 GitHub `main`：
+  - `f962d99 Refine Android resume and inventory UI`
+  - 內容包含庫存／陳列層相關前端、英日翻譯、提示視窗與新增／編輯視窗調整，以及 `sw.js` 快取更新。
+- 目前前端版本為 `v2.2.0`，`sw.js` 快取版本為 `expiry-manager-cache-v426`。
+- 已確認本輪變更的 `app.js`、`i18n.js`、`inventory-management-app.html`、`styles_washi.css`、`sw.js` 與 Android Studio `app/src/main/assets/` SHA-256 一致；`node --check app.js`、`node --check i18n.js`、`node --check sw.js`、`git diff --check` 通過。
+- Android Studio 原生 `MainActivity.kt`（不由本前端 Git repo 追蹤）目前的多工回前景流程為：
+  - 最近使用頁返回與手勢條快速切換共用 `onPause()` / `onResume()` 流程。
+  - 取得前景焦點後立即顯示不透明的原生主題讀取遮罩，最短維持 400ms，同時等待 `WebView.postVisualStateCallback()`；兩項條件完成後才淡出遮罩並派送 `android-app-resumed`。
+  - 這是為遮蔽 Xperia 10 V 的系統任務快照到即時 WebView Surface 交接閃爍所作的優先穩定性方案。系統最近使用頁卡片本身的放大動畫不可由 App 控制。
+  - 舊的 `resumeSnapshot`／`PixelCopy` 上一幀保護層程式與 `RecentsSnapshot` 日誌仍保留，但上一幀快照目前未在生命週期中啟用；不要誤將其當作目前運行方案。
+- 已執行 `gradlew clean :app:assembleMinifiedDebug` 成功，僅保留既有 WebView 檔案存取 API deprecated 警告。最新 R8 APK：
+  - `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\minifiedDebug\app-minifiedDebug.apk`
+  - 已以 `adb install -r` 覆蓋安裝到 Xperia 10 V（serial `HQ63BH0A55`）；本次無條件 400ms 遮罩尚未進行人工多工／手勢實機驗證。
+- 工作樹中 `pixel7-current.png`、`tmp/`、`vlc-help.txt` 均為未追蹤的使用者／測試工作檔，後續提交不可納入或刪除。
