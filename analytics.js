@@ -645,27 +645,66 @@
     };
   }
 
-  async function downloadJson(filename, payloadObj) {
+  function normalizeFilePickerError(error) {
+    if (error && error.name === "AbortError") {
+      return new Error("已取消選擇檔案");
+    }
+    if (error instanceof Error) {
+      return error;
+    }
+    return new Error(String(error || "檔案寫入失敗"));
+  }
+
+  function requestBrowserSaveFile(filename) {
+    if (typeof window.showSaveFilePicker !== "function") {
+      var unsupportedRequest = Promise.reject(new Error("瀏覽器不支援確認檔案儲存"));
+      unsupportedRequest.catch(function () {});
+      return unsupportedRequest;
+    }
+    var request = window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [{
+        description: "JSON",
+        accept: { "application/json": [".json"] }
+      }]
+    }).catch(function (error) {
+      throw normalizeFilePickerError(error);
+    });
+    request.catch(function () {});
+    return request;
+  }
+
+  async function writeBrowserFile(saveRequest, content) {
+    var handle = await saveRequest;
+    var writable = null;
+    try {
+      writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    } catch (error) {
+      if (writable) {
+        try {
+          await writable.abort();
+        } catch (abortError) {
+          // 寫入已關閉時無需額外處理。
+        }
+      }
+      throw normalizeFilePickerError(error);
+    }
+  }
+
+  async function downloadJson(filename, payloadObj, browserSaveRequest) {
     var content = JSON.stringify(payloadObj, null, 2);
     if (nativeBridge && typeof nativeBridge.exportJson === "function") {
       await nativeBridge.exportJson(filename, content);
       return;
     }
-    var blob = new Blob([content], { type: "application/json;charset=utf-8;" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    await writeBrowserFile(browserSaveRequest, content);
   }
 
-  async function backupJsonFromAnalytics() {
+  async function backupJsonFromAnalytics(filename, browserSaveRequest) {
     var payload = buildBackupJsonPayload(state.products, state.history);
-    var today = new Date().toISOString().slice(0, 10);
-    await downloadJson("expiry-backup-" + today + ".json", payload);
+    await downloadJson(filename, payload, browserSaveRequest);
     await setSetting("indexedDbAddCountSinceBackup", 0);
     await setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
     state.backupChangeCount = 0;
@@ -787,7 +826,10 @@
     syncDocumentTitle();
     if (ui.exportJsonBtn) {
       ui.exportJsonBtn.addEventListener("click", function () {
-        backupJsonFromAnalytics().then(function () {
+        var today = new Date().toISOString().slice(0, 10);
+        var filename = "expiry-backup-" + today + ".json";
+        var browserSaveRequest = nativeBridge ? null : requestBrowserSaveFile(filename);
+        backupJsonFromAnalytics(filename, browserSaveRequest).then(function () {
           showToast("JSON 備份成功");
         }).catch(function (error) {
           showToast("JSON 備份失敗: " + (error && error.message ? error.message : String(error)), true);

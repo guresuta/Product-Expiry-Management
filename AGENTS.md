@@ -636,3 +636,13 @@
 - 不要僅為此提示額外加入 `enableEdgeToEdge()`：現有手動實作已主動進入 edge-to-edge 且已處理 inset；重複初始化沒有額外效益，也可能干擾目前的 WebView／CSS 分工。
 - 實測 R8 `minifiedDebug` v2.0.5-r8test：Pixel 7（API 36，1080x2400）完成 clean launch、主頁、設定頁及設定頁底部免責聲明可視檢查，狀態列與手勢導覽列均未遮擋內容；Pixel 10 Pro XL（API 37，1344x2992）完成 clean launch 與初始資料儲存視窗檢查，頂／底 system bar 未裁切視窗。兩台測試期間 logcat 未見本 App `FATAL EXCEPTION`／`AndroidRuntime`。
 - 本輪結論為無需修改原生／前端程式、版本、快取或重新打包；僅新增本工作紀錄。未來若改動固定頂欄、modal、toast、返回頂端按鈕或掃描底部提示，需在 Android 15+ 再次檢查 inset。
+
+### 9.53 Android 雙 Logo Splash、狀態列啟動修正與 R8 重建（2026-07-20）
+- Android 原生 Splash 改為全黑 `#050505` 的無縫銜接流程：系統 Splash 使用透明 placeholder 隱藏預設 app 圖示，隨後由 `MainActivity.kt` 的原生黑色 overlay 顯示雙 Logo。第一個為使用者提供的 `references/android-splash-ketaihan.svg` 轉出的 `res/drawable-nodpi/splash_keitaihan_logo.png`；第二個為 `icons/icon-app-512.png` 去除方形透明區、保留中央圓形圖示後的 `splash_app_icon.png`。
+- 雙 Logo 動畫設定為各自 600ms 淡入、顯示 2.3 秒、500ms 淡出；首頁完成可視渲染後以 1.5 倍縮放、583ms 的 zoom-in 顯示。系統 Splash 到原生 overlay、以及 overlay 到 WebView 首頁之間均維持黑底，避免露出 launcher icon、底圖或閃爍。
+- 修正「最後選擇非霓虹主題後重新啟動，Android 狀態列會先顯示上次主題色」：`MainActivity` 啟動時先套用黑色狀態列；`AndroidBridge.setStatusBarColor()` 在原生 Splash 尚可見時只暫存前端要求的色彩，待 Splash overlay 淡出完成後才套用。Android 15+ 仍維持 edge-to-edge，只更新狀態列圖示明暗；較舊 Android 則在 Splash 期間保留實體黑色狀態列。
+- 已將最新前端 runtime assets 完整同步至 Android Studio `app/src/main/assets/`。曾因錯誤的資料夾複製方式產生 `fonts/fonts`、`icons/icons`、`key-visuals/key-visuals` 巢狀重複資產，導致 R8 APK 異常增至約 110.7 MB；已只移除這三個確認為重複的子資料夾，未刪除正式 runtime assets。
+- 已在 Android Studio 專案執行 `gradlew clean :app:assembleMinifiedDebug` 成功。最新 R8 APK 位於 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\minifiedDebug\app-minifiedDebug.apk`，package 為 `com.guresuta.productexpirycybercontrol.r8test`、`versionName=2.1.0-r8test`、`versionCode=20100`、v2 debug 簽章有效、無巢狀重複 entries；大小為 67.42 MB，SHA-256 為 `C4E1205AB72FB7C9BBF9E9AB1F5C4AC6A39184DE622B7290B60D7653ECAC4881`。
+- 正式 AAB 與 APK 使用同一份 `app/src/main/assets/` 輸入；目前重複資料夾已移除，因此重新產生 AAB 不會再帶入該巢狀重複。正式上架仍需使用者於 Android Studio 以自己的 release keystore 產生 signed AAB。
+- 本輪尚待人工驗證：依序選擇 `light-1`、`light-2`、`dark-2` 後完全關閉並重啟 App，確認狀態列在完整 Splash 過程維持黑色，首頁出現後才切換為儲存的主題色。
+- 前端 Git repo 本輪尚未提交／推送；目前變更包含 `CHANGELOG.md` 的狀態列與雙 Logo Splash 說明。`pixel7-current.png` 與 `tmp/` 為測試／使用者工作檔，保持未追蹤且不可納入提交。

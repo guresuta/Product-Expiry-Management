@@ -2842,7 +2842,9 @@ html.can-hover .back-to-top-btn:hover,
   left: 50%;
   bottom: max(1rem, var(--safe-area-bottom), env(safe-area-inset-bottom));
   z-index: 13000;
-  max-width: min(92vw, 28rem);
+  width: min(92vw, 37.8rem);
+  max-width: min(92vw, 37.8rem);
+  box-sizing: border-box;
   transform: translateX(-50%);
   padding: 0.72rem 1rem;
   border: 1px solid var(--line);
@@ -3252,7 +3254,7 @@ html.legacy-webview .back-to-top-btn {
 html.legacy-webview .toast {
   bottom: 1rem;
   width: 92vw;
-  max-width: 28rem;
+  max-width: 37.8rem;
 }
 
 html.legacy-webview .checkbox-touch-target {

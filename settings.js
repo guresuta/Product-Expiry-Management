@@ -968,8 +968,8 @@
     return rows;
   }
 
-  async function readSelectedCsvText() {
-    const file = ui.importCsvFileInput.files && ui.importCsvFileInput.files[0];
+  async function readSelectedCsvText(selectedFile) {
+    const file = selectedFile || (ui.importCsvFileInput.files && ui.importCsvFileInput.files[0]);
     if (!file) {
       throw new Error("請先選擇 CSV 檔案");
     }
@@ -1180,25 +1180,83 @@
     };
   }
 
-  async function downloadJson(filename, payloadObj) {
+  function normalizeFilePickerError(error) {
+    if (error && error.name === "AbortError") {
+      return new Error("已取消選擇檔案");
+    }
+    if (error instanceof Error) {
+      return error;
+    }
+    return new Error(String(error || "檔案寫入失敗"));
+  }
+
+  function requestBrowserSaveFile(filename, type) {
+    if (typeof window.showSaveFilePicker !== "function") {
+      const request = Promise.reject(new Error("瀏覽器不支援確認檔案儲存"));
+      request.catch(() => {});
+      return request;
+    }
+    const request = window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [type]
+    }).catch((error) => {
+      throw normalizeFilePickerError(error);
+    });
+    request.catch(() => {});
+    return request;
+  }
+
+  function requestBrowserOpenFile(type) {
+    if (typeof window.showOpenFilePicker !== "function") {
+      const request = Promise.reject(new Error("瀏覽器不支援確認檔案選擇"));
+      request.catch(() => {});
+      return request;
+    }
+    const request = window.showOpenFilePicker({
+      multiple: false,
+      types: [type]
+    }).then((handles) => {
+      if (!handles || !handles[0]) {
+        throw new Error("已取消選擇檔案");
+      }
+      return handles[0].getFile();
+    }).catch((error) => {
+      throw normalizeFilePickerError(error);
+    });
+    request.catch(() => {});
+    return request;
+  }
+
+  async function writeBrowserFile(saveRequest, content) {
+    const handle = await saveRequest;
+    let writable = null;
+    try {
+      writable = await handle.createWritable();
+      await writable.write(content);
+      await writable.close();
+    } catch (error) {
+      if (writable) {
+        try {
+          await writable.abort();
+        } catch (abortError) {
+          // 寫入已關閉時無需額外處理。
+        }
+      }
+      throw normalizeFilePickerError(error);
+    }
+  }
+
+  async function downloadJson(filename, payloadObj, browserSaveRequest) {
     const content = JSON.stringify(payloadObj, null, 2);
     if (nativeBridge && typeof nativeBridge.exportJson === "function") {
       await nativeBridge.exportJson(filename, content);
       return;
     }
-    const blob = new Blob([content], { type: "application/json;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    await writeBrowserFile(browserSaveRequest, content);
   }
 
-  async function readSelectedJsonText() {
-    const file = ui.importJsonFileInput.files && ui.importJsonFileInput.files[0];
+  async function readSelectedJsonText(selectedFile) {
+    const file = selectedFile || (ui.importJsonFileInput.files && ui.importJsonFileInput.files[0]);
     if (!file) {
       throw new Error("請先選擇 JSON 檔案");
     }
@@ -1344,20 +1402,12 @@
     return { addedCount, updatedCount, totalCount: mergedProducts.length, cancelled: false };
   }
 
-  async function downloadCsv(filename, content) {
+  async function downloadCsv(filename, content, browserSaveRequest) {
     if (nativeBridge && typeof nativeBridge.exportCsv === "function") {
       await nativeBridge.exportCsv(filename, content);
       return;
     }
-    const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    await writeBrowserFile(browserSaveRequest, content);
   }
 
   async function loadInitialState() {
@@ -1388,6 +1438,50 @@
     observer.observe(input, { attributes: true, attributeFilter: ["placeholder"] });
     sync();
     return sync;
+  }
+
+  async function importCsvFile(selectedFile) {
+    try {
+      const csvText = await readSelectedCsvText(selectedFile);
+      const rows = parseCsv(csvText);
+      const importedProducts = buildProductsFromCsvRows(rows);
+      const existingProducts = await getAllProductsFromIndexedDb();
+      const products = mergeProductsKeepExisting(existingProducts, importedProducts);
+      await replaceAllProductsIndexedDb(products);
+      if (window.AnalyticsHistoryStore) await window.AnalyticsHistoryStore.snapshot(products);
+
+      const importedCategories = Array.from(new Set(products.map((p) => p.category)));
+      state.categories = Array.from(new Set(state.categories.concat(importedCategories)));
+      await setCategories(state.categories);
+      renderCategories();
+
+      const addedCount = Math.max(0, products.length - existingProducts.length);
+      showToast(`匯入成功，新增 ${addedCount} 筆，目前共 ${products.length} 筆`);
+    } catch (error) {
+      showToast(`匯入失敗: ${error.message}`, true);
+    } finally {
+      if (ui.importCsvFileInput) {
+        ui.importCsvFileInput.value = "";
+      }
+    }
+  }
+
+  async function restoreJsonFile(selectedFile) {
+    try {
+      const jsonText = await readSelectedJsonText(selectedFile);
+      const result = await restoreFromBackupJson(jsonText);
+      if (result.cancelled) {
+        showToast("已取消 JSON 還原");
+        return;
+      }
+      showToast(`JSON 還原成功，新增 ${result.addedCount} 筆、更新 ${result.updatedCount || 0} 筆，目前共 ${result.totalCount} 筆商品`);
+    } catch (error) {
+      showToast(`JSON 還原失敗: ${error.message}`, true);
+    } finally {
+      if (ui.importJsonFileInput) {
+        ui.importJsonFileInput.value = "";
+      }
+    }
   }
 
   function wireEvents() {
@@ -1473,24 +1567,34 @@
 
     ui.exportCsvBtn.addEventListener("click", async () => {
       try {
+        const today = new Date().toISOString().slice(0, 10);
+        const filename = `expiry-products-${today}.csv`;
+        const browserSaveRequest = nativeBridge ? null : requestBrowserSaveFile(filename, {
+          description: "CSV",
+          accept: { "text/csv": [".csv", ".scv"] }
+        });
         const products = await getAllProductsFromIndexedDb();
         const csv = toCsv(products);
-        const today = new Date().toISOString().slice(0, 10);
-        await downloadCsv(`expiry-products-${today}.csv`, csv);
+        await downloadCsv(filename, csv, browserSaveRequest);
         showToast("CSV 匯出成功");
       } catch (error) {
-        showToast(`匯出失敗: ${error.message}`, true);
+        showToast(`CSV 匯出失敗: ${error.message}`, true);
       }
     });
 
     if (ui.exportJsonBtn) {
       ui.exportJsonBtn.addEventListener("click", async () => {
         try {
+          const today = new Date().toISOString().slice(0, 10);
+          const filename = `expiry-backup-${today}.json`;
+          const browserSaveRequest = nativeBridge ? null : requestBrowserSaveFile(filename, {
+            description: "JSON",
+            accept: { "application/json": [".json"] }
+          });
           const products = await getAllProductsFromIndexedDb();
           const history = window.AnalyticsHistoryStore ? await window.AnalyticsHistoryStore.load() : null;
           const payload = buildBackupJsonPayload(products, history);
-          const today = new Date().toISOString().slice(0, 10);
-          await downloadJson(`expiry-backup-${today}.json`, payload);
+          await downloadJson(filename, payload, browserSaveRequest);
           await setSetting(INDEXEDDB_ADD_COUNT_KEY, 0);
           await setSetting(BACKUP_CHANGE_COUNT_KEY, 0);
           showToast("JSON 備份成功");
@@ -1501,59 +1605,38 @@
     }
 
     ui.importCsvFileBtn.addEventListener("click", async () => {
-      if (ui.importCsvFileInput) {
-        ui.importCsvFileInput.click();
+      try {
+        const file = await requestBrowserOpenFile({
+          description: "CSV",
+          accept: { "text/csv": [".csv", ".scv"] }
+        });
+        await importCsvFile(file);
+      } catch (error) {
+        showToast(`匯入失敗: ${error.message}`, true);
       }
     });
 
     ui.importCsvFileInput.addEventListener("change", async () => {
-      try {
-        const csvText = await readSelectedCsvText();
-        const rows = parseCsv(csvText);
-        const importedProducts = buildProductsFromCsvRows(rows);
-        const existingProducts = await getAllProductsFromIndexedDb();
-        const products = mergeProductsKeepExisting(existingProducts, importedProducts);
-        await replaceAllProductsIndexedDb(products);
-        if (window.AnalyticsHistoryStore) await window.AnalyticsHistoryStore.snapshot(products);
-
-        const importedCategories = Array.from(new Set(products.map((p) => p.category)));
-        state.categories = Array.from(new Set(state.categories.concat(importedCategories)));
-        await setCategories(state.categories);
-        renderCategories();
-
-        const addedCount = Math.max(0, products.length - existingProducts.length);
-        showToast(`匯入成功，新增 ${addedCount} 筆，目前共 ${products.length} 筆`);
-        ui.importCsvFileInput.value = "";
-      } catch (error) {
-        showToast(`匯入失敗: ${error.message}`, true);
-        ui.importCsvFileInput.value = "";
-      }
+      await importCsvFile();
     });
 
     if (ui.importJsonFileBtn) {
       ui.importJsonFileBtn.addEventListener("click", async () => {
-        if (ui.importJsonFileInput) {
-          ui.importJsonFileInput.click();
+        try {
+          const file = await requestBrowserOpenFile({
+            description: "JSON",
+            accept: { "application/json": [".json"] }
+          });
+          await restoreJsonFile(file);
+        } catch (error) {
+          showToast(`JSON 還原失敗: ${error.message}`, true);
         }
       });
     }
 
     if (ui.importJsonFileInput) {
       ui.importJsonFileInput.addEventListener("change", async () => {
-        try {
-          const jsonText = await readSelectedJsonText();
-          const result = await restoreFromBackupJson(jsonText);
-          if (result.cancelled) {
-            showToast("已取消 JSON 還原");
-            ui.importJsonFileInput.value = "";
-            return;
-          }
-          showToast(`JSON 還原成功，新增 ${result.addedCount} 筆、更新 ${result.updatedCount || 0} 筆，目前共 ${result.totalCount} 筆商品`);
-          ui.importJsonFileInput.value = "";
-        } catch (error) {
-          showToast(`JSON 還原失敗: ${error.message}`, true);
-          ui.importJsonFileInput.value = "";
-        }
+        await restoreJsonFile();
       });
     }
 
