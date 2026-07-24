@@ -38,9 +38,6 @@
     averageDaysBody: document.getElementById("averageDaysBody"),
     monthlyExpiryHistoryBody: document.getElementById("monthlyExpiryHistoryBody"),
     categoryHistoryBody: document.getElementById("categoryHistoryBody"),
-    errorModal: document.getElementById("errorModal"),
-    errorModalMessage: document.getElementById("errorModalMessage"),
-    closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
     toast: document.getElementById("toast")
   };
 
@@ -251,22 +248,12 @@
     window.clearTimeout(showToast.timer);
     showToast.timer = window.setTimeout(function () {
       ui.toast.classList.add("hidden");
-    }, 2400);
+      ui.toast.classList.remove("error");
+    }, isError ? 4200 : 2600);
   }
 
   function showErrorModal(message) {
-    if (!ui.errorModal || !ui.errorModalMessage) {
-      showToast(message || "程式發生未預期錯誤", true);
-      return;
-    }
-    ui.errorModalMessage.textContent = t(message || "程式發生未預期錯誤");
-    ui.errorModal.classList.remove("hidden");
-  }
-
-  function closeErrorModal() {
-    if (ui.errorModal) {
-      ui.errorModal.classList.add("hidden");
-    }
+    showToast(message || "程式發生未預期錯誤", true);
   }
 
   function toLocalDate(value) {
@@ -798,9 +785,6 @@
 
   async function init() {
     syncDocumentTitle();
-    if (ui.closeErrorModalBtn) {
-      ui.closeErrorModalBtn.addEventListener("click", closeErrorModal);
-    }
     if (ui.exportJsonBtn) {
       ui.exportJsonBtn.addEventListener("click", function () {
         backupJsonFromAnalytics().then(function () {

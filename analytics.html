@@ -200,7 +200,6 @@ const waitForFinish = () => {
 
     <section class="panel settings-section analytics-section">
       <h2 class="section-title-bar">歷史過期趨勢</h2>
-      <p class="help-text analytics-history-help">歷史資料會保留商品異動與到期的每月彙總；刪除商品不會清除既有統計。</p>
       <div class="analytics-list-table-wrap">
         <table class="analytics-list-table analytics-history-table">
           <thead><tr><th>月份</th><th>過期數</th><th>過期率</th></tr></thead>
@@ -234,15 +233,6 @@ const waitForFinish = () => {
     </section>
   </main>
 
-  <div id="errorModal" class="modal error-modal hidden">
-    <div class="modal-content">
-      <h3>發生錯誤</h3>
-      <p id="errorModalMessage" class="help-text"></p>
-      <div class="form-actions">
-        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
-      </div>
-    </div>
-  </div>
   <div id="toast" class="toast hidden"></div>
   <script src="./i18n.js" defer></script>
   <script src="./version.js" defer></script>

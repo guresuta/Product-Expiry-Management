@@ -88,6 +88,7 @@
     barcodeInput: document.getElementById("barcodeInput"),
     expiryInput: document.getElementById("expiryInput"),
     inventoryInput: document.getElementById("inventoryInput"),
+    shelfLevelInput: document.getElementById("shelfLevelInput"),
     pickDateBtn: document.getElementById("pickDateBtn"),
     calendarPrevBtn: document.getElementById("calendarPrevBtn"),
     calendarNextBtn: document.getElementById("calendarNextBtn"),
@@ -115,6 +116,7 @@
     editBarcodeInput: document.getElementById("editBarcodeInput"),
     editExpiryInput: document.getElementById("editExpiryInput"),
     editInventoryInput: document.getElementById("editInventoryInput"),
+    editShelfLevelInput: document.getElementById("editShelfLevelInput"),
     editPickDateBtn: document.getElementById("editPickDateBtn"),
     editHiddenDatePicker: document.getElementById("editHiddenDatePicker"),
     editScanBtn: document.getElementById("editScanBtn"),
@@ -123,9 +125,6 @@
     deleteConfirmModal: document.getElementById("deleteConfirmModal"),
     confirmDeleteBtn: document.getElementById("confirmDeleteBtn"),
     cancelDeleteBtn: document.getElementById("cancelDeleteBtn"),
-    errorModal: document.getElementById("errorModal"),
-    errorModalMessage: document.getElementById("errorModalMessage"),
-    closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
     productTableBody: document.getElementById("productTableBody"),
     productRenderSentinel: document.getElementById("productRenderSentinel"),
     selectAllProducts: document.getElementById("selectAllProducts"),
@@ -614,28 +613,21 @@
   }
 
   function showToast(message, isError = false) {
-    if (isError) {
-      showErrorModal(message);
+    if (!ui.toast) {
       return;
     }
     ui.toast.textContent = t(message);
+    ui.toast.classList.toggle("error", !!isError);
     ui.toast.classList.remove("hidden");
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => ui.toast.classList.add("hidden"), 2600);
+    showToast.timer = setTimeout(() => {
+      ui.toast.classList.add("hidden");
+      ui.toast.classList.remove("error");
+    }, isError ? 4200 : 2600);
   }
 
   function showErrorModal(message) {
-    const text = t(message || "發生未知錯誤");
-    if (!ui.errorModal || !ui.errorModalMessage) {
-      alert(text);
-      return;
-    }
-    ui.errorModalMessage.textContent = text;
-    openManagedModal("error", ui.errorModal);
-  }
-
-  function closeErrorModal(options = {}) {
-    closeManagedModal("error", ui.errorModal, options);
+    showToast(message || "發生未知錯誤", true);
   }
 
   function isModalVisible(modalEl) {
@@ -698,8 +690,7 @@
       delete: ui.deleteConfirmModal,
       backup: ui.backupReminderModal,
       storageTransition: ui.storageTransitionNoticeModal,
-      duplicate: ui.duplicateBarcodeModal,
-      error: ui.errorModal
+      duplicate: ui.duplicateBarcodeModal
     };
     return MODAL_KEYS_BY_PRIORITY.find((key) => isModalVisible(modalMap[key])) || "";
   }
@@ -727,8 +718,6 @@
       closeStorageSetupModal(options);
     } else if (key === "add") {
       closeAddProductModal(options);
-    } else if (key === "error") {
-      closeErrorModal(options);
     }
   }
   function closeTopModalFromHistory() {
@@ -1836,6 +1825,7 @@
     const status = hasExpiryDate ? getStatus(product.expiryDate) : null;
     const note = String(product.note || "").trim();
     const inventory = product.inventory === undefined || product.inventory === null ? "" : String(product.inventory).trim();
+    const shelfLevel = product.shelfLevel === undefined || product.shelfLevel === null ? "" : String(product.shelfLevel).trim();
     const getDetailClass = (value, extraClass) => {
       const classes = ["product-detail-cell"];
       if (extraClass) {
@@ -1877,6 +1867,11 @@
     inventoryCell.className = getDetailClass(inventory);
     inventoryCell.setAttribute("data-label", t("庫存"));
     inventoryCell.textContent = inventory;
+
+    const shelfLevelCell = document.createElement("td");
+    shelfLevelCell.className = getDetailClass(shelfLevel);
+    shelfLevelCell.setAttribute("data-label", t("陳列層"));
+    shelfLevelCell.textContent = shelfLevel;
 
     const noteCell = document.createElement("td");
     noteCell.className = getDetailClass(note, "note-cell");
@@ -1934,6 +1929,7 @@
     tr.appendChild(barcodeCell);
     tr.appendChild(expiryCell);
     tr.appendChild(inventoryCell);
+    tr.appendChild(shelfLevelCell);
     tr.appendChild(noteCell);
     tr.appendChild(statusCell);
     tr.appendChild(actionCell);
@@ -2286,6 +2282,17 @@
     return raw;
   }
 
+  function normalizeShelfLevelValue(value) {
+    const raw = String(value || "").trim();
+    if (!raw) {
+      return "";
+    }
+    if (!/^[1-9]\d*$/.test(raw)) {
+      throw new Error("陳列層請輸入正整數");
+    }
+    return raw;
+  }
+
   function hasProductIdentity(name, barcode) {
     return !!(String(name || "").trim() || String(barcode || "").trim());
   }
@@ -2353,6 +2360,7 @@
     const barcode = ui.barcodeInput.value.trim();
     const expiryDate = getProductDateFromForm();
     const inventory = normalizeInventoryValue(ui.inventoryInput ? ui.inventoryInput.value : "");
+    const shelfLevel = normalizeShelfLevelValue(ui.shelfLevelInput ? ui.shelfLevelInput.value : "");
     if (!hasProductIdentity(name, barcode)) {
       throw new Error("必須要有名稱或條碼才能建立商品資訊卡。");
     }
@@ -2372,6 +2380,7 @@
         : inferBarcodeFormat(barcode),
       expiryDate,
       inventory,
+      shelfLevel,
       createdAt: new Date().toISOString()
     };
 
@@ -2396,7 +2405,8 @@
             barcode,
             barcodeFormat: product.barcodeFormat,
             expiryDate,
-            inventory
+            inventory,
+            shelfLevel
           });
           addedCount = 0;
         } else {
@@ -2480,6 +2490,9 @@
     if (ui.editInventoryInput) {
       ui.editInventoryInput.value = target.inventory === undefined || target.inventory === null ? "" : String(target.inventory);
     }
+    if (ui.editShelfLevelInput) {
+      ui.editShelfLevelInput.value = target.shelfLevel === undefined || target.shelfLevel === null ? "" : String(target.shelfLevel);
+    }
     if (ui.editHiddenDatePicker) {
       ui.editHiddenDatePicker.value = normalizeDateInput(target.expiryDate || "") || "";
     }
@@ -2503,6 +2516,7 @@
     const expiryRaw = (ui.editExpiryInput.value || "").trim();
     const expiryDate = expiryRaw ? normalizeDateInput(expiryRaw) : "";
     const inventory = normalizeInventoryValue(ui.editInventoryInput ? ui.editInventoryInput.value : "");
+    const shelfLevel = normalizeShelfLevelValue(ui.editShelfLevelInput ? ui.editShelfLevelInput.value : "");
     if (!hasProductIdentity(name, barcode)) {
       throw new Error("必須要有名稱或條碼才能建立商品資訊卡。");
     }
@@ -2549,6 +2563,7 @@
         : inferBarcodeFormat(barcode);
       target.expiryDate = expiryDate;
       target.inventory = inventory;
+      target.shelfLevel = shelfLevel;
       const historyEditedProducts = selectedIdSet.size > 1 ? state.products.filter((item) => selectedIdSet.has(item.id)) : [target];
       const overwrittenProduct = overwriteDuplicateId ? state.products.find((item) => item.id === overwriteDuplicateId) : null;
       if (overwriteDuplicateId) {
@@ -3372,16 +3387,6 @@
       ui.deleteConfirmModal.addEventListener("click", (event) => {
         if (event.target === ui.deleteConfirmModal) {
           closeDeleteConfirm();
-        }
-      });
-    }
-    if (ui.closeErrorModalBtn) {
-      ui.closeErrorModalBtn.addEventListener("click", closeErrorModal);
-    }
-    if (ui.errorModal) {
-      ui.errorModal.addEventListener("click", (event) => {
-        if (event.target === ui.errorModal) {
-          closeErrorModal();
         }
       });
     }

@@ -1214,6 +1214,16 @@ html.can-hover .transient-nav-btn:hover,
 .form-stack { display: flex; flex-direction: column; gap: 1.5rem; }
 .form-actions { display: flex; gap: 15px; margin-top: 0.5rem; flex-wrap: wrap; }
 
+.inventory-shelf-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.inventory-shelf-row > label {
+  min-width: 0;
+}
+
 html.legacy-webview .form-stack > * + * {
   margin-top: 1.5rem;
 }
@@ -1228,6 +1238,16 @@ html.legacy-webview .form-actions > * {
   margin-right: 7px;
   margin-top: 7px;
   margin-bottom: 7px;
+}
+
+html.legacy-webview .inventory-shelf-row {
+  display: flex;
+  margin: -0.425rem;
+}
+
+html.legacy-webview .inventory-shelf-row > label {
+  flex: 1 1 0;
+  margin: 0.425rem;
 }
 
 .storage-setup-modal .help-text {
@@ -2835,6 +2855,12 @@ html.can-hover .back-to-top-btn:hover,
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
 }
 
+.toast.error {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 html[data-theme^="dark"] .toast {
   background: var(--primary);
   border-color: var(--primary);
@@ -2846,6 +2872,12 @@ html[data-theme="dark-1"] .toast {
   background: #00f0ff;
   border-color: #ffffff;
   color: #050505;
+}
+
+html[data-theme="dark-1"] .toast.error {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
 }
 
 @media (max-width: 730px) {
@@ -3667,28 +3699,51 @@ html[data-theme] .release-history-section .release-history-entry {
   margin-top: 0.48rem;
   overflow: hidden;
   border-radius: 2px;
-  background: color-mix(in srgb, var(--line) 72%, transparent);
+  background: #5a5a5a;
 }
 
 .analytics-value-meter > span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--primary);
+  background: #080808;
+}
+
+/* 日光電馭／活力綠洲：底軌由 #5a5a5a 朝白色提亮 20%。 */
+html[data-theme="light-1"] .analytics-value-meter,
+html[data-theme="light-2"] .analytics-value-meter {
+  background: #7b7b7b;
+}
+
+html[data-theme^="dark"] .analytics-value-meter {
+  background: #767676;
+}
+
+html[data-theme^="dark"] .analytics-value-meter > span {
+  background: #fff;
 }
 
 .analytics-count-meter > span,
 .analytics-history-meter > span {
-  background: var(--calendar-mark-bg);
+  background: #080808;
+}
+
+html[data-theme^="dark"] .analytics-count-meter > span,
+html[data-theme^="dark"] .analytics-history-meter > span {
+  background: #fff;
 }
 
 .analytics-expired-meter > span,
 .analytics-average-row.risk-danger .analytics-average-meter > span {
-  background: var(--danger);
+  background: #d60018;
 }
 
 .analytics-average-row.risk-safe .analytics-average-meter > span {
-  background: var(--calendar-mark-border);
+  background: #080808;
+}
+
+html[data-theme^="dark"] .analytics-average-row.risk-safe .analytics-average-meter > span {
+  background: #fff;
 }
 
 @media (max-width: 730px) {
@@ -4038,15 +4093,21 @@ html[lang="en"] .list-tools .search-row > #scanSearchBtn {
 }
 
 /* Android injects the real navigation-bar inset because env() is not reliable in WebView. */
-html.android-webview .back-to-top-btn,
-html.android-webview .toast {
+html.android-webview .back-to-top-btn {
   bottom: calc(1rem + var(--safe-area-bottom));
 }
 
+html.android-webview .toast {
+  bottom: calc(0.8rem + var(--safe-area-bottom));
+}
+
 @media (max-width: 730px) {
-  html.android-webview .back-to-top-btn,
-  html.android-webview .toast {
+  html.android-webview .back-to-top-btn {
     bottom: calc(0.75rem + var(--safe-area-bottom));
+  }
+
+  html.android-webview .toast {
+    bottom: calc(0.7rem + var(--safe-area-bottom));
   }
 }
 

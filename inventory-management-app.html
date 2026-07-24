@@ -224,6 +224,7 @@ const waitForFinish = () => {
               <th>條碼</th>
               <th>有效日期</th>
               <th>庫存</th>
+              <th>陳列層</th>
               <th class="note-col">備註</th>
               <th>狀態</th>
               <th>操作</th>
@@ -298,10 +299,16 @@ const waitForFinish = () => {
           </div>
           <input id="hiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
         </label>
-        <label>
-          庫存
-          <input id="inventoryInput" name="inventory" type="number" inputmode="numeric" min="0" step="any" placeholder="輸入庫存">
-        </label>
+        <div class="inventory-shelf-row">
+          <label>
+            庫存
+            <input id="inventoryInput" name="inventory" type="number" inputmode="numeric" min="0" step="any" placeholder="輸入庫存">
+          </label>
+          <label>
+            陳列層
+            <input id="shelfLevelInput" name="shelfLevel" type="number" inputmode="numeric" min="1" step="1" placeholder="輸入陳列層">
+          </label>
+        </div>
         <label>
           備註
           <textarea id="noteInput" name="note" class="note-input" rows="3" placeholder="可輸入商品備註"></textarea>
@@ -367,10 +374,16 @@ const waitForFinish = () => {
           </div>
           <input id="editHiddenDatePicker" type="date" class="hidden" tabindex="-1" aria-hidden="true">
         </label>
-        <label>
-          庫存
-          <input id="editInventoryInput" type="number" inputmode="numeric" min="0" step="any" placeholder="輸入庫存">
-        </label>
+        <div class="inventory-shelf-row">
+          <label>
+            庫存
+            <input id="editInventoryInput" type="number" inputmode="numeric" min="0" step="any" placeholder="輸入庫存">
+          </label>
+          <label>
+            陳列層
+            <input id="editShelfLevelInput" type="number" inputmode="numeric" min="1" step="1" placeholder="輸入陳列層">
+          </label>
+        </div>
         <label>
           備註
           <textarea id="editNoteInput" class="note-input" rows="3" placeholder="可輸入商品備註"></textarea>
@@ -394,7 +407,7 @@ const waitForFinish = () => {
   <div id="storageTransitionNoticeModal" class="modal hidden">
     <div class="modal-content">
       <h3>資料備份提醒</h3>
-      <p class="help-text">請先使用「備份資料 JSON 」建立備份，後續更新的版本只會使用本機 IndexedDB做為資料儲存方式 ，不會再讀取或自動將先前指定的本機檔案位置匯入資料庫。若曾使用「本機檔案位置」，請在下一個程式版本更新前匯出JSON ，並在更新後用「還原資料 JSON 」恢復資料。</p>
+      <p class="help-text">請先使用「備份資料 JSON 」建立備份，後續更新的版本只會使用本機 IndexedDB做為資料儲存方式 ，目前版本的程式會自動將先前指定的本機檔案位置匯入資料庫。若曾使用「本機檔案位置」，請在下一個程式版本更新前匯出JSON ，並在更新後用「還原資料 JSON 」恢復資料。</p>
       <div class="form-actions">
         <button id="closeStorageTransitionNoticeBtn" class="btn primary" type="button">了解並繼續</button>
       </div>
@@ -418,15 +431,6 @@ const waitForFinish = () => {
         <button id="overwriteDuplicateBtn" class="btn primary" type="button">覆蓋既有商品</button>
         <button id="keepDuplicateBtn" class="btn secondary" type="button">仍然新增</button>
         <button id="cancelDuplicateBtn" class="btn ghost" type="button">取消</button>
-      </div>
-    </div>
-  </div>
-  <div id="errorModal" class="modal error-modal hidden">
-    <div class="modal-content">
-      <h3>發生錯誤</h3>
-      <p id="errorModalMessage" class="help-text"></p>
-      <div class="form-actions">
-        <button id="closeErrorModalBtn" class="btn primary" type="button">關閉</button>
       </div>
     </div>
   </div>

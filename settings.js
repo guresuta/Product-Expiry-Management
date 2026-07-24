@@ -59,9 +59,6 @@
     customAppTitleInput: document.getElementById("customAppTitleInput"),
     saveCustomAppTitleBtn: document.getElementById("saveCustomAppTitleBtn"),
     resetCustomAppTitleBtn: document.getElementById("resetCustomAppTitleBtn"),
-    errorModal: document.getElementById("errorModal"),
-    errorModalMessage: document.getElementById("errorModalMessage"),
-    closeErrorModalBtn: document.getElementById("closeErrorModalBtn"),
     toast: document.getElementById("toast")
   };
 
@@ -235,14 +232,17 @@
   }
 
   function showToast(message, isError = false) {
-    if (isError) {
-      showErrorModal(message);
+    if (!ui.toast) {
       return;
     }
     ui.toast.textContent = t(message);
+    ui.toast.classList.toggle("error", !!isError);
     ui.toast.classList.remove("hidden");
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => ui.toast.classList.add("hidden"), 2600);
+    showToast.timer = setTimeout(() => {
+      ui.toast.classList.add("hidden");
+      ui.toast.classList.remove("error");
+    }, isError ? 4200 : 2600);
   }
 
   function t(source) {
@@ -253,17 +253,7 @@
   }
 
   function showErrorModal(message) {
-    const text = t(String(message || "發生未知錯誤"));
-    if (!ui.errorModal || !ui.errorModalMessage) {
-      alert(text);
-      return;
-    }
-    ui.errorModalMessage.textContent = text;
-    openManagedModal("error", ui.errorModal);
-  }
-
-  function closeErrorModal(options = {}) {
-    closeManagedModal("error", ui.errorModal, options);
+    showToast(String(message || "發生未知錯誤"), true);
   }
 
   function isModalVisible(modalEl) {
@@ -306,10 +296,6 @@
   }
 
   function closeTopModalFromHistory() {
-    if (isModalVisible(ui.errorModal)) {
-      closeErrorModal({ fromHistory: true });
-      return true;
-    }
     if (isModalVisible(ui.deleteCategoryModal)) {
       closeDeleteCategoryModal({ fromHistory: true });
       return true;
@@ -1013,6 +999,7 @@
       barcode: header.findIndex((h) => h === "條碼" || h === "barcode"),
       expiryDate: header.findIndex((h) => h === "有效日期" || h === "expirydate" || h === "expiry_date"),
       inventory: header.findIndex((h) => h === "庫存" || h === "inventory" || h === "stock"),
+      shelfLevel: header.findIndex((h) => h === "陳列層" || h === "層位" || h === "shelf level" || h === "shelflevel" || h === "shelf_level"),
       note: header.findIndex((h) => h === "備註" || h === "note" || h === "memo")
     };
     if (idx.category < 0 || idx.name < 0 || idx.barcode < 0 || idx.expiryDate < 0) {
@@ -1026,9 +1013,10 @@
       const barcode = (row[idx.barcode] || "").trim();
       const expiryRaw = (row[idx.expiryDate] || "").trim();
       const inventory = idx.inventory >= 0 ? (row[idx.inventory] || "").trim() : "";
+      const shelfLevel = idx.shelfLevel >= 0 ? (row[idx.shelfLevel] || "").trim() : "";
       const note = idx.note >= 0 ? (row[idx.note] || "").trim() : "";
       const expiryDate = normalizeCsvDateInput(expiryRaw);
-      const hasAnyField = !!(category || name || barcode || expiryRaw || inventory || note);
+      const hasAnyField = !!(category || name || barcode || expiryRaw || inventory || shelfLevel || note);
       if (!hasAnyField || (!name && !barcode)) {
         return;
       }
@@ -1040,6 +1028,7 @@
         name,
         barcode,
         inventory,
+        shelfLevel,
         note,
         expiryDate,
         createdAt: new Date().toISOString()
@@ -1154,7 +1143,7 @@
 
   function toCsv(products) {
     const escapeCsvCell = (value) => `"${String(value === undefined || value === null ? "" : value).replace(/"/g, "\"\"")}"`;
-    const header = ["分類", "商品名稱", "條碼", "有效日期", "庫存", "備註", "狀態"];
+    const header = ["分類", "商品名稱", "條碼", "有效日期", "庫存", "陳列層", "備註", "狀態"];
     const lines = [header.map(escapeCsvCell).join(",")];
     products.forEach((item) => {
       const escaped = [
@@ -1163,6 +1152,7 @@
         item.barcode,
         item.expiryDate,
         item.inventory,
+        item.shelfLevel,
         item.note,
         getStatusLabel(item.expiryDate)
       ].map(escapeCsvCell);
@@ -1280,8 +1270,9 @@
       const barcode = String(pickFirstValue(item, ["barcode", "條碼", "code", "ean", "upc", "sku"])).trim();
       const expiryRaw = String(pickFirstValue(item, ["expiryDate", "有效日期", "expiry", "expiry_date", "expireDate", "date"])).trim();
       const inventory = String(pickFirstValue(item, ["inventory", "庫存", "stock"])).trim();
+      const shelfLevel = String(pickFirstValue(item, ["shelfLevel", "陳列層", "層位", "shelf_level", "shelf"])).trim();
       const expiryDate = normalizeCsvDateInput(expiryRaw);
-      const hasAnyField = !!(category || name || barcode || expiryRaw || inventory);
+      const hasAnyField = !!(category || name || barcode || expiryRaw || inventory || shelfLevel);
       if (!hasAnyField || (!name && !barcode)) {
         return;
       }
@@ -1295,6 +1286,7 @@
         name,
         barcode,
         inventory,
+        shelfLevel,
         expiryDate,
         createdAt: item.createdAt ? String(item.createdAt) : new Date().toISOString()
       });
@@ -1400,16 +1392,6 @@
 
   function wireEvents() {
     ui.syncNewCategoryInputMirror = setupTextInputMirror(ui.newCategoryInput);
-    if (ui.closeErrorModalBtn) {
-      ui.closeErrorModalBtn.addEventListener("click", closeErrorModal);
-    }
-    if (ui.errorModal) {
-      ui.errorModal.addEventListener("click", (event) => {
-        if (event.target === ui.errorModal) {
-          closeErrorModal();
-        }
-      });
-    }
     if (ui.confirmDeleteCategoryBtn) {
       ui.confirmDeleteCategoryBtn.addEventListener("click", async () => {
         await confirmDeleteCategory();
