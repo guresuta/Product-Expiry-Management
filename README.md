@@ -109,6 +109,12 @@ python -m http.server 8080
 
 - 「本專案為開源工具，僅供個人管理商品效期使用。開發者不提供任何菸酒、藥品之內建資料。使用者若利用本程式紀錄或展示受管制商品（如菸、酒、藥品），請務必遵守當地法律規範並自行承擔法律責任。」
 
+## 素材來源與授權
+
+- **字型**：介面使用 [GenSekiGothic2TC（源石黑體丹）](https://github.com/ButTaiwan/genseki-font)，設定頁的「關於」區塊亦有標示。該字型依其上游專案採用 [SIL Open Font License 1.1](https://openfontlicense.org/) 授權。
+- **圖示**：`icons/` 及 `favicon.ico` 中的專案圖示由 AI 模型生成；在本專案作者可授權的權利範圍內，隨本專案以 MIT License 提供。
+- **圖片**：`key-visuals/`、`background.png` 與其他專案視覺圖片由 AI 模型生成；在本專案作者可授權的權利範圍內，隨本專案以 MIT License 提供。
+
 ## 授權
 
 本項目採用 MIT 許可證，詳情請參閱 [LICENSE]文件。
