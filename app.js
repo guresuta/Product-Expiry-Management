@@ -8,7 +8,6 @@
   const LEGACY_STORAGE_MODE_KEY = "storageMode";
   const LEGACY_FILE_HANDLE_SETTING_KEY = "storageFileHandle";
   const LEGACY_STORAGE_MIGRATION_KEY = "indexedDbPrimaryStorageMigration";
-  const STORAGE_TRANSITION_NOTICE_KEY = "indexedDbStorageTransitionNoticeSeen-v2.0.8";
   const LAST_SEEN_VERSION_KEY = "lastSeenAppVersion";
   const INDEXEDDB_ADD_COUNT_KEY = "indexedDbAddCountSinceBackup";
   const BACKUP_CHANGE_COUNT_KEY = "productChangeCountSinceBackup";
@@ -70,8 +69,6 @@
     openAddProductBtn: document.getElementById("openAddProductBtn"),
     cancelAddProductBtn: document.getElementById("cancelAddProductBtn"),
     updateNoticeModal: document.getElementById("updateNoticeModal"),
-    storageTransitionNoticeModal: document.getElementById("storageTransitionNoticeModal"),
-    closeStorageTransitionNoticeBtn: document.getElementById("closeStorageTransitionNoticeBtn"),
     updateNoticeTitle: document.getElementById("updateNoticeTitle"),
     updateNoticeList: document.getElementById("updateNoticeList"),
     closeUpdateNoticeBtn: document.getElementById("closeUpdateNoticeBtn"),
@@ -720,7 +717,6 @@
       edit: ui.editProductModal,
       delete: ui.deleteConfirmModal,
       backup: ui.backupReminderModal,
-      storageTransition: ui.storageTransitionNoticeModal,
       duplicate: ui.duplicateBarcodeModal
     };
     return MODAL_KEYS_BY_PRIORITY.find((key) => isModalVisible(modalMap[key])) || "";
@@ -737,8 +733,6 @@
       closeDeleteConfirm(options);
     } else if (key === "backup") {
       closeManagedModal("backup", ui.backupReminderModal, options);
-    } else if (key === "storageTransition") {
-      closeStorageTransitionNotice(options).catch((error) => showToast(`資料備份提醒狀態儲存失敗: ${error.message}`, true));
     } else if (key === "duplicate") {
       resolveDuplicateBarcodeChoice("cancel", options);
     } else if (key === "update") {
@@ -2237,25 +2231,6 @@
       showToast("已將舊本機檔案資料移入本機資料庫，請匯出 JSON 建立新備份。");
     }
   }
-  function closeStorageTransitionNotice(options = {}) {
-    closeManagedModal("storageTransition", ui.storageTransitionNoticeModal, options);
-    window.setTimeout(() => {
-      maybeShowUpdateNotice().catch((error) => {
-        showToast(`更新公告讀取失敗: ${error.message}`, true);
-      });
-    }, 0);
-    return setSetting(STORAGE_TRANSITION_NOTICE_KEY, true).catch((error) => {
-      showToast(`資料備份提醒狀態儲存失敗: ${error.message}`, true);
-    });
-  }
-
-  async function maybeShowStorageTransitionNotice() {
-    if (!ui.storageTransitionNoticeModal || await getSetting(STORAGE_TRANSITION_NOTICE_KEY) === true) {
-      return false;
-    }
-    openManagedModal("storageTransition", ui.storageTransitionNoticeModal);
-    return true;
-  }
   async function closeUpdateNotice(options = {}) {
     await setSetting(LAST_SEEN_VERSION_KEY, getAppRelease().version);
     closeManagedModal("update", ui.updateNoticeModal, options);
@@ -3109,18 +3084,7 @@
         }
       });
     }
-    if (ui.closeStorageTransitionNoticeBtn) {
-      ui.closeStorageTransitionNoticeBtn.addEventListener("click", () => {
-        closeStorageTransitionNotice();
-      });
-    }
-    if (ui.storageTransitionNoticeModal) {
-      ui.storageTransitionNoticeModal.addEventListener("click", (event) => {
-        if (event.target === ui.storageTransitionNoticeModal) {
-          closeStorageTransitionNotice();
-        }
-      });
-    }    if (ui.healthCheckBar) {
+    if (ui.healthCheckBar) {
       ui.healthCheckBar.addEventListener("click", (event) => {
         const button = event.target.closest("[data-health-filter]");
         if (!button) {
@@ -3639,10 +3603,7 @@
     });
     wireEvents();
     await loadInitialState();
-    const storageTransitionNoticeShown = await maybeShowStorageTransitionNotice();
-    if (!storageTransitionNoticeShown) {
-      await maybeShowUpdateNotice();
-    }
+    await maybeShowUpdateNotice();
     await registerServiceWorker();
     await finishAppBoot();
   }
