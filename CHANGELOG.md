@@ -6,6 +6,7 @@
 
 - 新增正式 MIT `LICENSE`，明確授權使用者複製、修改與散布本專案程式碼。
 - README 新增字型、圖示與圖片的來源與授權說明。
+- 新增 `fonts/SIL_Open_Font_License_1.1.txt` 與 `THIRD_PARTY_NOTICES.md`，隨附 GenSekiGothic2TC 字型的 OFL-1.1 條文、著作權與再散布說明。
 - 更新內容維持「新增庫存與陳列層欄位、統一設計提示視窗、操作／版面最佳化」，英日更新標題同步更新。
 - Android 主程式與原生掃描頁解除直式鎖定，允許裝置旋轉為橫向顯示。
 - 主程式旋轉時改為保留既有 Activity 與 WebView，重新套用安全區與尺寸，不再重新播放雙 Logo 啟動畫面。
