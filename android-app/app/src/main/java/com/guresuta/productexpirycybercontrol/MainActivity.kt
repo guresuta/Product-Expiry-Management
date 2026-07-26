@@ -1310,7 +1310,6 @@ DocumentAction.EXPORT_CSV -> "android-csv-exported"
         runOnUiThread { webView.evaluateJavascript(script, null) }
     }
 }
-
 private class ThemeLoadingIndicator(context: Context) : View(context) {
     private val mutedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
