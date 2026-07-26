@@ -4,6 +4,7 @@
 
 ## [v2.2.1] - 2026-07-25
 
+- `codex/android-resume-cover` 分支移除多工回前景的無條件 400ms 原生讀取遮罩與 WebView 可視回報等待，改直接交還既有 WebView，供黑閃問題重現與調查使用；頁面導航／重載的原生讀取場景維持不變。
 - Android 原生 wrapper、Gradle 設定與資源納入 `android-app/` 版本控制；前端 assets 改由 `tools/sync-android-assets.ps1` 同步並驗證 SHA-256，避免來源與 Android 執行資產分歧。
 - 新增 `ANDROID_DEVELOPMENT.md` 與 `tools/build-android.ps1`，提供分支開發、R8 建置、版本同步與簽署檔排除流程。
 - 新增正式 MIT `LICENSE`，明確授權使用者複製、修改與散布本專案程式碼。

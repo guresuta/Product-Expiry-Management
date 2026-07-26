@@ -7,7 +7,7 @@
 - 前端根目錄是 WebView assets 的唯一來源。`android-app/app/src/main/assets/` 為生成目錄，必須以 `tools/sync-android-assets.ps1` 同步，禁止手動修改或提交生成內容。
 - 使用 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 建置 R8 測試 APK；`version.js` 是 Android `versionName` 與 `versionCode` 的唯一版本來源。
 - 不得提交 `android-app/local.properties`、Gradle/IDE/build 快取、APK/AAB、keystore、簽署密碼或其他本機機密。
-- 多工返回的目前原生方案位於受追蹤的 `android-app/app/src/main/java/com/guresuta/productexpirycybercontrol/MainActivity.kt`：取得前景焦點後直接顯示主題讀取遮罩至少 400ms，並等待 WebView 可視回報後才淡出。
+- 分支 `codex/android-resume-cover` 正在移除多工返回時「無條件 400ms 原生主題遮罩＋WebView 可視回報」方案，以重現並調查未被遮罩隱藏的黑閃；實測結論完成前不可將此分支合併到 `main`。
 
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
@@ -669,3 +669,10 @@
   - `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\minifiedDebug\app-minifiedDebug.apk`
   - 已以 `adb install -r` 覆蓋安裝到 Xperia 10 V（serial `HQ63BH0A55`）；本次無條件 400ms 遮罩尚未進行人工多工／手勢實機驗證。
 - 工作樹中 `pixel7-current.png`、`tmp/`、`vlc-help.txt` 均為未追蹤的使用者／測試工作檔，後續提交不可納入或刪除。
+
+### 9.55 移除多工返回遮罩的 Pixel 7 調查（2026-07-26）
+- 分支 `codex/android-resume-cover` 已暫時移除「取得前景焦點後無條件顯示至少 400ms 原生主題遮罩，並等待 `WebView.postVisualStateCallback()`」的 resume 專用流程；頁面導航／重新載入使用的原生讀取場景維持不變。
+- 已重新同步 47 個 Android assets，並以 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 成功建立 R8 APK：`android-app/app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`（70,701,437 bytes）。
+- Pixel_7（`emulator-5554`、gesture navigation）已安裝此 APK，完成「設定 → 最近使用頁 → App」與「設定 → 手勢條快速切換 → App」回前景流程；錄影、截圖和完整／篩選後 logcat 位於未追蹤的 `tmp/blackflash-investigation/`，僅供本機調查、不可提交。
+- `RecentsSnapshot` 日誌在回前景期間只記錄既有 Activity 的 `onPause`、`onResume` 與 `onWindowFocusChanged`；未見 `FATAL EXCEPTION`、`AndroidRuntime`、renderer crash 或 Activity recreation。此模擬器輪次的靜態回前景截圖未捕捉到持續黑畫面，不能用它否定 Xperia 的短暫黑閃。
+- 初步根因排序：第一位是 Android 最近使用頁系統快照與 WebView renderer/compositor Surface 回交的短暫無有效 buffer；移除的原生遮罩正是遮蔽此空檔。第二位是目前正式主題沒有設定 `android:windowBackground`，空檔會露出系統預設黑／透明根視窗。`MainActivity` 也只宣告 `orientation|screenSize|keyboardHidden` 的 `configChanges`，仍應評估加入 `screenLayout|smallestScreenSize|uiMode` 以排除裝置配置造成的重建。這次日誌沒有支持「App crash」或「單純 WebView JavaScript 錯誤」為主因。

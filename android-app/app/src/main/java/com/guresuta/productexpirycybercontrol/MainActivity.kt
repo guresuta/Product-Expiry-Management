@@ -80,7 +80,6 @@ class MainActivity : AppCompatActivity() {
         private const val STARTUP_SPLASH_APP_ICON_SIZE_DP = 144
         private const val TRANSITION_MIN_VISIBLE_MS = 900L
         private const val TRANSITION_FADE_DURATION_MS = 180L
-        private const val RESUME_COVER_MIN_VISIBLE_MS = 400L
         private const val RESUME_SNAPSHOT_INITIAL_SCALE = 1.02f
         private const val RESUME_SNAPSHOT_SETTLE_DURATION_MS = 60L
         private const val RESUME_SNAPSHOT_FADE_DURATION_MS = 100L
@@ -133,8 +132,6 @@ class MainActivity : AppCompatActivity() {
     private var transitionMinimumVisibleMs = TRANSITION_MIN_VISIBLE_MS
     private var appWasBackgrounded = false
     private var resumeEventAwaitingWindowFocus = false
-    private var resumeVisualCheckGeneration = 0L
-    private var resumeFallbackTransitionGeneration = -1L
     private var resumeSnapshotBitmap: Bitmap? = null
     private var resumeSnapshotCaptureGeneration = 0L
     private var resumeSnapshotReleaseGeneration = -1L
@@ -965,9 +962,8 @@ class MainActivity : AppCompatActivity() {
         if (hasCompletedFirstPage) {
             appWasBackgrounded = true
             resumeEventAwaitingWindowFocus = false
-            cancelResumeVisualCheck()
             discardResumeSnapshot()
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onPause: marked backgrounded; resume visual check cancelled")
+            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onPause: marked backgrounded")
         }
         super.onPause()
     }
@@ -977,9 +973,10 @@ class MainActivity : AppCompatActivity() {
         if (appWasBackgrounded && hasCompletedFirstPage) {
             appWasBackgrounded = false
             resumeEventAwaitingWindowFocus = true
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onResume: awaiting focus; focus=${window.decorView.hasFocus()}")
+            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onResume: awaiting focus for resume event; focus=${window.decorView.hasFocus()}")
             if (window.decorView.hasFocus()) {
-                verifyWebViewOnResumeAfterWindowFocus()
+                resumeEventAwaitingWindowFocus = false
+                dispatchAndroidAppResumed()
             }
         }
     }
@@ -994,90 +991,16 @@ class MainActivity : AppCompatActivity() {
         if (!hasFocus && hasCompletedFirstPage) return
         if (hasFocus && hasCompletedFirstPage) {
             if (resumeEventAwaitingWindowFocus) {
-                verifyWebViewOnResumeAfterWindowFocus()
+                resumeEventAwaitingWindowFocus = false
+                Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: dispatching resume event without cover")
+                dispatchAndroidAppResumed()
             } else if (::resumeSnapshot.isInitialized && resumeSnapshot.visibility == View.VISIBLE) {
                 Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: discarding stale snapshot")
                 discardResumeSnapshot()
-            } else if (resumeFallbackTransitionGeneration == transitionGeneration) {
-                Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: fallback cover is awaiting visual state")
             } else if (transitionCover.visibility == View.VISIBLE) {
                 releaseTransitionCoverAfterVisualState()
             }
         }
-    }
-
-    private fun verifyWebViewOnResumeAfterWindowFocus() {
-        if (!resumeEventAwaitingWindowFocus || !hasCompletedFirstPage || !::webView.isInitialized) return
-        resumeEventAwaitingWindowFocus = false
-        val generation = ++resumeVisualCheckGeneration
-        Log.d(RECENTS_SNAPSHOT_LOG_TAG, "resume visual check: generation=$generation pageReady=$pageBootReady")
-        if (::resumeSnapshot.isInitialized && resumeSnapshot.visibility == View.VISIBLE) {
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "resume visual check: discarding stale snapshot")
-            discardResumeSnapshot()
-        }
-        if (!pageBootReady) {
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "resume visual check: page is already navigating; keep its transition cover")
-            return
-        }
-        // Cover the first app-owned foreground frame.  The task-card animation is system owned,
-        // but the opaque native cover prevents its WebView Surface handoff from being exposed.
-        showTransitionCover(RESUME_COVER_MIN_VISIBLE_MS)
-        resumeFallbackTransitionGeneration = transitionGeneration
-        Log.d(
-            RECENTS_SNAPSHOT_LOG_TAG,
-            "resume cover shown: generation=$generation transition=${transitionGeneration}"
-        )
-        val requestId = ++visualStateRequestId
-        webView.postVisualStateCallback(
-            requestId,
-            object : WebView.VisualStateCallback() {
-                override fun onComplete(requestId: Long) {
-                    if (generation != resumeVisualCheckGeneration || isFinishing) return
-                    Log.d(RECENTS_SNAPSHOT_LOG_TAG, "resume visual callback: generation=$generation request=$requestId")
-                    finishResumeFallbackAfterVisualState(generation)
-                }
-            }
-        )
-    }
-
-    private fun finishResumeFallbackAfterVisualState(resumeGeneration: Long) {
-        if (
-            resumeGeneration != resumeVisualCheckGeneration || isFinishing ||
-                resumeFallbackTransitionGeneration != transitionGeneration
-        ) {
-            return
-        }
-        val fallbackTransitionGeneration = resumeFallbackTransitionGeneration
-        val remainingDelay = (transitionMinimumVisibleMs -
-            (SystemClock.elapsedRealtime() - transitionShownAtMs)).coerceAtLeast(0L)
-        transitionCover.postDelayed({
-            if (
-                resumeGeneration != resumeVisualCheckGeneration || isFinishing ||
-                    fallbackTransitionGeneration != transitionGeneration ||
-                    resumeFallbackTransitionGeneration != fallbackTransitionGeneration
-            ) {
-                return@postDelayed
-            }
-            resumeFallbackTransitionGeneration = -1L
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "resume fallback handoff: generation=$resumeGeneration")
-            hideTransitionCover {
-                webView.post { dispatchAndroidAppResumed() }
-            }
-        }, remainingDelay)
-    }
-
-    private fun cancelResumeVisualCheck() {
-        resumeVisualCheckGeneration += 1
-        if (
-            resumeFallbackTransitionGeneration == transitionGeneration &&
-                ::transitionCover.isInitialized && transitionCover.visibility == View.VISIBLE
-        ) {
-            transitionCover.animate().cancel()
-            transitionCover.visibility = View.GONE
-            transitionCover.alpha = 1f
-            transitionCoverSpinner.stop()
-        }
-        resumeFallbackTransitionGeneration = -1L
     }
 
     private fun dispatchAndroidAppResumed() {
