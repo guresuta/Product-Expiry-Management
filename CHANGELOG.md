@@ -4,6 +4,8 @@
 
 ## [v2.2.1] - 2026-07-25
 
+- Android 原生 wrapper、Gradle 設定與資源納入 `android-app/` 版本控制；前端 assets 改由 `tools/sync-android-assets.ps1` 同步並驗證 SHA-256，避免來源與 Android 執行資產分歧。
+- 新增 `ANDROID_DEVELOPMENT.md` 與 `tools/build-android.ps1`，提供分支開發、R8 建置、版本同步與簽署檔排除流程。
 - 新增正式 MIT `LICENSE`，明確授權使用者複製、修改與散布本專案程式碼。
 - README 新增字型、圖示與圖片的來源與授權說明。
 - 新增 `fonts/SIL_Open_Font_License_1.1.txt` 與 `THIRD_PARTY_NOTICES.md`，隨附 GenSekiGothic2TC 字型的 OFL-1.1 條文、著作權與再散布說明。

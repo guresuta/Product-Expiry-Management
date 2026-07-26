@@ -4,6 +4,7 @@
 - 不破壞既有功能。
 - 小步提交，單次只處理一類問題。
 - 修改前先閱讀 `AGENTS.md`。
+- Android 原生修改只在 `android-app/` 進行；不得直接修改生成的 `android-app/app/src/main/assets/`。
 
 ## 提交前自我檢查
 - 是否影響以下場景：
@@ -12,6 +13,7 @@
   - 深色主題
   - 月曆篩選後商品清單排版
 - 是否有更新 `sw.js` 的 `CACHE_NAME`（若改動前端資產）。
+- 若影響 Android，是否執行 `tools/sync-android-assets.ps1` 與相應的 `tools/build-android.ps1` 建置。
 
 ## 程式風格
 - 使用 UTF-8。

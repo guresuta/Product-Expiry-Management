@@ -5,6 +5,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Compatibility entry point. The Android Studio Gradle wrapper is now tracked
+# in android-app/ and owns the supported build flow. Keep the legacy script
+# body below untouched for historical reference, but route all new builds
+# through the reproducible wrapper workflow.
+$modernBuild = Join-Path $PSScriptRoot "tools\build-android.ps1"
+& $modernBuild -Variant "debug"
+if ($LASTEXITCODE -ne 0) {
+  throw "Current Android debug build workflow failed."
+}
+return
+
 $webRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $webRoot
 $androidDir = Join-Path $projectRoot "android"

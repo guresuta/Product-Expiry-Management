@@ -2,6 +2,13 @@
 
 本文件用於記錄本專案的重要操作規則，避免後續修改造成已修復功能回歸。
 
+### 0.1 Android wrapper Git 工作流（2026-07-26）
+- Android 原生 wrapper 的正式 Git 來源改為 `android-app/`；不再以 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2` 作為唯一原始碼位置。
+- 前端根目錄是 WebView assets 的唯一來源。`android-app/app/src/main/assets/` 為生成目錄，必須以 `tools/sync-android-assets.ps1` 同步，禁止手動修改或提交生成內容。
+- 使用 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 建置 R8 測試 APK；`version.js` 是 Android `versionName` 與 `versionCode` 的唯一版本來源。
+- 不得提交 `android-app/local.properties`、Gradle/IDE/build 快取、APK/AAB、keystore、簽署密碼或其他本機機密。
+- 多工返回的目前原生方案位於受追蹤的 `android-app/app/src/main/java/com/guresuta/productexpirycybercontrol/MainActivity.kt`：取得前景焦點後直接顯示主題讀取遮罩至少 400ms，並等待 WebView 可視回報後才淡出。
+
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
 - 主要檔案：`inventory-management-app.html`、`app.js`、`styles_washi.css`、`legacy-webview.js`、`settings.html`、`settings.js`、`sw.js`。
