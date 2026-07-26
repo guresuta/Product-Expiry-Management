@@ -7,7 +7,7 @@
 - 前端根目錄是 WebView assets 的唯一來源。`android-app/app/src/main/assets/` 為生成目錄，必須以 `tools/sync-android-assets.ps1` 同步，禁止手動修改或提交生成內容。
 - 使用 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 建置 R8 測試 APK；`version.js` 是 Android `versionName` 與 `versionCode` 的唯一版本來源。
 - 不得提交 `android-app/local.properties`、Gradle/IDE/build 快取、APK/AAB、keystore、簽署密碼或其他本機機密。
-- 分支 `codex/android-resume-cover` 正在移除多工返回時「無條件 400ms 原生主題遮罩＋WebView 可視回報」方案，以重現並調查未被遮罩隱藏的黑閃；實測結論完成前不可將此分支合併到 `main`。
+- 分支 `codex/android-resume-cover` 目前採「PixelCopy 上一幀快照優先，失敗時原生主題 Cover 500ms fallback」的多工返回交接方案；實機完整驗證完成前不可將此分支合併到 `main`。
 
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
@@ -676,3 +676,25 @@
 - Pixel_7（`emulator-5554`、gesture navigation）已安裝此 APK，完成「設定 → 最近使用頁 → App」與「設定 → 手勢條快速切換 → App」回前景流程；錄影、截圖和完整／篩選後 logcat 位於未追蹤的 `tmp/blackflash-investigation/`，僅供本機調查、不可提交。
 - `RecentsSnapshot` 日誌在回前景期間只記錄既有 Activity 的 `onPause`、`onResume` 與 `onWindowFocusChanged`；未見 `FATAL EXCEPTION`、`AndroidRuntime`、renderer crash 或 Activity recreation。此模擬器輪次的靜態回前景截圖未捕捉到持續黑畫面，不能用它否定 Xperia 的短暫黑閃。
 - 初步根因排序：第一位是 Android 最近使用頁系統快照與 WebView renderer/compositor Surface 回交的短暫無有效 buffer；移除的原生遮罩正是遮蔽此空檔。第二位是目前正式主題沒有設定 `android:windowBackground`，空檔會露出系統預設黑／透明根視窗。`MainActivity` 也只宣告 `orientation|screenSize|keyboardHidden` 的 `configChanges`，仍應評估加入 `screenLayout|smallestScreenSize|uiMode` 以排除裝置配置造成的重建。這次日誌沒有支持「App crash」或「單純 WebView JavaScript 錯誤」為主因。
+
+### 9.56 v2.2.1 原生背景與混合快照交接（2026-07-26）
+- 分支最新提交（尚未推送、不可在實機完整驗證前合併 `main`）：
+  - `2241a75 Add theme-aware Android window backgrounds`
+  - `055c9a4 Add snapshot fallback for Android resume`
+  - `a01f399 Retain snapshots during pending visual handoff`
+- 原生 Android 四種 `windowBackground` 已建立並與前端主題 key 同步保存：
+  - `dark-1` 霓虹電馭：`#050505`
+  - `light-1` 日光電馭：`#FAFAFA`
+  - `light-2` 活力綠洲：`#F4F7F5`
+  - `dark-2` 深夜綠洲：`#101814`
+  - `MainActivity` 在 `installSplashScreen()` 後、`super.onCreate()` 前讀取原生偏好並呼叫 `setTheme()`；目前頁面主題改變時只更新原生背景與偏好，不重建 WebView。
+- 啟動畫面狀態列規則：雙 Logo／黑色啟動畫面完全淡出前固定使用 `#050505`；網頁透過 bridge 同步的主題色先暫存，首頁顯示後才套用，避免黑色 Splash 與亮色狀態列不一致。
+- 目前多工／手勢條返回流程：
+  1. `onPause()` 標記背景狀態、清除舊快照，並對完整 root surface 呼叫 `PixelCopy`。
+  2. 快照回呼在仍處於背景且 generation 有效時顯示 `resumeSnapshot`；返回後等待 `WebView.postVisualStateCallback()` 再以 100ms 淡出。
+  3. 快照尚未完成、失敗或已過期時，`onResume()` 立即顯示既有主題化 `transitionCover`，最短維持 500ms 並等待可視回報後淡出。
+  4. `windowBackground` 是 Snapshot／Cover 都尚未產生第一幀時的最後底色保護。
+- Xperia 10 V 實測錄影與日誌：`tmp/blackflash-investigation/xperia-hybrid-manual-20260726.mp4`、`xperia-hybrid-manual-logcat-filtered.txt`（不可提交）。兩次測試均成功取得 `PixelCopy` 快照（約 48ms、77ms），未見 App crash／Activity recreation；仍會出現 `OpenGLRenderer: Unable to match the desired swap behavior`，但不等同 App 崩潰。
+- 已根據該日誌修正一項實際競態：快照已設定 `resumeSnapshotReleaseGeneration == resumeSnapshotCaptureGeneration`、正在等待 VisualState 時，Xperia 額外的 `onWindowFocusChanged(true)` 必須保留快照，不能誤當 stale snapshot 回收。
+- 最新 R8 APK 已以 `adb install -r` 安裝到 Xperia 10 V（`HQ63BH0A55`），路徑為 `android-app/app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`，package `com.guresuta.productexpirycybercontrol.r8test`、`versionName=2.2.1-r8test`、`versionCode=20201`。R8 建置通過；僅保留既有 WebView 檔案存取 API deprecated 警告。
+- 尚待使用者人工驗證：多次最近使用頁返回與底部手勢條快速切換，確認成功快照不再提前消失；另需在 PixelCopy 無法取得快照的情境驗證 500ms Cover fallback 不會露出 Window 背景。
