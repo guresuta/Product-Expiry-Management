@@ -4,6 +4,8 @@
 
 ## [v2.2.1] - 2026-07-25
 
+- Android 多工／手勢條返回優先以 `PixelCopy` 保留上一幀快照，待 WebView 可視回報後淡出；快照不存在、過期或失敗時，立即改用原生主題 Cover 並至少顯示 500ms，避免露出 Window 背景。
+- 修正 Android 啟動畫面尚未結束就套用網頁主題狀態列色彩的問題；雙 Logo 啟動畫面完成前維持黑色狀態列，完成後才套用目前主題。
 - Android 原生 Activity 依目前的四種主題保存並套用對應 `windowBackground`；建立或系統重建 Activity 時會在 `super.onCreate()` 前選擇正確背景，作為 WebView Surface 交接的底色保護。
 - `codex/android-resume-cover` 分支移除多工回前景的無條件 400ms 原生讀取遮罩與 WebView 可視回報等待，改直接交還既有 WebView，供黑閃問題重現與調查使用；頁面導航／重載的原生讀取場景維持不變。
 - Android 原生 wrapper、Gradle 設定與資源納入 `android-app/` 版本控制；前端 assets 改由 `tools/sync-android-assets.ps1` 同步並驗證 SHA-256，避免來源與 Android 執行資產分歧。

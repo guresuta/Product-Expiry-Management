@@ -82,8 +82,6 @@ class MainActivity : AppCompatActivity() {
         private const val STARTUP_SPLASH_APP_ICON_SIZE_DP = 144
         private const val TRANSITION_MIN_VISIBLE_MS = 900L
         private const val TRANSITION_FADE_DURATION_MS = 180L
-        private const val RESUME_SNAPSHOT_INITIAL_SCALE = 1.02f
-        private const val RESUME_SNAPSHOT_SETTLE_DURATION_MS = 60L
         private const val RESUME_SNAPSHOT_FADE_DURATION_MS = 100L
         private const val WEBVIEW_STATE_KEY = "webview_state"
         private const val ACTIVITY_RESULT_OK = RESULT_OK
@@ -225,7 +223,8 @@ class MainActivity : AppCompatActivity() {
         applyPersistedWindowThemeBeforeCreate()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        applyStatusBarColor(nativeWindowBackgroundColor)
+        // The system and custom startup scene are black; defer the saved web theme color until it ends.
+        applyStatusBarColor(APP_BACKGROUND_COLOR)
 
         window.decorView.setBackgroundColor(nativeWindowBackgroundColor)
 
@@ -887,8 +886,8 @@ class MainActivity : AppCompatActivity() {
                     resumeSnapshot.animate().cancel()
                     resumeSnapshot.setImageBitmap(bitmap)
                     resumeSnapshot.alpha = 1f
-                    resumeSnapshot.scaleX = RESUME_SNAPSHOT_INITIAL_SCALE
-                    resumeSnapshot.scaleY = RESUME_SNAPSHOT_INITIAL_SCALE
+                    resumeSnapshot.scaleX = 1f
+                    resumeSnapshot.scaleY = 1f
                     resumeSnapshot.visibility = View.VISIBLE
                     Log.d(RECENTS_SNAPSHOT_LOG_TAG, "snapshot visible: generation=$captureGeneration")
                 }
@@ -937,7 +936,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    /** Keeps the v424 opaque settle phase before revealing the live WebView surface. */
+    /** Fades the captured app-owned frame only after the live WebView reports a visible state. */
     private fun beginResumeSnapshotHandoffAfterPresentation(
         captureGeneration: Long,
         onReleased: (() -> Unit)?
@@ -952,12 +951,11 @@ class MainActivity : AppCompatActivity() {
             )
             return
         }
-        Log.d(RECENTS_SNAPSHOT_LOG_TAG, "handoff scale start: generation=$captureGeneration")
+        Log.d(RECENTS_SNAPSHOT_LOG_TAG, "handoff fade start: generation=$captureGeneration")
         resumeSnapshot.animate().cancel()
         resumeSnapshot.animate()
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(RESUME_SNAPSHOT_SETTLE_DURATION_MS)
+            .alpha(0f)
+            .setDuration(RESUME_SNAPSHOT_FADE_DURATION_MS)
             .setInterpolator(DecelerateInterpolator(1.25f))
             .withEndAction {
                 if (captureGeneration != resumeSnapshotCaptureGeneration || isFinishing ||
@@ -965,27 +963,18 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     return@withEndAction
                 }
-                resumeSnapshot.animate()
-                    .alpha(0f)
-                    .setDuration(RESUME_SNAPSHOT_FADE_DURATION_MS)
-                    .setInterpolator(DecelerateInterpolator(1.25f))
-                    .withEndAction {
-                        if (captureGeneration != resumeSnapshotCaptureGeneration || isFinishing) return@withEndAction
-                        resumeSnapshot.visibility = View.GONE
-                        resumeSnapshot.alpha = 1f
-                        resumeSnapshot.scaleX = 1f
-                        resumeSnapshot.scaleY = 1f
-                        resumeSnapshot.setImageDrawable(null)
-                        resumeSnapshotBitmap?.takeIf { !it.isRecycled }?.recycle()
-                        resumeSnapshotBitmap = null
-                        if (resumeSnapshotReleaseGeneration == captureGeneration) {
-                            resumeSnapshotReleaseGeneration = -1L
-                        }
-                        Log.d(RECENTS_SNAPSHOT_LOG_TAG, "handoff complete: generation=$captureGeneration")
-                        onReleased?.invoke()
-                    }
-                    .also { Log.d(RECENTS_SNAPSHOT_LOG_TAG, "handoff fade start: generation=$captureGeneration") }
-                    .start()
+                resumeSnapshot.visibility = View.GONE
+                resumeSnapshot.alpha = 1f
+                resumeSnapshot.scaleX = 1f
+                resumeSnapshot.scaleY = 1f
+                resumeSnapshot.setImageDrawable(null)
+                resumeSnapshotBitmap?.takeIf { !it.isRecycled }?.recycle()
+                resumeSnapshotBitmap = null
+                if (resumeSnapshotReleaseGeneration == captureGeneration) {
+                    resumeSnapshotReleaseGeneration = -1L
+                }
+                Log.d(RECENTS_SNAPSHOT_LOG_TAG, "handoff complete: generation=$captureGeneration")
+                onReleased?.invoke()
             }
             .start()
     }
@@ -1008,7 +997,8 @@ class MainActivity : AppCompatActivity() {
             appWasBackgrounded = true
             resumeEventAwaitingWindowFocus = false
             discardResumeSnapshot()
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onPause: marked backgrounded")
+            captureResumeSnapshot()
+            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onPause: marked backgrounded and requested snapshot")
         }
         super.onPause()
     }
@@ -1018,10 +1008,18 @@ class MainActivity : AppCompatActivity() {
         if (appWasBackgrounded && hasCompletedFirstPage) {
             appWasBackgrounded = false
             resumeEventAwaitingWindowFocus = true
-            Log.d(RECENTS_SNAPSHOT_LOG_TAG, "onResume: awaiting focus for resume event; focus=${window.decorView.hasFocus()}")
+            val hasSnapshot = ::resumeSnapshot.isInitialized && resumeSnapshot.visibility == View.VISIBLE
+            if (!hasSnapshot) {
+                showTransitionCover(minimumVisibleMs = 500L)
+            }
+            Log.d(
+                RECENTS_SNAPSHOT_LOG_TAG,
+                "onResume: awaiting focus; focus=${window.decorView.hasFocus()} snapshot=$hasSnapshot " +
+                    "cover=${if (::transitionCover.isInitialized) transitionCover.visibility else -1}"
+            )
             if (window.decorView.hasFocus()) {
                 resumeEventAwaitingWindowFocus = false
-                dispatchAndroidAppResumed()
+                resumeFromBackgroundAfterFocus()
             }
         }
     }
@@ -1037,14 +1035,29 @@ class MainActivity : AppCompatActivity() {
         if (hasFocus && hasCompletedFirstPage) {
             if (resumeEventAwaitingWindowFocus) {
                 resumeEventAwaitingWindowFocus = false
-                Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: dispatching resume event without cover")
-                dispatchAndroidAppResumed()
+                resumeFromBackgroundAfterFocus()
             } else if (::resumeSnapshot.isInitialized && resumeSnapshot.visibility == View.VISIBLE) {
                 Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: discarding stale snapshot")
                 discardResumeSnapshot()
             } else if (transitionCover.visibility == View.VISIBLE) {
                 releaseTransitionCoverAfterVisualState()
             }
+        }
+    }
+
+    /** Completes a background return with an app snapshot when available, otherwise a native cover. */
+    private fun resumeFromBackgroundAfterFocus() {
+        val hasSnapshot = ::resumeSnapshot.isInitialized && resumeSnapshot.visibility == View.VISIBLE
+        Log.d(
+            RECENTS_SNAPSHOT_LOG_TAG,
+            "focus resume: dispatching resume event snapshot=$hasSnapshot " +
+                "cover=${if (::transitionCover.isInitialized) transitionCover.visibility else -1}"
+        )
+        dispatchAndroidAppResumed()
+        if (hasSnapshot) {
+            releaseResumeSnapshotAfterVisualState()
+        } else {
+            releaseTransitionCoverAfterVisualState()
         }
     }
 
