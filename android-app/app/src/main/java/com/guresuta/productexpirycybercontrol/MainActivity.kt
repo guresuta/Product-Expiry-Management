@@ -71,6 +71,8 @@ class MainActivity : AppCompatActivity() {
         private const val APP_HOME_URL = "https://$APP_ASSETS_HOST/assets/inventory-management-app.html"
         private const val RECENTS_SNAPSHOT_LOG_TAG = "RecentsSnapshot"
         private const val APP_BACKGROUND_COLOR = 0xFF050505.toInt()
+        private const val WINDOW_THEME_PREFERENCE_KEY = "window_theme"
+        private const val DEFAULT_WINDOW_THEME_KEY = "dark-1"
         private const val STARTUP_SPLASH_LOGO_FADE_IN_MS = 600L
         private const val STARTUP_SPLASH_LOGO_VISIBLE_MS = 2_300L
         private const val STARTUP_SPLASH_LOGO_FADE_OUT_MS = 500L
@@ -130,6 +132,7 @@ class MainActivity : AppCompatActivity() {
     private var transitionGeneration = 0L
     private var transitionShownAtMs = 0L
     private var transitionMinimumVisibleMs = TRANSITION_MIN_VISIBLE_MS
+    private var nativeWindowBackgroundColor = APP_BACKGROUND_COLOR
     private var appWasBackgrounded = false
     private var resumeEventAwaitingWindowFocus = false
     private var resumeSnapshotBitmap: Bitmap? = null
@@ -219,19 +222,20 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen().setKeepOnScreenCondition {
             !systemSplashHandoffReady && SystemClock.elapsedRealtime() < initialSplashDeadlineMs && !isFinishing
         }
+        applyPersistedWindowThemeBeforeCreate()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        applyStatusBarColor(APP_BACKGROUND_COLOR)
+        applyStatusBarColor(nativeWindowBackgroundColor)
 
-        window.decorView.setBackgroundColor(APP_BACKGROUND_COLOR)
+        window.decorView.setBackgroundColor(nativeWindowBackgroundColor)
 
 
 
         webView = WebView(this).apply {
-            setBackgroundColor(APP_BACKGROUND_COLOR)
+            setBackgroundColor(nativeWindowBackgroundColor)
         }
         rootView = FrameLayout(this).apply {
-            setBackgroundColor(APP_BACKGROUND_COLOR)
+            setBackgroundColor(nativeWindowBackgroundColor)
             addView(
                 webView,
                 FrameLayout.LayoutParams(
@@ -524,6 +528,47 @@ class MainActivity : AppCompatActivity() {
     /** Shows a deterministic native loading scene before WebView navigation can clear its surface. */
     fun prepareTransitionCover() {
         runOnUiThread { showTransitionCover() }
+    }
+
+    /** Persists the WebView theme for the next Activity creation without reloading the current page. */
+    fun updateWindowThemePreference(themeKey: String) {
+        val normalizedThemeKey = normalizeWindowThemeKey(themeKey)
+        preferences.edit { putString(WINDOW_THEME_PREFERENCE_KEY, normalizedThemeKey) }
+        val backgroundColor = windowBackgroundColorFor(normalizedThemeKey)
+        runOnUiThread {
+            nativeWindowBackgroundColor = backgroundColor
+            window.decorView.setBackgroundColor(backgroundColor)
+            if (::webView.isInitialized) webView.setBackgroundColor(backgroundColor)
+            if (::rootView.isInitialized) rootView.setBackgroundColor(backgroundColor)
+        }
+    }
+
+    /** Must run before super.onCreate so an Activity recreation receives the persisted window theme. */
+    private fun applyPersistedWindowThemeBeforeCreate() {
+        val themeKey = normalizeWindowThemeKey(
+            preferences.getString(WINDOW_THEME_PREFERENCE_KEY, DEFAULT_WINDOW_THEME_KEY)
+        )
+        nativeWindowBackgroundColor = windowBackgroundColorFor(themeKey)
+        setTheme(windowThemeStyleFor(themeKey))
+    }
+
+    private fun normalizeWindowThemeKey(themeKey: String?): String = when (themeKey) {
+        "light-1", "light-2", "dark-2" -> themeKey
+        else -> DEFAULT_WINDOW_THEME_KEY
+    }
+
+    private fun windowThemeStyleFor(themeKey: String): Int = when (themeKey) {
+        "light-1" -> R.style.Theme_ProductExpiryCyberControl_Daylight
+        "light-2" -> R.style.Theme_ProductExpiryCyberControl_VibrantOasis
+        "dark-2" -> R.style.Theme_ProductExpiryCyberControl_MidnightOasis
+        else -> R.style.Theme_ProductExpiryCyberControl_Neon
+    }
+
+    private fun windowBackgroundColorFor(themeKey: String): Int = when (themeKey) {
+        "light-1" -> Color.rgb(250, 250, 250)
+        "light-2" -> Color.rgb(244, 247, 245)
+        "dark-2" -> Color.rgb(16, 24, 20)
+        else -> APP_BACKGROUND_COLOR
     }
 
     fun updateTransitionTheme(statusBarColor: String) {

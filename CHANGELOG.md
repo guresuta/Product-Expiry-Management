@@ -4,6 +4,7 @@
 
 ## [v2.2.1] - 2026-07-25
 
+- Android 原生 Activity 依目前的四種主題保存並套用對應 `windowBackground`；建立或系統重建 Activity 時會在 `super.onCreate()` 前選擇正確背景，作為 WebView Surface 交接的底色保護。
 - `codex/android-resume-cover` 分支移除多工回前景的無條件 400ms 原生讀取遮罩與 WebView 可視回報等待，改直接交還既有 WebView，供黑閃問題重現與調查使用；頁面導航／重載的原生讀取場景維持不變。
 - Android 原生 wrapper、Gradle 設定與資源納入 `android-app/` 版本控制；前端 assets 改由 `tools/sync-android-assets.ps1` 同步並驗證 SHA-256，避免來源與 Android 執行資產分歧。
 - 新增 `ANDROID_DEVELOPMENT.md` 與 `tools/build-android.ps1`，提供分支開發、R8 建置、版本同步與簽署檔排除流程。
@@ -14,7 +15,7 @@
 - Android 主程式與原生掃描頁解除直式鎖定，允許裝置旋轉為橫向顯示。
 - 主程式旋轉時改為保留既有 Activity 與 WebView，重新套用安全區與尺寸，不再重新播放雙 Logo 啟動畫面。
 - 移除啟動時的資料備份提醒視窗；商品新增達 100 筆時的備份建議仍保留。
-- Service Worker 快取版本更新為 `expiry-manager-cache-v427`。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v428`。
 
 ## [v2.2.0] - 2026-07-24
 

@@ -381,6 +381,16 @@
     }
   }
 
+  function syncNativeWindowTheme(themeKey) {
+    if (!window.AndroidBridge || typeof window.AndroidBridge.setWindowTheme !== "function") {
+      return;
+    }
+    try {
+      window.AndroidBridge.setWindowTheme(String(themeKey || DEFAULT_THEME_KEY));
+    } catch (_error) {
+    }
+  }
+
   function syncThemeColorMeta() {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -411,6 +421,7 @@
     const finish = () => {
       document.documentElement.setAttribute("data-theme", preset.key);
       localStorage.setItem(THEME_SETTING_KEY, preset.key);
+      syncNativeWindowTheme(preset.key);
       updateThemeCurrentLabel(preset.key);
       syncThemeColorMeta();
       if (typeof callback === "function") {

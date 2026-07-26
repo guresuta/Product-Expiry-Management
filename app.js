@@ -224,6 +224,7 @@
       localStorage.setItem(THEME_SETTING_KEY, themeKey);
     }
     document.documentElement.setAttribute("data-theme", themeKey);
+    syncNativeWindowTheme(themeKey);
     syncThemeColorMeta();
   }
 
@@ -277,6 +278,16 @@
     }
     try {
       window.AndroidBridge.setStatusBarColor(hex);
+    } catch (_error) {
+    }
+  }
+
+  function syncNativeWindowTheme(themeKey) {
+    if (!window.AndroidBridge || typeof window.AndroidBridge.setWindowTheme !== "function") {
+      return;
+    }
+    try {
+      window.AndroidBridge.setWindowTheme(String(themeKey || DEFAULT_THEME_KEY));
     } catch (_error) {
     }
   }

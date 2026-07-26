@@ -5,7 +5,26 @@
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
 
-    <style name="Theme.ProductExpiryCyberControl" parent="Base.Theme.ProductExpiryCyberControl" />
+    <style name="Theme.ProductExpiryCyberControl" parent="Base.Theme.ProductExpiryCyberControl">
+        <item name="android:windowBackground">#050505</item>
+    </style>
+
+    <!-- Keep the Activity window behind WebView aligned with the four web themes. -->
+    <style name="Theme.ProductExpiryCyberControl.Neon" parent="Base.Theme.ProductExpiryCyberControl">
+        <item name="android:windowBackground">#050505</item>
+    </style>
+
+    <style name="Theme.ProductExpiryCyberControl.Daylight" parent="Base.Theme.ProductExpiryCyberControl">
+        <item name="android:windowBackground">#FAFAFA</item>
+    </style>
+
+    <style name="Theme.ProductExpiryCyberControl.VibrantOasis" parent="Base.Theme.ProductExpiryCyberControl">
+        <item name="android:windowBackground">#F4F7F5</item>
+    </style>
+
+    <style name="Theme.ProductExpiryCyberControl.MidnightOasis" parent="Base.Theme.ProductExpiryCyberControl">
+        <item name="android:windowBackground">#101814</item>
+    </style>
 
     <style name="Theme.ProductExpiryCyberControl.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#050505</item>

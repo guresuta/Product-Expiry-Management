@@ -84,6 +84,12 @@ class AndroidBridge(private val activity: MainActivity) {
     }
 
     @JavascriptInterface
+    fun setWindowTheme(theme: String) {
+        val safeTheme = theme.takeIf { ALLOWED_THEMES.contains(it) } ?: "dark-1"
+        activity.updateWindowThemePreference(safeTheme)
+    }
+
+    @JavascriptInterface
     fun setScreenBrightnessMax() {
         activity.runOnUiThread {
             activity.window.attributes = activity.window.attributes.apply {
