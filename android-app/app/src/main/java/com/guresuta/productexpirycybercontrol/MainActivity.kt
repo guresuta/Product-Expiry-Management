@@ -1037,8 +1037,15 @@ class MainActivity : AppCompatActivity() {
                 resumeEventAwaitingWindowFocus = false
                 resumeFromBackgroundAfterFocus()
             } else if (::resumeSnapshot.isInitialized && resumeSnapshot.visibility == View.VISIBLE) {
-                Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: discarding stale snapshot")
-                discardResumeSnapshot()
+                if (resumeSnapshotReleaseGeneration == resumeSnapshotCaptureGeneration) {
+                    Log.d(
+                        RECENTS_SNAPSHOT_LOG_TAG,
+                        "focus resume: retaining snapshot while visual handoff is pending generation=$resumeSnapshotCaptureGeneration"
+                    )
+                } else {
+                    Log.d(RECENTS_SNAPSHOT_LOG_TAG, "focus resume: discarding stale snapshot")
+                    discardResumeSnapshot()
+                }
             } else if (transitionCover.visibility == View.VISIBLE) {
                 releaseTransitionCoverAfterVisualState()
             }
