@@ -717,3 +717,14 @@
 - SPA shell 的文件 scroll position 是共用狀態；路由交接完成、前一頁 hidden 後才統一重設到頁首，主頁、設定、分析與隱私權皆適用，避免目的頁預設停留在前頁底部。
 - `spa-router.js` 現在於第一次點擊立即設定 pending route，避免首次 fetch／掛載前的快速連點建立多個相同頁面；交接尚未可視的 route 同時停用 pointer events，避免透明上層攔截頂部按鈕。
 - `sw.js` 快取版本更新為 `expiry-manager-cache-v431`。本次不修改 Android 多工／手勢條凍結問題，需先取得重現後的完整 logcat 再決定原生修正。
+
+### 9.60 分支整合、v2.3.0 發版與正式 AAB 來源（2026-07-27）
+- 使用者確認 `codex/android-resume-cover` 的實機修正符合預期後，已建立 `7893a1b Polish SPA routing and barcode dialog`，再以 merge commit `fdea5cb Merge codex/android-resume-cover` 合併到 `main`；後續開發以 `main` 為基礎，分支保留作歷史記錄。
+- 本輪原生修正：Xperia 10 V 的手勢多工凍結／自動重啟已由 live log 確認為 `TransactionTooLargeException`；原因是 `onSaveInstanceState()` 將完整 `WebView.saveState()` Bundle（約 548–950 KB）傳入 Binder。`MainActivity.kt` 已改為只保存安全的 SPA route，Activity 重建時重新載入首頁後還原 route，不可恢復完整 WebView state 保存。
+- 內頁切換已改為單一 WebView 文件路由，切換後所有頁面均回到頁首；首次 route 載入時立即鎖定 navigation，且透明交接層不再攔截頂部按鈕。一般內頁切換不再顯示原生讀取 Cover。
+- 條碼顯示視窗在手機／平板的最大寬度調整為 `400px`。REMIPAD SE 8.7（800×1340、213 dpi）實測視窗約 533 實體 px、內部條碼圖約 456 實體 px；R8 APK 已安裝驗證。
+- `v2.3.0` 已完成並推送 GitHub：提交 `8ba9f17 Release version 2.3.0`，`origin/main` 已同步。`version.js`、`i18n.js`、`CHANGELOG.md` 與 `sw.js`（`expiry-manager-cache-v435`）已更新；中文更新內容為「刪除分頁讀取頁面、修正條碼顯示視窗最大寬度、操作/版面最佳化」，英文與日文均已同步。
+- 最新 R8 APK：`android-app/app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`，package `com.guresuta.productexpirycybercontrol.r8test`、`versionName=2.3.0-r8test`、`versionCode=20300`，SHA-256 `280F8F112EEA57E35539108529BC6A07B6B1B738561A6FB9F6488D727597B8B8`；已以 `adb install -r` 安裝到 REMIPAD。
+- 正式 Android 專案唯一來源為 `D:\AI Code\KEITAIHAN\android-app`。其 `app/build.gradle.kts` 直接讀取根目錄 `version.js`，所以正式 release AAB 應由此資料夾在 Android Studio 開啟並使用既有 release/upload keystore 建立；目前會產生 `versionName=2.3.0`、`versionCode=20300`。
+- `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl` 是 2026-06-04 建立的初始範例（`com.example...`、1.0）；`ProductExpiryCyberControl2` 是同日後建的舊正式副本，仍硬編碼 2.2.1／20201。兩者都不是現行發版來源。確認新版 signed AAB 與既有 keystore 已安全保留後，可由使用者自行移除；舊 `ProductExpiryCyberControl2` 內含舊 APK/AAB，但未發現 keystore。
+- 工作樹保留使用者未追蹤檔：`pixel7-current.png`、`tmp/`、`vlc-help.txt`；不可自動提交或刪除。
