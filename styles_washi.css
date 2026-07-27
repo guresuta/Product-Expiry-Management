@@ -278,6 +278,21 @@ html.app-ready .app-boot-screen {
   transition: opacity 280ms ease;
 }
 
+/* The Android shell retains mounted route trees and cross-fades their first complete frame. */
+[data-spa-home-node][hidden],
+.spa-route-screen[hidden] {
+  display: none !important;
+}
+
+.spa-route-screen {
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.spa-route-screen.spa-route-visible {
+  opacity: 1;
+}
+
 @keyframes appBootSpin {
   to {
     transform: rotate(360deg);

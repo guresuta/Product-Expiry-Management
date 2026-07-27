@@ -59,7 +59,7 @@
     customAppTitleInput: document.getElementById("customAppTitleInput"),
     saveCustomAppTitleBtn: document.getElementById("saveCustomAppTitleBtn"),
     resetCustomAppTitleBtn: document.getElementById("resetCustomAppTitleBtn"),
-    toast: document.getElementById("toast")
+    toast: document.getElementById("settingsToast")
   };
 
   let themePickerMode = "light";
@@ -310,6 +310,10 @@
   window.AppNativeBack = {
     handleBack() {
       if (closeTopModalFromHistory()) {
+        return true;
+      }
+      if (window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive()) {
+        window.AppRouter.navigate("home", { replace: true });
         return true;
       }
       return "home";
@@ -1831,18 +1835,23 @@
       }
     }
     window.AppBoot.ready();
+    if (window.AppRouter && typeof window.AppRouter.markRouteReady === "function") {
+      window.AppRouter.markRouteReady("settings");
+    }
   }
 
   async function init() {
     loadTheme();
     renderAppVersion();
     renderReleaseHistory();
-    try {
-      if (!history.state || history.state.settingsPage !== true) {
-        history.replaceState({ settingsPage: true }, "", location.href);
-        history.pushState({ settingsGuard: true }, "", location.href);
+    if (!(window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive())) {
+      try {
+        if (!history.state || history.state.settingsPage !== true) {
+          history.replaceState({ settingsPage: true }, "", location.href);
+          history.pushState({ settingsGuard: true }, "", location.href);
+        }
+      } catch (_error) {
       }
-    } catch (_error) {
     }
     window.addEventListener("error", (event) => {
       const msg = event && event.error && event.error.message
@@ -1875,7 +1884,8 @@
       if (closeTopModalFromHistory()) {
         return;
       }
-      if (!document.referrer || !document.referrer.includes("inventory-management-app.html")) {
+      if (!(window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive()) &&
+          (!document.referrer || !document.referrer.includes("inventory-management-app.html"))) {
         location.href = "./inventory-management-app.html";
       }
     });
@@ -1884,6 +1894,14 @@
     renderTitleCustomizePanel();
     await finishAppBoot();
   }
+
+  window.AppSettingsPage = {
+    prepareRoute: function () {
+      return loadInitialState().then(function () {
+        renderTitleCustomizePanel();
+      });
+    }
+  };
 
   init().catch((error) => {
     showToast(`初始化失敗: ${error.message}`, true);

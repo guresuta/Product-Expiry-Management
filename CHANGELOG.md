@@ -2,6 +2,13 @@
 
 所有重要變更皆記錄於此檔案。
 
+## [v2.2.1] - 2026-07-27
+
+- Android WebView 內的主頁、設定、分析與隱私權頁改為單一文件路由：畫面第一次進入後保留於記憶體，後續切換不再以 `location.href` 重新建立 WebView 文件。
+- 路由會保留上一個完整畫面，待目標頁完成資料初始化與首個可視畫格後以短淡入淡出交接；一般內頁切換不再觸發 Android 原生讀取 Cover。
+- 保留既有 URL、瀏覽器歷史、Android 返回鍵、主題、語言與資料重新整理行為；多工回前景的 PixelCopy／Cover 保護流程不受影響。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v429`。
+
 ## [v2.2.1] - 2026-07-25
 
 - 修正 Android 快照交接等待 WebView 可視回報期間，Xperia 額外的取得焦點回呼會誤將有效快照回收，造成過早露出 WebView Surface 的問題。

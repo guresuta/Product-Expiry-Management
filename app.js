@@ -3619,6 +3619,14 @@
     await finishAppBoot();
   }
 
+  // The SPA shell keeps the home DOM alive. Refresh while it is hidden so the
+  // product list is current before it becomes visible again.
+  window.AppHomePage = {
+    prepareRoute: function () {
+      return loadInitialState();
+    }
+  };
+
   window.addEventListener("beforeunload", () => stopScanner({ forceTorchOff: true, skipHistory: true }));
   init().catch((error) => {
     showToast(`初始化失敗: ${error.message}`, true);

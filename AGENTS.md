@@ -698,3 +698,10 @@
 - 已根據該日誌修正一項實際競態：快照已設定 `resumeSnapshotReleaseGeneration == resumeSnapshotCaptureGeneration`、正在等待 VisualState 時，Xperia 額外的 `onWindowFocusChanged(true)` 必須保留快照，不能誤當 stale snapshot 回收。
 - 最新 R8 APK 已以 `adb install -r` 安裝到 Xperia 10 V（`HQ63BH0A55`），路徑為 `android-app/app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`，package `com.guresuta.productexpirycybercontrol.r8test`、`versionName=2.2.1-r8test`、`versionCode=20201`。R8 建置通過；僅保留既有 WebView 檔案存取 API deprecated 警告。
 - 尚待使用者人工驗證：多次最近使用頁返回與底部手勢條快速切換，確認成功快照不再提前消失；另需在 PixelCopy 無法取得快照的情境驗證 500ms Cover fallback 不會露出 Window 背景。
+
+### 9.57 單一 WebView 文件路由（2026-07-27）
+- 首頁 `inventory-management-app.html` 現為 Android WebView 的 SPA shell；`spa-router.js` 攔截主頁、設定、分析與隱私權的內部連結，第一次進入時以 fetch 載入目標 HTML 的 body、掛載對應腳本，後續保留 DOM 與頁面狀態，不再執行 `location.href` 的完整文件導覽。
+- 路由在目標頁完成資料初始化後才切換：設定／分析由既有 `finishAppBoot()` 呼叫 `AppRouter.markRouteReady()`，隱私權由 `privacy-page.js` 回報；顯示時保留前一頁完整畫面並以 180ms 淡入淡出交接。因此一般內頁切換不會觸發 `MainActivity.onPageStarted()` 的原生 `transitionCover`。首次啟動、真正重新載入與多工回前景的 Splash／PixelCopy／Cover 保護仍保留。
+- `app.js`、`settings.js`、`analytics.js` 分別提供 `AppHomePage`、`AppSettingsPage`、`AppAnalyticsPage` 的 `prepareRoute()`；返回已掛載的頁面前會重讀必要資料，避免本機資料在背景頁面過期。Android 返回鍵會保留每個 route 的既有 handler，從設定／分析／隱私權返回首頁不再重新載入 WebView。
+- `settingsToast`、`analyticsToast` 已改為獨立 ID，避免同一文件保留多個 route DOM 時與主頁 `toast` 衝突。新增 runtime assets `spa-router.js`、`privacy-page.js` 必須維持於 `sw.js` 預快取清單與 `tools/sync-android-assets.ps1` 同步清單。
+- 本輪已完成 `node --check`、`git diff --check`、資產 SHA-256 同步，以及 `:app:mergeMinifiedDebugAssets`；未重新打包 APK。`sw.js` 快取版本為 `expiry-manager-cache-v429`。
