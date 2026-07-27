@@ -10,6 +10,7 @@
 - 分支 `codex/android-resume-cover` 目前採「PixelCopy 上一幀快照優先，失敗時原生主題 Cover 500ms fallback」的多工返回交接方案；實機完整驗證完成前不可將此分支合併到 `main`。
 - 2026-07-27：Xperia 10 V 的 `TransactionTooLargeException` 已確認由 `onSaveInstanceState()` 將完整 `WebView.saveState()` Bundle 傳入 Binder 所致（約 548–950 KB）。不可恢復此作法；只可保存輕量的 SPA route，Activity 重建時重新建立 WebView 文件後再還原該 route。
 - 2026-07-27：條碼視窗在手機／平板最大寬度為 `400px`；行動版 media query 不可覆蓋成 `width: 100%`，但螢幕可用寬度低於 400px 時仍應隨外側安全邊距自適應。此設定讓 REMIPAD 等大尺寸裝置縮小，而 Xperia 10 V 的可用寬度較小，維持原有視覺尺寸。
+- 2026-07-27：版本更新為 `v2.3.0`；更新內容為「刪除分頁讀取頁面、修正條碼顯示視窗最大寬度、操作/版面最佳化」，`i18n.js` 已同步英日翻譯，`sw.js` 快取版本為 `expiry-manager-cache-v435`。
 
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
