@@ -83,7 +83,9 @@ class MainActivity : AppCompatActivity() {
         private const val TRANSITION_MIN_VISIBLE_MS = 900L
         private const val TRANSITION_FADE_DURATION_MS = 180L
         private const val RESUME_SNAPSHOT_FADE_DURATION_MS = 100L
-        private const val WEBVIEW_STATE_KEY = "webview_state"
+        // Keep Activity state small: WebView.saveState() serializes Chromium history into the
+        // Activity-stop Binder transaction and can exceed its size limit on task switches.
+        private const val RESTORED_ROUTE_KEY = "restored_route"
         private const val ACTIVITY_RESULT_OK = RESULT_OK
     }
 
@@ -126,6 +128,7 @@ class MainActivity : AppCompatActivity() {
     private var startupSplashSequenceComplete = false
     private var startupSplashHomeRevealStarted = false
     private var pendingStartupStatusBarColor: String? = null
+    private var pendingRestoredRoute: String? = null
     private var visualStateRequestId = 0L
     private var transitionGeneration = 0L
     private var transitionShownAtMs = 0L
@@ -353,20 +356,12 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        val restoredWebView = savedInstanceState
-            ?.getBundle(WEBVIEW_STATE_KEY)
-            ?.let { state -> webView.restoreState(state) != null }
-            ?: false
-        if (!restoredWebView) {
-            webView.loadUrl(APP_HOME_URL)
-        } else {
-            hasCompletedFirstPage = true
-            pageBootReady = true
-            webView.post {
-                injectSafeAreaInsets()
-                revealStartupHomeWhenReady()
-            }
-        }
+        pendingRestoredRoute = savedInstanceState
+            ?.getString(RESTORED_ROUTE_KEY)
+            ?.takeIf(::isKnownRoute)
+        // Always create a fresh WebView document. Its full Chromium state must never be
+        // attached to savedInstanceState because Android transports that Bundle over Binder.
+        webView.loadUrl(APP_HOME_URL)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -693,6 +688,47 @@ class MainActivity : AppCompatActivity() {
             pageBootReady = true
             revealStartupHomeWhenReady()
             releaseTransitionCoverAfterVisualState()
+            restorePendingRouteAfterHomeBoot()
+        }
+    }
+
+    /** Restores only the SPA destination after a true Activity recreation, never WebView history. */
+    private fun restorePendingRouteAfterHomeBoot() {
+        val route = pendingRestoredRoute ?: return
+        pendingRestoredRoute = null
+        if (route == "home") return
+        val quotedRoute = JSONObject.quote(route)
+        webView.evaluateJavascript(
+            """
+            (function () {
+                var attempts = 0;
+                function restoreRoute() {
+                    if (window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive()) {
+                        window.AppRouter.navigate($quotedRoute, { replace: true });
+                        return;
+                    }
+                    if (attempts++ < 20) window.setTimeout(restoreRoute, 100);
+                }
+                restoreRoute();
+            })();
+            """.trimIndent(),
+            null
+        )
+    }
+
+    private fun isKnownRoute(route: String): Boolean = route in setOf(
+        "home", "settings", "analytics", "privacy"
+    )
+
+    private fun routeForAssetUrl(url: String?): String? {
+        val uri = url?.toUri() ?: return null
+        if (uri.scheme != "https" || uri.host != APP_ASSETS_HOST) return null
+        return when (uri.lastPathSegment) {
+            "inventory-management-app.html" -> "home"
+            "settings.html" -> "settings"
+            "analytics.html" -> "analytics"
+            "privacy-policy.html" -> "privacy"
+            else -> null
         }
     }
 
@@ -1076,12 +1112,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        if (::webView.isInitialized) {
-            val webViewState = Bundle()
-            if (webView.saveState(webViewState) != null) {
-                outState.putBundle(WEBVIEW_STATE_KEY, webViewState)
-            }
-        }
+        routeForAssetUrl(webView.url)?.let { outState.putString(RESTORED_ROUTE_KEY, it) }
         super.onSaveInstanceState(outState)
     }
 

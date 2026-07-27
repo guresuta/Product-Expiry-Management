@@ -54,6 +54,12 @@
     document.body.classList.toggle("privacy-page", route === "privacy");
   }
 
+  function resetRouteScroll() {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }
+
   function startCurrentBackground() {
     if (!window.AppBackground || typeof window.AppBackground.start !== "function") return;
     var theme = "dark-1";
@@ -102,6 +108,9 @@
           previousScreen.hidden = true;
           previousScreen.classList.remove("spa-route-visible");
         }
+        // A SPA has one document scroll position. Reset only after the old route
+        // is hidden so every destination opens at its own page top.
+        resetRouteScroll();
         activeRoute = route;
         if (routeTitles[route]) document.title = routeTitles[route];
         if (routeBackHandlers[route]) window.AppNativeBack = routeBackHandlers[route];
@@ -180,7 +189,10 @@
       if (typeof target === "string") window.location.href = target;
       return;
     }
-    if (route === activeRoute && !pendingRoute) return;
+    // Lock immediately. Without this, rapid taps can start parallel fetches and
+    // mounts of the same route before activate() gets a chance to set pendingRoute.
+    if (route === activeRoute || pendingRoute) return;
+    pendingRoute = route;
     var historyState = { spaRoute: route };
     if (!options.fromPopState) {
       if (options.replace) history.replaceState(historyState, "", routeFiles[route]);
@@ -188,6 +200,7 @@
     }
     var ready = screens[route] ? Promise.resolve(screens[route]) : mountRoute(route);
     ready.then(function () { return activate(route); }).catch(function () {
+      pendingRoute = null;
       window.location.href = routeFiles[route];
     });
   }

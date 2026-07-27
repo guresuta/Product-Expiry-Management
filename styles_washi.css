@@ -286,11 +286,13 @@ html.app-ready .app-boot-screen {
 
 .spa-route-screen {
   opacity: 0;
+  pointer-events: none;
   transition: opacity 180ms ease;
 }
 
 .spa-route-screen.spa-route-visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 @keyframes appBootSpin {
@@ -2929,6 +2931,11 @@ html[data-theme="dark-1"] .toast.error {
     width: 100%;
     max-height: calc(94vh - var(--safe-area-bottom));
     padding: 0.85rem;
+  }
+
+  /* Match the Xperia-sized barcode dialog without allowing tablet-width expansion. */
+  #barcodeModal .modal-content {
+    width: min(400px, 100%);
   }
 
   #scannerVideo {

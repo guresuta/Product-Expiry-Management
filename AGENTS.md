@@ -8,6 +8,8 @@
 - 使用 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 建置 R8 測試 APK；`version.js` 是 Android `versionName` 與 `versionCode` 的唯一版本來源。
 - 不得提交 `android-app/local.properties`、Gradle/IDE/build 快取、APK/AAB、keystore、簽署密碼或其他本機機密。
 - 分支 `codex/android-resume-cover` 目前採「PixelCopy 上一幀快照優先，失敗時原生主題 Cover 500ms fallback」的多工返回交接方案；實機完整驗證完成前不可將此分支合併到 `main`。
+- 2026-07-27：Xperia 10 V 的 `TransactionTooLargeException` 已確認由 `onSaveInstanceState()` 將完整 `WebView.saveState()` Bundle 傳入 Binder 所致（約 548–950 KB）。不可恢復此作法；只可保存輕量的 SPA route，Activity 重建時重新建立 WebView 文件後再還原該 route。
+- 2026-07-27：條碼視窗在手機／平板最大寬度為 `400px`；行動版 media query 不可覆蓋成 `width: 100%`，但螢幕可用寬度低於 400px 時仍應隨外側安全邊距自適應。此設定讓 REMIPAD 等大尺寸裝置縮小，而 Xperia 10 V 的可用寬度較小，維持原有視覺尺寸。
 
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
@@ -705,3 +707,12 @@
 - `app.js`、`settings.js`、`analytics.js` 分別提供 `AppHomePage`、`AppSettingsPage`、`AppAnalyticsPage` 的 `prepareRoute()`；返回已掛載的頁面前會重讀必要資料，避免本機資料在背景頁面過期。Android 返回鍵會保留每個 route 的既有 handler，從設定／分析／隱私權返回首頁不再重新載入 WebView。
 - `settingsToast`、`analyticsToast` 已改為獨立 ID，避免同一文件保留多個 route DOM 時與主頁 `toast` 衝突。新增 runtime assets `spa-router.js`、`privacy-page.js` 必須維持於 `sw.js` 預快取清單與 `tools/sync-android-assets.ps1` 同步清單。
 - 本輪已完成 `node --check`、`git diff --check`、資產 SHA-256 同步，以及 `:app:mergeMinifiedDebugAssets`；未重新打包 APK。`sw.js` 快取版本為 `expiry-manager-cache-v429`。
+
+### 9.58 隱私權頁路由捲動重設（2026-07-27）
+- SPA shell 進入隱私權頁時，`spa-router.js` 會在交接前後重設 `window`、`documentElement` 與 `body` 的 scrollTop，避免沿用設定／分析頁的頁底位置。其他 route 維持既有捲動行為。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v430`；變更後需同步 Android assets 並重建 R8 `minifiedDebug` APK。
+
+### 9.59 SPA 路由共用捲動與快速連點修正（2026-07-27）
+- SPA shell 的文件 scroll position 是共用狀態；路由交接完成、前一頁 hidden 後才統一重設到頁首，主頁、設定、分析與隱私權皆適用，避免目的頁預設停留在前頁底部。
+- `spa-router.js` 現在於第一次點擊立即設定 pending route，避免首次 fetch／掛載前的快速連點建立多個相同頁面；交接尚未可視的 route 同時停用 pointer events，避免透明上層攔截頂部按鈕。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v431`。本次不修改 Android 多工／手勢條凍結問題，需先取得重現後的完整 logcat 再決定原生修正。
