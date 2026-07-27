@@ -54,7 +54,10 @@ KEITAIHAN/
 │  ├─ key-visual-hybrid-neon-dashboard-a.jpg
 │  └─ key-visual-hybrid-neon-dashboard-c.jpg
 ├─ background.png                         # 主題背景來源／預覽圖
-├─ build-keitaihan-debug-apk.ps1          # 同步前端資產並建置 Android debug APK
+├─ build-keitaihan-debug-apk.ps1          # 相容入口，轉交至目前 Android Gradle 建置流程
+├─ android-app/                           # 受 Git 追蹤的 Android 原生 wrapper（assets 由前端生成）
+├─ tools/                                 # Android assets 同步與建置腳本
+├─ ANDROID_DEVELOPMENT.md                 # Android wrapper 開發與建置流程
 ├─ start-webhan.ps1                       # Windows 一鍵啟動本機伺服器
 ├─ start-webhan-android.sh                # Android（Termux）啟動腳本
 ├─ start-webhan-ios.sh                    # iOS（iSH／類 Unix 環境）啟動腳本
@@ -87,6 +90,10 @@ python -m http.server 8080
 ### 方法二：GitHub Pages
 
 將本專案推送到 GitHub Repo，啟用 Pages 後可直接以 HTTPS 網址使用。
+
+### Android wrapper
+
+Android 原生程式位於 `android-app/`。前端 assets 與 R8 測試 APK 的建置流程請參閱 [ANDROID_DEVELOPMENT.md](ANDROID_DEVELOPMENT.md)。
 
 ## 匯入 / 匯出
 

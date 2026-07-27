@@ -25,6 +25,20 @@ build/
 coverage/
 .cache/
 
+# Android wrapper local state and generated frontend assets
+/android-app/.gradle/
+/android-app/.idea/
+/android-app/.kotlin/
+/android-app/local.properties
+/android-app/build/
+/android-app/app/build/
+/android-app/app/release/
+/android-app/app/src/main/assets/*
+!/android-app/app/src/main/assets/.gitkeep
+/android-app/captures/
+/android-app/.externalNativeBuild/
+/android-app/.cxx/
+
 # Local data and backup exports
 expiry-manager-data.json
 expiry-backup-*.json

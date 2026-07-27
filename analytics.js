@@ -38,7 +38,7 @@
     averageDaysBody: document.getElementById("averageDaysBody"),
     monthlyExpiryHistoryBody: document.getElementById("monthlyExpiryHistoryBody"),
     categoryHistoryBody: document.getElementById("categoryHistoryBody"),
-    toast: document.getElementById("toast")
+    toast: document.getElementById("analyticsToast")
   };
 
   var nativeBridge = createNativeBridge();
@@ -791,6 +791,9 @@
       }
     }
     window.AppBoot.ready();
+    if (window.AppRouter && typeof window.AppRouter.markRouteReady === "function") {
+      window.AppRouter.markRouteReady("analytics");
+    }
   }
 
   function clearLoadedAnalyticsData() {
@@ -802,6 +805,10 @@
   }
 
   function goBackToHome() {
+    if (window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive()) {
+      window.AppRouter.navigate("home", { replace: true });
+      return;
+    }
     if (window.AndroidBridge && typeof window.AndroidBridge.prepareTransitionCover === "function") {
       try {
         window.AndroidBridge.prepareTransitionCover();
@@ -819,6 +826,17 @@
     handleBack: function () {
       goBackToHome();
       return true;
+    }
+  };
+
+  window.AppAnalyticsPage = {
+    prepareRoute: function () {
+      return loadData().then(function () {
+        renderAnalytics();
+        if (window.AppI18n && typeof window.AppI18n.translateDocument === "function") {
+          window.AppI18n.translateDocument();
+        }
+      });
     }
   };
 

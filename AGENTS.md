@@ -2,6 +2,15 @@
 
 本文件用於記錄本專案的重要操作規則，避免後續修改造成已修復功能回歸。
 
+### 0.1 Android wrapper Git 工作流（2026-07-26）
+- Android 原生 wrapper 的正式 Git 來源改為 `android-app/`；不再以 `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2` 作為唯一原始碼位置。
+- 前端根目錄是 WebView assets 的唯一來源。`android-app/app/src/main/assets/` 為生成目錄，必須以 `tools/sync-android-assets.ps1` 同步，禁止手動修改或提交生成內容。
+- 使用 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 建置 R8 測試 APK；`version.js` 是 Android `versionName` 與 `versionCode` 的唯一版本來源。
+- 不得提交 `android-app/local.properties`、Gradle/IDE/build 快取、APK/AAB、keystore、簽署密碼或其他本機機密。
+- 分支 `codex/android-resume-cover` 目前採「PixelCopy 上一幀快照優先，失敗時原生主題 Cover 500ms fallback」的多工返回交接方案；實機完整驗證完成前不可將此分支合併到 `main`。
+- 2026-07-27：Xperia 10 V 的 `TransactionTooLargeException` 已確認由 `onSaveInstanceState()` 將完整 `WebView.saveState()` Bundle 傳入 Binder 所致（約 548–950 KB）。不可恢復此作法；只可保存輕量的 SPA route，Activity 重建時重新建立 WebView 文件後再還原該 route。
+- 2026-07-27：條碼視窗在手機／平板最大寬度為 `400px`；行動版 media query 不可覆蓋成 `width: 100%`，但螢幕可用寬度低於 400px 時仍應隨外側安全邊距自適應。此設定讓 REMIPAD 等大尺寸裝置縮小，而 Xperia 10 V 的可用寬度較小，維持原有視覺尺寸。
+
 ## 1. 專案目的
 - 離線可用的商品效期管理 PWA。
 - 主要檔案：`inventory-management-app.html`、`app.js`、`styles_washi.css`、`legacy-webview.js`、`settings.html`、`settings.js`、`sw.js`。
@@ -662,3 +671,48 @@
   - `C:\Users\GURESUTA\AndroidStudioProjects\ProductExpiryCyberControl2\app\build\outputs\apk\minifiedDebug\app-minifiedDebug.apk`
   - 已以 `adb install -r` 覆蓋安裝到 Xperia 10 V（serial `HQ63BH0A55`）；本次無條件 400ms 遮罩尚未進行人工多工／手勢實機驗證。
 - 工作樹中 `pixel7-current.png`、`tmp/`、`vlc-help.txt` 均為未追蹤的使用者／測試工作檔，後續提交不可納入或刪除。
+
+### 9.55 移除多工返回遮罩的 Pixel 7 調查（2026-07-26）
+- 分支 `codex/android-resume-cover` 已暫時移除「取得前景焦點後無條件顯示至少 400ms 原生主題遮罩，並等待 `WebView.postVisualStateCallback()`」的 resume 專用流程；頁面導航／重新載入使用的原生讀取場景維持不變。
+- 已重新同步 47 個 Android assets，並以 `tools/build-android.ps1 -Variant minifiedDebug -Clean` 成功建立 R8 APK：`android-app/app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`（70,701,437 bytes）。
+- Pixel_7（`emulator-5554`、gesture navigation）已安裝此 APK，完成「設定 → 最近使用頁 → App」與「設定 → 手勢條快速切換 → App」回前景流程；錄影、截圖和完整／篩選後 logcat 位於未追蹤的 `tmp/blackflash-investigation/`，僅供本機調查、不可提交。
+- `RecentsSnapshot` 日誌在回前景期間只記錄既有 Activity 的 `onPause`、`onResume` 與 `onWindowFocusChanged`；未見 `FATAL EXCEPTION`、`AndroidRuntime`、renderer crash 或 Activity recreation。此模擬器輪次的靜態回前景截圖未捕捉到持續黑畫面，不能用它否定 Xperia 的短暫黑閃。
+- 初步根因排序：第一位是 Android 最近使用頁系統快照與 WebView renderer/compositor Surface 回交的短暫無有效 buffer；移除的原生遮罩正是遮蔽此空檔。第二位是目前正式主題沒有設定 `android:windowBackground`，空檔會露出系統預設黑／透明根視窗。`MainActivity` 也只宣告 `orientation|screenSize|keyboardHidden` 的 `configChanges`，仍應評估加入 `screenLayout|smallestScreenSize|uiMode` 以排除裝置配置造成的重建。這次日誌沒有支持「App crash」或「單純 WebView JavaScript 錯誤」為主因。
+
+### 9.56 v2.2.1 原生背景與混合快照交接（2026-07-26）
+- 分支最新提交（尚未推送、不可在實機完整驗證前合併 `main`）：
+  - `2241a75 Add theme-aware Android window backgrounds`
+  - `055c9a4 Add snapshot fallback for Android resume`
+  - `a01f399 Retain snapshots during pending visual handoff`
+- 原生 Android 四種 `windowBackground` 已建立並與前端主題 key 同步保存：
+  - `dark-1` 霓虹電馭：`#050505`
+  - `light-1` 日光電馭：`#FAFAFA`
+  - `light-2` 活力綠洲：`#F4F7F5`
+  - `dark-2` 深夜綠洲：`#101814`
+  - `MainActivity` 在 `installSplashScreen()` 後、`super.onCreate()` 前讀取原生偏好並呼叫 `setTheme()`；目前頁面主題改變時只更新原生背景與偏好，不重建 WebView。
+- 啟動畫面狀態列規則：雙 Logo／黑色啟動畫面完全淡出前固定使用 `#050505`；網頁透過 bridge 同步的主題色先暫存，首頁顯示後才套用，避免黑色 Splash 與亮色狀態列不一致。
+- 目前多工／手勢條返回流程：
+  1. `onPause()` 標記背景狀態、清除舊快照，並對完整 root surface 呼叫 `PixelCopy`。
+  2. 快照回呼在仍處於背景且 generation 有效時顯示 `resumeSnapshot`；返回後等待 `WebView.postVisualStateCallback()` 再以 100ms 淡出。
+  3. 快照尚未完成、失敗或已過期時，`onResume()` 立即顯示既有主題化 `transitionCover`，最短維持 500ms 並等待可視回報後淡出。
+  4. `windowBackground` 是 Snapshot／Cover 都尚未產生第一幀時的最後底色保護。
+- Xperia 10 V 實測錄影與日誌：`tmp/blackflash-investigation/xperia-hybrid-manual-20260726.mp4`、`xperia-hybrid-manual-logcat-filtered.txt`（不可提交）。兩次測試均成功取得 `PixelCopy` 快照（約 48ms、77ms），未見 App crash／Activity recreation；仍會出現 `OpenGLRenderer: Unable to match the desired swap behavior`，但不等同 App 崩潰。
+- 已根據該日誌修正一項實際競態：快照已設定 `resumeSnapshotReleaseGeneration == resumeSnapshotCaptureGeneration`、正在等待 VisualState 時，Xperia 額外的 `onWindowFocusChanged(true)` 必須保留快照，不能誤當 stale snapshot 回收。
+- 最新 R8 APK 已以 `adb install -r` 安裝到 Xperia 10 V（`HQ63BH0A55`），路徑為 `android-app/app/build/outputs/apk/minifiedDebug/app-minifiedDebug.apk`，package `com.guresuta.productexpirycybercontrol.r8test`、`versionName=2.2.1-r8test`、`versionCode=20201`。R8 建置通過；僅保留既有 WebView 檔案存取 API deprecated 警告。
+- 尚待使用者人工驗證：多次最近使用頁返回與底部手勢條快速切換，確認成功快照不再提前消失；另需在 PixelCopy 無法取得快照的情境驗證 500ms Cover fallback 不會露出 Window 背景。
+
+### 9.57 單一 WebView 文件路由（2026-07-27）
+- 首頁 `inventory-management-app.html` 現為 Android WebView 的 SPA shell；`spa-router.js` 攔截主頁、設定、分析與隱私權的內部連結，第一次進入時以 fetch 載入目標 HTML 的 body、掛載對應腳本，後續保留 DOM 與頁面狀態，不再執行 `location.href` 的完整文件導覽。
+- 路由在目標頁完成資料初始化後才切換：設定／分析由既有 `finishAppBoot()` 呼叫 `AppRouter.markRouteReady()`，隱私權由 `privacy-page.js` 回報；顯示時保留前一頁完整畫面並以 180ms 淡入淡出交接。因此一般內頁切換不會觸發 `MainActivity.onPageStarted()` 的原生 `transitionCover`。首次啟動、真正重新載入與多工回前景的 Splash／PixelCopy／Cover 保護仍保留。
+- `app.js`、`settings.js`、`analytics.js` 分別提供 `AppHomePage`、`AppSettingsPage`、`AppAnalyticsPage` 的 `prepareRoute()`；返回已掛載的頁面前會重讀必要資料，避免本機資料在背景頁面過期。Android 返回鍵會保留每個 route 的既有 handler，從設定／分析／隱私權返回首頁不再重新載入 WebView。
+- `settingsToast`、`analyticsToast` 已改為獨立 ID，避免同一文件保留多個 route DOM 時與主頁 `toast` 衝突。新增 runtime assets `spa-router.js`、`privacy-page.js` 必須維持於 `sw.js` 預快取清單與 `tools/sync-android-assets.ps1` 同步清單。
+- 本輪已完成 `node --check`、`git diff --check`、資產 SHA-256 同步，以及 `:app:mergeMinifiedDebugAssets`；未重新打包 APK。`sw.js` 快取版本為 `expiry-manager-cache-v429`。
+
+### 9.58 隱私權頁路由捲動重設（2026-07-27）
+- SPA shell 進入隱私權頁時，`spa-router.js` 會在交接前後重設 `window`、`documentElement` 與 `body` 的 scrollTop，避免沿用設定／分析頁的頁底位置。其他 route 維持既有捲動行為。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v430`；變更後需同步 Android assets 並重建 R8 `minifiedDebug` APK。
+
+### 9.59 SPA 路由共用捲動與快速連點修正（2026-07-27）
+- SPA shell 的文件 scroll position 是共用狀態；路由交接完成、前一頁 hidden 後才統一重設到頁首，主頁、設定、分析與隱私權皆適用，避免目的頁預設停留在前頁底部。
+- `spa-router.js` 現在於第一次點擊立即設定 pending route，避免首次 fetch／掛載前的快速連點建立多個相同頁面；交接尚未可視的 route 同時停用 pointer events，避免透明上層攔截頂部按鈕。
+- `sw.js` 快取版本更新為 `expiry-manager-cache-v431`。本次不修改 Android 多工／手勢條凍結問題，需先取得重現後的完整 logcat 再決定原生修正。

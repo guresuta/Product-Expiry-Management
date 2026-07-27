@@ -2,8 +2,49 @@
 
 所有重要變更皆記錄於此檔案。
 
+## [v2.2.1] - 2026-07-27
+
+- 手機／平板的條碼視窗最大寬度調整為 `400px`；Xperia 10 V 因可用寬度較小維持原有尺寸，REMIPAD 等較大裝置則縮小至較適合的視覺寬度。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v434`。
+
+## [v2.2.1] - 2026-07-27
+
+- 手機／平板的條碼視窗不再強制滿寬；所有裝置均維持最大 `560px` 寬度，小於該寬度的螢幕仍會保留外側邊距後自適應。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v433`。
+
+## [v2.2.1] - 2026-07-27
+
+- 修正 Android 使用手勢切換程式時，完整 WebView 狀態過大而可能凍結、重啟的問題。
+- Activity 重建時僅保留目前分頁識別，改由新的 WebView 文件安全還原分頁，不再傳遞 Chromium 完整狀態。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v432`。
+
+## [v2.2.1] - 2026-07-27
+
+- 修正 SPA 各頁共用文件捲動位置的問題；主頁、設定、分析與隱私權每次交接完成後均從頁首顯示。
+- 修正首次 route 載入期間快速點擊頂部導覽按鈕，可能重複啟動相同頁面載入而使按鈕看似無反應的問題；導航現在在第一下點擊就鎖定，並禁止透明的交接中 route 攔截觸控。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v431`。
+
+## [v2.2.1] - 2026-07-27
+
+- 修正單一 WebView 路由切換至隱私權頁時沿用前頁捲動位置、預設顯示在頁底的問題；現在每次開啟隱私權頁都會回到頁首。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v430`。
+
+## [v2.2.1] - 2026-07-27
+
+- Android WebView 內的主頁、設定、分析與隱私權頁改為單一文件路由：畫面第一次進入後保留於記憶體，後續切換不再以 `location.href` 重新建立 WebView 文件。
+- 路由會保留上一個完整畫面，待目標頁完成資料初始化與首個可視畫格後以短淡入淡出交接；一般內頁切換不再觸發 Android 原生讀取 Cover。
+- 保留既有 URL、瀏覽器歷史、Android 返回鍵、主題、語言與資料重新整理行為；多工回前景的 PixelCopy／Cover 保護流程不受影響。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v429`。
+
 ## [v2.2.1] - 2026-07-25
 
+- 修正 Android 快照交接等待 WebView 可視回報期間，Xperia 額外的取得焦點回呼會誤將有效快照回收，造成過早露出 WebView Surface 的問題。
+- Android 多工／手勢條返回優先以 `PixelCopy` 保留上一幀快照，待 WebView 可視回報後淡出；快照不存在、過期或失敗時，立即改用原生主題 Cover 並至少顯示 500ms，避免露出 Window 背景。
+- 修正 Android 啟動畫面尚未結束就套用網頁主題狀態列色彩的問題；雙 Logo 啟動畫面完成前維持黑色狀態列，完成後才套用目前主題。
+- Android 原生 Activity 依目前的四種主題保存並套用對應 `windowBackground`；建立或系統重建 Activity 時會在 `super.onCreate()` 前選擇正確背景，作為 WebView Surface 交接的底色保護。
+- `codex/android-resume-cover` 分支移除多工回前景的無條件 400ms 原生讀取遮罩與 WebView 可視回報等待，改直接交還既有 WebView，供黑閃問題重現與調查使用；頁面導航／重載的原生讀取場景維持不變。
+- Android 原生 wrapper、Gradle 設定與資源納入 `android-app/` 版本控制；前端 assets 改由 `tools/sync-android-assets.ps1` 同步並驗證 SHA-256，避免來源與 Android 執行資產分歧。
+- 新增 `ANDROID_DEVELOPMENT.md` 與 `tools/build-android.ps1`，提供分支開發、R8 建置、版本同步與簽署檔排除流程。
 - 新增正式 MIT `LICENSE`，明確授權使用者複製、修改與散布本專案程式碼。
 - README 新增字型、圖示與圖片的來源與授權說明。
 - 新增 `fonts/SIL_Open_Font_License_1.1.txt` 與 `THIRD_PARTY_NOTICES.md`，隨附 GenSekiGothic2TC 字型的 OFL-1.1 條文、著作權與再散布說明。
@@ -11,7 +52,7 @@
 - Android 主程式與原生掃描頁解除直式鎖定，允許裝置旋轉為橫向顯示。
 - 主程式旋轉時改為保留既有 Activity 與 WebView，重新套用安全區與尺寸，不再重新播放雙 Logo 啟動畫面。
 - 移除啟動時的資料備份提醒視窗；商品新增達 100 筆時的備份建議仍保留。
-- Service Worker 快取版本更新為 `expiry-manager-cache-v427`。
+- Service Worker 快取版本更新為 `expiry-manager-cache-v428`。
 
 ## [v2.2.0] - 2026-07-24
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "expiry-manager-cache-v427";
+const CACHE_NAME = "expiry-manager-cache-v434";
 const APP_SHELL_FILES = [
   "./",
   "./inventory-management-app.html",
@@ -8,6 +8,8 @@ const APP_SHELL_FILES = [
   "./styles_washi.css",
   "./background-loader.js",
   "./resource-preload.js",
+  "./spa-router.js",
+  "./privacy-page.js",
   "./home-subtitles.js",
   "./legacy-webview.js",
   "./i18n.js",

@@ -59,7 +59,7 @@
     customAppTitleInput: document.getElementById("customAppTitleInput"),
     saveCustomAppTitleBtn: document.getElementById("saveCustomAppTitleBtn"),
     resetCustomAppTitleBtn: document.getElementById("resetCustomAppTitleBtn"),
-    toast: document.getElementById("toast")
+    toast: document.getElementById("settingsToast")
   };
 
   let themePickerMode = "light";
@@ -312,6 +312,10 @@
       if (closeTopModalFromHistory()) {
         return true;
       }
+      if (window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive()) {
+        window.AppRouter.navigate("home", { replace: true });
+        return true;
+      }
       return "home";
     }
   };
@@ -381,6 +385,16 @@
     }
   }
 
+  function syncNativeWindowTheme(themeKey) {
+    if (!window.AndroidBridge || typeof window.AndroidBridge.setWindowTheme !== "function") {
+      return;
+    }
+    try {
+      window.AndroidBridge.setWindowTheme(String(themeKey || DEFAULT_THEME_KEY));
+    } catch (_error) {
+    }
+  }
+
   function syncThemeColorMeta() {
     const meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -411,6 +425,7 @@
     const finish = () => {
       document.documentElement.setAttribute("data-theme", preset.key);
       localStorage.setItem(THEME_SETTING_KEY, preset.key);
+      syncNativeWindowTheme(preset.key);
       updateThemeCurrentLabel(preset.key);
       syncThemeColorMeta();
       if (typeof callback === "function") {
@@ -1820,18 +1835,23 @@
       }
     }
     window.AppBoot.ready();
+    if (window.AppRouter && typeof window.AppRouter.markRouteReady === "function") {
+      window.AppRouter.markRouteReady("settings");
+    }
   }
 
   async function init() {
     loadTheme();
     renderAppVersion();
     renderReleaseHistory();
-    try {
-      if (!history.state || history.state.settingsPage !== true) {
-        history.replaceState({ settingsPage: true }, "", location.href);
-        history.pushState({ settingsGuard: true }, "", location.href);
+    if (!(window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive())) {
+      try {
+        if (!history.state || history.state.settingsPage !== true) {
+          history.replaceState({ settingsPage: true }, "", location.href);
+          history.pushState({ settingsGuard: true }, "", location.href);
+        }
+      } catch (_error) {
       }
-    } catch (_error) {
     }
     window.addEventListener("error", (event) => {
       const msg = event && event.error && event.error.message
@@ -1864,7 +1884,8 @@
       if (closeTopModalFromHistory()) {
         return;
       }
-      if (!document.referrer || !document.referrer.includes("inventory-management-app.html")) {
+      if (!(window.AppRouter && window.AppRouter.isActive && window.AppRouter.isActive()) &&
+          (!document.referrer || !document.referrer.includes("inventory-management-app.html"))) {
         location.href = "./inventory-management-app.html";
       }
     });
@@ -1873,6 +1894,14 @@
     renderTitleCustomizePanel();
     await finishAppBoot();
   }
+
+  window.AppSettingsPage = {
+    prepareRoute: function () {
+      return loadInitialState().then(function () {
+        renderTitleCustomizePanel();
+      });
+    }
+  };
 
   init().catch((error) => {
     showToast(`初始化失敗: ${error.message}`, true);

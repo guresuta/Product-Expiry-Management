@@ -224,6 +224,7 @@
       localStorage.setItem(THEME_SETTING_KEY, themeKey);
     }
     document.documentElement.setAttribute("data-theme", themeKey);
+    syncNativeWindowTheme(themeKey);
     syncThemeColorMeta();
   }
 
@@ -277,6 +278,16 @@
     }
     try {
       window.AndroidBridge.setStatusBarColor(hex);
+    } catch (_error) {
+    }
+  }
+
+  function syncNativeWindowTheme(themeKey) {
+    if (!window.AndroidBridge || typeof window.AndroidBridge.setWindowTheme !== "function") {
+      return;
+    }
+    try {
+      window.AndroidBridge.setWindowTheme(String(themeKey || DEFAULT_THEME_KEY));
     } catch (_error) {
     }
   }
@@ -3607,6 +3618,14 @@
     await registerServiceWorker();
     await finishAppBoot();
   }
+
+  // The SPA shell keeps the home DOM alive. Refresh while it is hidden so the
+  // product list is current before it becomes visible again.
+  window.AppHomePage = {
+    prepareRoute: function () {
+      return loadInitialState();
+    }
+  };
 
   window.addEventListener("beforeunload", () => stopScanner({ forceTorchOff: true, skipHistory: true }));
   init().catch((error) => {
