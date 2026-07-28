@@ -47,6 +47,9 @@
   --boot-spinner-muted: rgba(120, 220, 255, 0.2);
   --boot-spinner-a: #38d5ff;
   --boot-spinner-b: #d94dff;
+  --route-scan-core: #00f0ff;
+  --route-scan-edge: #ff2bd6;
+  --route-scan-trail: rgba(0, 240, 255, 0.34);
 }
 
 @supports (padding-top: env(safe-area-inset-top)) {
@@ -83,6 +86,9 @@ html[data-theme="light-1"] {
   --boot-spinner-muted: rgba(255, 176, 0, 0.22);
   --boot-spinner-a: #ffb000;
   --boot-spinner-b: #00d429;
+  --route-scan-core: #ffb000;
+  --route-scan-edge: #00d429;
+  --route-scan-trail: rgba(255, 176, 0, 0.3);
 }
 
 html[data-theme="light-2"] {
@@ -112,6 +118,9 @@ html[data-theme="light-2"] {
   --boot-spinner-muted: rgba(47, 194, 116, 0.22);
   --boot-spinner-a: #2fc274;
   --boot-spinner-b: #168a4a;
+  --route-scan-core: #168a4a;
+  --route-scan-edge: #2fc274;
+  --route-scan-trail: rgba(22, 138, 74, 0.28);
 }
 
 html[data-theme="dark-2"] {
@@ -141,6 +150,9 @@ html[data-theme="dark-2"] {
   --boot-spinner-muted: rgba(47, 194, 116, 0.22);
   --boot-spinner-a: #2fc274;
   --boot-spinner-b: #96aa9e;
+  --route-scan-core: #2fc274;
+  --route-scan-edge: #96aa9e;
+  --route-scan-trail: rgba(47, 194, 116, 0.3);
 }
 
 * { box-sizing: border-box; }
@@ -278,8 +290,7 @@ html.app-ready .app-boot-screen {
   transition: opacity 280ms ease;
 }
 
-/* The Android shell retains mounted route trees and cross-fades their first complete frame. */
-[data-spa-home-node][hidden],
+/* The Android shell retains mounted route trees and reveals the incoming layer with a neural scan. */
 .spa-route-screen[hidden] {
   display: none !important;
 }
@@ -287,12 +298,132 @@ html.app-ready .app-boot-screen {
 .spa-route-screen {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 180ms ease;
+  transition: opacity 240ms ease;
 }
 
 .spa-route-screen.spa-route-visible {
   opacity: 1;
   pointer-events: auto;
+}
+
+html.spa-route-snapshotting .spa-route-screen {
+  transition: none !important;
+}
+
+/* Keep the scan in one compositor tree. A top-layer dialog could make Android
+   WebView alternate between its live page and the View Transition snapshots. */
+html.spa-route-transitioning {
+  --route-scan-duration: 358ms;
+}
+
+html.spa-route-transitioning::view-transition-group(root) {
+  animation-duration: var(--route-scan-duration, 358ms) !important;
+  animation-timing-function: linear !important;
+}
+
+html.spa-route-transitioning::view-transition-image-pair(root) {
+  isolation: isolate;
+}
+
+html.spa-route-transitioning::view-transition-old(root) {
+  animation: none !important;
+  mix-blend-mode: normal;
+  opacity: 1 !important;
+}
+
+html.spa-route-transitioning::view-transition-new(root) {
+  animation: routeNeuralPageReveal var(--route-scan-duration, 358ms) linear both !important;
+  /* A full-screen filtered snapshot forces a costly off-screen pass every
+     frame. The dedicated narrow scan-line snapshot carries the glow instead. */
+  filter: none;
+  mix-blend-mode: normal;
+  opacity: 1 !important;
+  will-change: clip-path;
+}
+
+/* This is a named View Transition participant, not a top-layer dialog.  Its
+   snapshot stays in the same compositor tree as the two route snapshots. */
+#spaRouteScanline {
+  position: fixed;
+  top: calc(-14vh - 4px);
+  right: 0;
+  left: 0;
+  z-index: 2147483647;
+  height: calc(14vh + 7px);
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, var(--route-scan-trail) 78%, transparent 100%);
+  view-transition-name: none;
+}
+
+#spaRouteScanline::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, var(--route-scan-edge) 12%, var(--route-scan-core) 50%, var(--route-scan-edge) 88%, transparent 100%);
+  box-shadow: 0 0 7px var(--route-scan-core), 0 0 18px var(--route-scan-trail);
+}
+
+html.spa-route-scanline-active #spaRouteScanline {
+  opacity: 1;
+  view-transition-name: route-scanline;
+}
+
+html.spa-route-transitioning::view-transition-group(route-scanline) {
+  animation: none !important;
+  z-index: 2147483647 !important;
+}
+
+html.spa-route-transitioning::view-transition-old(route-scanline) {
+  animation: none !important;
+  opacity: 0 !important;
+}
+
+html.spa-route-transitioning::view-transition-new(route-scanline) {
+  animation: routeNeuralScanLine var(--route-scan-duration, 358ms) linear both !important;
+  mix-blend-mode: normal;
+  opacity: 1 !important;
+  will-change: transform, opacity;
+}
+
+@keyframes routeNeuralScanLine {
+  0%, 7% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  9% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  91% {
+    transform: translateY(calc(100vh + 4px));
+    opacity: 1;
+  }
+  93%, 100% {
+    transform: translateY(calc(100vh + 4px));
+    opacity: 0;
+  }
+}
+
+@keyframes routeNeuralPageReveal {
+  0%, 7% {
+    clip-path: inset(0 0 100% 0);
+    -webkit-clip-path: inset(0 0 100% 0);
+  }
+  93%, 100% {
+    clip-path: inset(0 0 0 0);
+    -webkit-clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spa-route-screen {
+    transition-duration: 180ms;
+  }
+
 }
 
 @keyframes appBootSpin {
@@ -4193,8 +4324,9 @@ html[data-theme="dark-2"] .is-pressed {
   line-height: 1.45;
 }
 
-/* Privacy-policy paragraphs need more breathing room without affecting other settings pages. */
-.privacy-page .settings-section .help-text {
+/* Scope privacy-policy spacing to its mounted SPA route, while preserving direct-page rendering. */
+.spa-route-privacy .settings-section .help-text,
+body.privacy-page:not([data-spa-shell="true"]) .settings-section .help-text {
   margin: 0.8rem 0;
   line-height: 1.65;
 }

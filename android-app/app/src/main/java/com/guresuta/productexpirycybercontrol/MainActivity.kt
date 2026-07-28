@@ -4,6 +4,8 @@ package com.guresuta.productexpirycybercontrol
 
 import android.Manifest
 import android.animation.ValueAnimator
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -28,6 +30,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.SweepGradient
@@ -76,8 +79,7 @@ class MainActivity : AppCompatActivity() {
         private const val STARTUP_SPLASH_LOGO_FADE_IN_MS = 600L
         private const val STARTUP_SPLASH_LOGO_VISIBLE_MS = 2_300L
         private const val STARTUP_SPLASH_LOGO_FADE_OUT_MS = 500L
-        private const val STARTUP_SPLASH_HOME_ZOOM_DURATION_MS = 583L
-        private const val STARTUP_SPLASH_HOME_INITIAL_SCALE = 1.5f
+        private const val STARTUP_HOLOGRAM_REVEAL_DURATION_MS = 820L
         private const val STARTUP_SPLASH_CUSTOM_LOGO_SIZE_DP = 288
         private const val STARTUP_SPLASH_APP_ICON_SIZE_DP = 144
         private const val TRANSITION_MIN_VISIBLE_MS = 900L
@@ -108,6 +110,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var startupSplash: FrameLayout
     private lateinit var startupSplashLogo: ImageView
     private lateinit var startupSplashAppIcon: ImageView
+    private lateinit var startupHologramReveal: RadialHologramRevealView
     private var fileChooserCallback: ValueCallback<Array<Uri>>? = null
     private var pendingWebPermissionRequest: PermissionRequest? = null
     private var pendingDocumentAction: DocumentAction? = null
@@ -127,6 +130,7 @@ class MainActivity : AppCompatActivity() {
     private var systemSplashHandoffReady = false
     private var startupSplashSequenceComplete = false
     private var startupSplashHomeRevealStarted = false
+    private var startupHologramRevealActive = false
     private var pendingStartupStatusBarColor: String? = null
     private var pendingRestoredRoute: String? = null
     private var visualStateRequestId = 0L
@@ -336,6 +340,19 @@ class MainActivity : AppCompatActivity() {
         )
         rootView.addView(
             startupSplash,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
+        startupHologramReveal = RadialHologramRevealView(this).apply {
+            visibility = View.GONE
+            isClickable = true
+            isFocusable = true
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        rootView.addView(
+            startupHologramReveal,
             FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -643,7 +660,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Keeps the native system bar black until the startup scene has fully faded away. */
+    /** Keeps the native system bar black through the logo scene, then hands it to the hologram's theme. */
     fun updateStatusBarTheme(statusBarColor: String) {
         val parsedColor = try {
             Color.parseColor(statusBarColor)
@@ -651,7 +668,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         updateTransitionTheme(statusBarColor)
-        if (::startupSplash.isInitialized && startupSplash.visibility == View.VISIBLE) {
+        if (::startupSplash.isInitialized && (startupSplash.visibility == View.VISIBLE || startupHologramRevealActive)) {
             pendingStartupStatusBarColor = statusBarColor
             return
         }
@@ -662,6 +679,29 @@ class MainActivity : AppCompatActivity() {
         val pendingColor = pendingStartupStatusBarColor ?: return
         pendingStartupStatusBarColor = null
         updateStatusBarTheme(pendingColor)
+    }
+
+    /**
+     * The radial hologram begins with an opaque, theme-coloured frame.  Apply the
+     * already-known WebView theme here instead of waiting for its final frame, so
+     * the system bar joins the projection as it starts while the two-logo scene
+     * remains black.
+     */
+    private fun applyStartupStatusBarThemeForHologram() {
+        val pendingColor = pendingStartupStatusBarColor
+        if (pendingColor != null) {
+            pendingStartupStatusBarColor = null
+            val parsedColor = try {
+                Color.parseColor(pendingColor)
+            } catch (_: IllegalArgumentException) {
+                nativeWindowBackgroundColor
+            }
+            applyStatusBarColor(parsedColor)
+            return
+        }
+        // A persisted theme is available before WebView bootstrap; use it as a
+        // safe fallback if the JavaScript bridge has not reported its colour yet.
+        applyStatusBarColor(nativeWindowBackgroundColor)
     }
 
     private fun applyStatusBarColor(color: Int) {
@@ -790,27 +830,41 @@ class MainActivity : AppCompatActivity() {
                     if (!pageBootReady || !startupSplashSequenceComplete || isFinishing) return
                     webView.animate().cancel()
                     webView.alpha = 1f
-                    webView.scaleX = STARTUP_SPLASH_HOME_INITIAL_SCALE
-                    webView.scaleY = STARTUP_SPLASH_HOME_INITIAL_SCALE
-                    webView.animate()
-                        .scaleX(1f)
-                        .scaleY(1f)
-                        .setDuration(STARTUP_SPLASH_HOME_ZOOM_DURATION_MS)
-                        .setInterpolator(DecelerateInterpolator())
-                        .start()
-                    startupSplash.animate()
-                        .alpha(0f)
-                        .setDuration(STARTUP_SPLASH_HOME_ZOOM_DURATION_MS)
-                        .setInterpolator(DecelerateInterpolator())
-                        .withEndAction {
-                            startupSplash.visibility = View.GONE
-                            startupSplash.alpha = 1f
-                            applyPendingStartupStatusBarTheme()
-                        }
-                        .start()
+                    webView.scaleX = 1f
+                    webView.scaleY = 1f
+                    startupHologramRevealActive = true
+                    val colors = startupHologramColorsFor(nativeWindowBackgroundColor)
+                    startupHologramReveal.start(
+                        baseColor = colors[0],
+                        coreColor = colors[1],
+                        edgeColor = colors[2],
+                        durationMs = STARTUP_HOLOGRAM_REVEAL_DURATION_MS
+                    ) {
+                        startupHologramRevealActive = false
+                        startupHologramReveal.visibility = View.GONE
+                        applyPendingStartupStatusBarTheme()
+                    }
+                    // The hologram layer is already opaque at progress zero, so replacing the
+                    // logo scene here cannot expose an unprepared WebView frame.
+                    startupSplash.visibility = View.GONE
+                    startupSplash.alpha = 1f
+                    applyStartupStatusBarThemeForHologram()
                 }
             }
         )
+    }
+
+    private fun startupHologramColorsFor(backgroundColor: Int): IntArray = when (backgroundColor) {
+        Color.rgb(250, 250, 250) -> intArrayOf(
+            Color.rgb(250, 250, 250), Color.rgb(255, 176, 0), Color.rgb(0, 212, 41)
+        )
+        Color.rgb(244, 247, 245) -> intArrayOf(
+            Color.rgb(244, 247, 245), Color.rgb(47, 194, 116), Color.rgb(22, 138, 74)
+        )
+        Color.rgb(16, 24, 20) -> intArrayOf(
+            Color.rgb(16, 24, 20), Color.rgb(47, 194, 116), Color.rgb(150, 170, 158)
+        )
+        else -> intArrayOf(APP_BACKGROUND_COLOR, Color.rgb(56, 213, 255), Color.rgb(217, 77, 255))
     }
 
     private fun showTransitionCover(
@@ -1327,6 +1381,113 @@ DocumentAction.EXPORT_CSV -> "android-csv-exported"
             );
         """.trimIndent()
         runOnUiThread { webView.evaluateJavascript(script, null) }
+    }
+}
+private class RadialHologramRevealView(context: Context) : View(context) {
+    private val projectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.SQUARE
+    }
+    private val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val revealPath = Path()
+    private var baseColor = Color.BLACK
+    private var coreColor = Color.CYAN
+    private var edgeColor = Color.MAGENTA
+    private var progress = 0f
+    private var animator: ValueAnimator? = null
+
+    fun start(baseColor: Int, coreColor: Int, edgeColor: Int, durationMs: Long, onComplete: () -> Unit) {
+        animator?.cancel()
+        this.baseColor = baseColor
+        this.coreColor = coreColor
+        this.edgeColor = edgeColor
+        progress = 0f
+        alpha = 1f
+        visibility = View.VISIBLE
+        animator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = durationMs
+            interpolator = DecelerateInterpolator(1.35f)
+            addUpdateListener {
+                progress = it.animatedValue as Float
+                invalidate()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    onComplete()
+                }
+            })
+            start()
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        animator?.cancel()
+        animator = null
+        super.onDetachedFromWindow()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        if (width == 0 || height == 0) return
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val maxRadius = Math.hypot(width.toDouble(), height.toDouble()).toFloat() * 1.04f
+        val segmentCount = 7
+        val revealProgress = ((progress - 0.12f) / 0.82f).coerceIn(0f, 1f)
+        val segmentPosition = revealProgress * segmentCount
+        val completedSegments = kotlin.math.floor(segmentPosition).toInt().coerceIn(0, segmentCount)
+        val revealRadius = maxRadius * revealProgress
+        val coreProgress = (progress / 0.42f).coerceIn(0f, 1f)
+        val veilColor = Color.argb(
+            208,
+            (Color.red(baseColor) * 0.72f).toInt(),
+            (Color.green(baseColor) * 0.72f).toInt(),
+            (Color.blue(baseColor) * 0.72f).toInt()
+        )
+        // clipOutPath keeps this view GPU-rendered. The previous CLEAR + software
+        // layer + blur path required a full-screen CPU buffer every animation frame.
+        revealPath.reset()
+        if (revealRadius > 0f) {
+            revealPath.addCircle(centerX, centerY, revealRadius, Path.Direction.CW)
+            canvas.save()
+            canvas.clipOutPath(revealPath)
+            canvas.drawColor(veilColor)
+            canvas.restore()
+        } else {
+            canvas.drawColor(veilColor)
+        }
+        if (revealRadius > 0f) {
+            projectionPaint.clearShadowLayer()
+            projectionPaint.strokeWidth = resources.displayMetrics.density * 2.5f
+            projectionPaint.color = coreColor
+            projectionPaint.alpha = (242 * (1f - revealProgress * 0.32f)).toInt()
+            canvas.drawCircle(centerX, centerY, revealRadius, projectionPaint)
+            projectionPaint.strokeWidth = resources.displayMetrics.density * 8f
+            projectionPaint.alpha = (54 * (1f - revealProgress)).toInt()
+            canvas.drawCircle(centerX, centerY, revealRadius, projectionPaint)
+            projectionPaint.color = edgeColor
+            projectionPaint.alpha = (112 * (1f - revealProgress)).toInt()
+            projectionPaint.strokeWidth = resources.displayMetrics.density
+            canvas.drawCircle(centerX, centerY, revealRadius * 0.93f, projectionPaint)
+            // Seven subtle checkpoints retain the segmented-projection character
+            // without quantizing the actual reveal radius.
+            for (index in 1..completedSegments.coerceAtMost(segmentCount)) {
+                projectionPaint.color = if (index % 2 == 0) coreColor else edgeColor
+                projectionPaint.alpha = (62 * (1f - revealProgress)).toInt()
+                projectionPaint.strokeWidth = resources.displayMetrics.density
+                canvas.drawCircle(centerX, centerY, maxRadius * index / segmentCount, projectionPaint)
+            }
+        }
+        val coreRadius = resources.displayMetrics.density * (8f + 76f * coreProgress)
+        corePaint.color = edgeColor
+        corePaint.alpha = (224 * (1f - coreProgress) * (1f - coreProgress)).toInt()
+        canvas.drawCircle(centerX, centerY, coreRadius, corePaint)
+        projectionPaint.strokeWidth = resources.displayMetrics.density * 2.6f
+        projectionPaint.color = edgeColor
+        projectionPaint.alpha = (255 * (1f - coreProgress) * (1f - coreProgress)).toInt()
+        canvas.drawCircle(centerX, centerY, coreRadius * 1.65f, projectionPaint)
     }
 }
 private class ThemeLoadingIndicator(context: Context) : View(context) {

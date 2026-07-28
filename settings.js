@@ -657,6 +657,7 @@
 
   async function setCategories(categories) {
     await setSetting(CATEGORY_SETTING_KEY, categories);
+    window.dispatchEvent(new CustomEvent("app-home-data-changed"));
   }
 
   function renderCategories() {
@@ -892,6 +893,10 @@
         (Array.isArray(products) ? products : []).forEach((product) => store.put(product));
       };
     });
+    // Imports and restores can change products even if their category set is
+    // unchanged.  Let the retained home screen refresh while this page remains
+    // active, rather than discovering the stale data during return navigation.
+    window.dispatchEvent(new CustomEvent("app-home-data-changed"));
   }
 
   function normalizeDateInput(raw) {

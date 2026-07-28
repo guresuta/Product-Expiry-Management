@@ -60,6 +60,9 @@
     healthFilter: "",
     lastAddCategory: ""
   };
+  let homeRouteFresh = false;
+  let homeRouteRefreshPromise = null;
+  let homeRouteRefreshQueued = false;
 
   const nativeBridge = createNativeBridge();
 
@@ -595,8 +598,12 @@
 
   function bindHomeSubtitleRotation() {
     if (window.AndroidBridge) {
-      // Android task switching can resume repeatedly while the gesture animation is still
-      // settling. Keep the already rendered subtitle so the fixed top bar never reflows.
+      // Android keeps the WebView document alive across task switches, so browser
+      // visibility/pageshow hooks do not reliably advance the launch rotation.
+      // MainActivity dispatches this only after a real foreground return.
+      window.addEventListener("android-app-resumed", () => {
+        applyRandomHomeSubtitle();
+      });
       return;
     }
     let wasHidden = document.hidden;
@@ -785,6 +792,9 @@
       return true;
     }
   };
+  if (window.AppRouter && typeof window.AppRouter.setHomeBackHandler === "function") {
+    window.AppRouter.setHomeBackHandler(window.AppNativeBack);
+  }
 
   function syncBackToTopButton() {
     if (!ui.backToTopBtn) {
@@ -2228,8 +2238,8 @@
     return legacyProducts.length > 0;
   }
 
-  async function loadInitialState() {
-    const migratedLegacyFile = await migrateLegacyFileStorage();
+  async function loadInitialState(options = {}) {
+    const migratedLegacyFile = options.skipLegacyMigration ? false : await migrateLegacyFileStorage();
     state.categories = await getCategories();
     state.lastAddCategory = String((await getSetting(LAST_ADD_CATEGORY_KEY)) || "").trim();
     renderCategoryOptions(state.categories);
@@ -2241,6 +2251,35 @@
     if (migratedLegacyFile) {
       showToast("已將舊本機檔案資料移入本機資料庫，請匯出 JSON 建立新備份。");
     }
+  }
+
+  function refreshHomeRouteInBackground() {
+    if (homeRouteRefreshPromise) return homeRouteRefreshPromise;
+    homeRouteRefreshPromise = loadInitialState({ skipLegacyMigration: true })
+      .then(() => {
+        homeRouteFresh = true;
+        homeRouteRefreshPromise = null;
+      }, (error) => {
+        homeRouteFresh = false;
+        homeRouteRefreshPromise = null;
+        throw error;
+      })
+    return homeRouteRefreshPromise;
+  }
+
+  function markHomeRouteDirty() {
+    homeRouteFresh = false;
+    if (homeRouteRefreshQueued || homeRouteRefreshPromise) return;
+    homeRouteRefreshQueued = true;
+    // Start reading while the user is still on the source page.  Deferring this
+    // to requestIdleCallback left a 0.2–1.2 s window where a quick return home
+    // had to wait before the scan animation could begin.
+    window.setTimeout(() => {
+      homeRouteRefreshQueued = false;
+      refreshHomeRouteInBackground().catch(() => {
+        homeRouteFresh = false;
+      });
+    }, 0);
   }
   async function closeUpdateNotice(options = {}) {
     await setSetting(LAST_SEEN_VERSION_KEY, getAppRelease().version);
@@ -3614,6 +3653,8 @@
     });
     wireEvents();
     await loadInitialState();
+    homeRouteFresh = true;
+    window.addEventListener("app-home-data-changed", markHomeRouteDirty);
     await maybeShowUpdateNotice();
     await registerServiceWorker();
     await finishAppBoot();
@@ -3623,8 +3664,16 @@
   // product list is current before it becomes visible again.
   window.AppHomePage = {
     prepareRoute: function () {
-      return loadInitialState();
-    }
+      // 冷啟動、Android 回到前景與各分頁返回主頁共用同一個副標輪替計數。
+      // 在轉場快照建立前套用，避免掃描揭露完成後才造成標題列重排。
+      applyRandomHomeSubtitle();
+      // Navigation owns the visual hand-off.  A slow IndexedDB refresh must
+      // never postpone its first scan frame; it continues behind the snapshot
+      // and is already normally underway from markHomeRouteDirty().
+      if (!homeRouteFresh) refreshHomeRouteInBackground().catch(function () {});
+      return Promise.resolve();
+    },
+    markDirty: markHomeRouteDirty
   };
 
   window.addEventListener("beforeunload", () => stopScanner({ forceTorchOff: true, skipHistory: true }));
